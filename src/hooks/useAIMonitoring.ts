@@ -14,8 +14,11 @@ export function useAIMonitoring() {
   });
 
   const refetch = async () => {
-    await triggerMonitoringRefresh();
-    queryClient.invalidateQueries({ queryKey: ['ai-monitoring'] });
+    try {
+      await triggerMonitoringRefresh();
+    } finally {
+      await queryClient.invalidateQueries({ queryKey: ['ai-monitoring'] });
+    }
   };
 
   return { data, isLoading, isError, error, refetch };

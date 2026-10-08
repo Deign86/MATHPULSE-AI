@@ -6,12 +6,14 @@ export interface AIFeatureMetric {
   featureId: string;
   featureName: string;
   modelId: string;
-  monthlyCost: number;
-  costShare: number;
+  /** Null: token usage is not logged, so cost cannot be measured. */
+  monthlyCost: number | null;
+  /** Share of all measured attempts in the window, as a percentage. */
+  requestShare: number;
   totalRequests: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  cacheHitRate: number;
+  totalInputTokens: number | null;
+  totalOutputTokens: number | null;
+  cacheHitRate: number | null;
   isMostActive: boolean;
   isTopSpending: boolean;
   icon: string;
@@ -39,6 +41,8 @@ export interface AIDailyMetric {
 
 export interface AIMonitoringTelemetry {
   dailyMetrics: AIDailyMetric[];
+  /** Attempts per logged task type over the window. */
+  requestsByTaskType: { [taskType: string]: number };
   totalAttempts: number;
   successfulAttempts: number;
   completedRequests: number;
@@ -53,24 +57,26 @@ export interface AIMonitoringSummary {
   systemStatus: 'healthy' | 'issues_found' | 'degraded';
   actionRequired: boolean;
   hasPerformanceIssues: boolean;
-  monthlyCost: number;
-  projectedMonthlyCost: number;
+  monthlyCost: number | null;
+  projectedMonthlyCost: number | null;
   billingCycleLabel: string;
   costBreakdown: {
     cacheHitCost: number;
     cacheMissCost: number;
     outputCost: number;
-  };
+  } | null;
+  /** Explains which figures are measured and which are not logged. */
+  costTrackingNote: string;
   totalUsage: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  cacheHitRate: number;
+  totalInputTokens: number | null;
+  totalOutputTokens: number | null;
+  cacheHitRate: number | null;
   activeEngine: string;
   activeEngineModelId: string;
   engineTier: string;
   promotionalPricingActive: boolean;
   promotionalPriceExpiresUtc: string;
-  estimatedCostAfterPromo: number;
+  estimatedCostAfterPromo: number | null;
   lastUpdated: string;
   features: AIFeatureMetric[];
   pricingMeta: PricingMeta;

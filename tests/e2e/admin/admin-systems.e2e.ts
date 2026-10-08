@@ -19,6 +19,7 @@ const promoSummary = {
   projectedMonthlyCost: 13.75,
   billingCycleLabel: 'Current Billable Cycle',
   costBreakdown: { cacheHitCost: 0.5, cacheMissCost: 4, outputCost: 8 },
+  costTrackingNote: 'Mocked e2e summary with cost figures supplied.',
   totalUsage: 100,
   totalInputTokens: 1000,
   totalOutputTokens: 500,
@@ -36,7 +37,7 @@ const promoSummary = {
       featureName: 'E2E Feature',
       modelId: 'deepseek-v4-pro',
       monthlyCost: 12.5,
-      costShare: 100,
+      requestShare: 100,
       totalRequests: 100,
       totalInputTokens: 1000,
       totalOutputTokens: 500,
@@ -57,6 +58,7 @@ const promoSummary = {
     fullPriceOutputRate: 3.48,
   },
   telemetry: {
+    requestsByTaskType: { e2e_feature: 100 },
     dailyMetrics: [
       {
         date: new Date().toISOString().slice(0, 10),
@@ -100,7 +102,7 @@ describe('admin AI monitoring', { tags: ['admin', 'ai-monitoring'] }, () => {
     await expect(screen.getByText(requestCountLabel).first()).toBeVisible();
   });
 
-  test('ranking sort buttons reorder features and the feature filter narrows the list', { session: 'admin' }, async ({ app, screen }) => {
+  test('ranking rows are ordered by measured requests and the feature filter narrows the list', { session: 'admin' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'AI & Intelligence' }).getByRole('button', 'AI Monitoring').tap();
@@ -109,17 +111,11 @@ describe('admin AI monitoring', { tags: ['admin', 'ai-monitoring'] }, () => {
     await expect(requestLabels.first()).toBeVisible({ timeout: 45_000 });
     const featureCount = await requestLabels.count();
     const requestCounts = async () => (await requestLabels.allTextContents()).map((label) => Number(label.replace(/\D/g, '')));
-    const cacheRates = async () => (await screen.getByText(cacheRateLabel).allTextContents()).map((label) => Number.parseInt(label, 10));
-    // The two spending cards above the ranking also show a cost, so only the last featureCount amounts are ranking rows.
-    const rowCosts = async () => (await screen.getByText(costLabel).allTextContents()).slice(-featureCount).map((label) => Number(label.slice(1)));
 
-    await expect.poll(async () => isDescending(await rowCosts())).toBe(true);
-    await screen.getByRole('button', 'Requests').tap();
+    // Token cost and cache hits are not logged (#246), so rows carry only measured request counts.
     await expect.poll(async () => isDescending(await requestCounts())).toBe(true);
-    await screen.getByRole('button', 'Cache').tap();
-    await expect.poll(async () => isDescending(await cacheRates())).toBe(true);
-    await screen.getByRole('button', 'Cost').tap();
-    await expect.poll(async () => isDescending(await rowCosts())).toBe(true);
+    await expect(screen.getByText(costLabel)).toHaveCount(0);
+    await expect(screen.getByText(cacheRateLabel)).toHaveCount(0);
     await expect(requestLabels).toHaveCount(featureCount);
 
     const filter = screen.getByPlaceholder('Filter features...');
@@ -218,7 +214,7 @@ describe('admin AI monitoring', { tags: ['admin', 'ai-monitoring'] }, () => {
     await expect(dismiss).toBeHidden();
   });
 
-  test('a failed metrics request shows an error state instead of an endless skeleton', { session: 'admin', tags: ['known-bug'], timeout: 120_000 }, async ({ app, agent, browser, screen }) => {
+  test('a failed metrics request shows an error state instead of an endless skeleton', { session: 'admin', timeout: 120_000 }, async ({ app, agent, browser, screen }) => {
     await browser.route('**/api/admin/ai-monitoring/summary', async (route) => {
       await route.fulfill({ status: 403, json: { detail: 'Admin access required' } });
     });
