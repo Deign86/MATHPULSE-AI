@@ -70,4 +70,14 @@ describe('HeroBanner', () => {
 
     expect(within(remount.container).queryByText('Assessment Complete!')).not.toBeInTheDocument();
   });
+
+  it('keeps a dismissed alert hidden when the diagnostic check resolves from unknown to completed', () => {
+    window.localStorage.setItem('mathpulse:dismissed_assessment_complete_tooltip_s1', 'true');
+    const { container, rerender } = render(<HeroBanner userName="Student" studentId="s1" assessmentCompleted={null} />);
+
+    rerender(<HeroBanner userName="Student" studentId="s1" assessmentCompleted={true} />);
+
+    expect(window.localStorage.getItem('mathpulse:dismissed_assessment_complete_tooltip_s1')).toBe('true');
+    expect(within(container).queryByText('Assessment Complete!')).not.toBeInTheDocument();
+  });
 });

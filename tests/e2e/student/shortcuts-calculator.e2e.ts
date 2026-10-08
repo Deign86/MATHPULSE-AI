@@ -39,7 +39,7 @@ describe('student shell shortcuts and calculator', { tags: ['student', 'shell-sh
     await expect(screen.getByRole('heading', greeting)).toBeVisible({ timeout: 30_000 });
   });
 
-  test('Alt+P opens the Profile page', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('Alt+P opens the Profile page', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeInterruptions);
@@ -71,7 +71,7 @@ describe('student shell shortcuts and calculator', { tags: ['student', 'shell-sh
     await expect(screen.getByRole('heading', greeting)).toBeVisible({ timeout: 30_000 });
   });
 
-  test('leaving Quiz Battle with Alt+D restores the expanded sidebar', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('leaving Quiz Battle with Alt+D restores the expanded sidebar', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeInterruptions);
@@ -289,7 +289,7 @@ describe('student shell shortcuts and calculator', { tags: ['student', 'shell-sh
     await expect(calculator.getByText('DEG/RAD')).toBeHidden();
   });
 
-  test('calculator Alt+C inserts cos( without leaving the current page', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('calculator Alt+C inserts cos( without leaving the current page', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeInterruptions);

@@ -206,7 +206,7 @@ describe('student avatar studio', { tags: ['student', 'avatar-studio'], timeout:
     await expect(guardHeading).toBeHidden();
   });
 
-  test('Alt+D after reaching Avatar Studio from the sidebar still asks before dropping an unsaved outfit', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('Alt+D after reaching Avatar Studio from the sidebar still asks before dropping an unsaved outfit', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await agent.act(closeAssessmentPrompt);
