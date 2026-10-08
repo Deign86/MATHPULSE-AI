@@ -2,6 +2,13 @@
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
+/* Short viewports (phones in landscape, ~360-430px tall): pinned bars give way to content. */
+@custom-variant short (@media (max-height: 30rem));
+
+/* `xs:` is used across the app (large phones in landscape, small tablets); without this it generates nothing. */
+@theme {
+  --breakpoint-xs: 30rem;
+}
 
 /* ─── MathPulse Design System ────────────────────────────── */
 /* Typography: Syne (display) + Outfit (body)                  */

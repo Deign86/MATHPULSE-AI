@@ -19,7 +19,7 @@ export const NotificationBell: React.FC = () => {
     <div ref={containerRef} className="relative inline-flex items-center justify-center">
       <button
         onClick={() => setIsOpen((prev) => !prev)}
-        className={`relative flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-2xl backdrop-blur-xl transition-all duration-200 cursor-pointer group active:scale-95 border ${
+        className={`relative flex items-center justify-center w-9 h-9 sm:w-11 sm:h-11 rounded-2xl pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 backdrop-blur-xl transition-all duration-200 cursor-pointer group active:scale-95 border ${
           isOpen
             ? 'bg-amber-50/90 dark:bg-amber-950/70 border-amber-400 ring-2 ring-amber-400/40 text-amber-500 dark:text-amber-400 shadow-md shadow-amber-500/25'
             : 'bg-white/70 dark:bg-slate-900/60 border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/95 dark:hover:bg-slate-800/80 hover:border-amber-300/80 dark:hover:border-amber-500/50 hover:shadow-[0_6px_20px_rgba(245,158,11,0.22)] text-slate-700 dark:text-slate-200 hover:text-amber-500 dark:hover:text-amber-400'
