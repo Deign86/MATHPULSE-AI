@@ -1,11 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { getAuth } from 'firebase/auth';
 import { ApiError, readFastApiErrorDetail } from '../services/apiUtils';
 import {
-  fetchRagLesson,
+  fetchRagLessonStream,
   getRagLessonHealth,
   type RagLessonResponse,
   type RagLessonRequest,
+  type RagLessonStage,
 } from '../services/lessonService';
 
 const SESSION_CACHE_PREFIX = 'rag_lesson_';
@@ -39,6 +40,8 @@ export interface UseLessonContentResult {
   needsReview: boolean;
   activeModel?: string;
   isOffline: boolean;
+  /** Latest backend generation stage while loading; null when idle or unknown. */
+  stage?: RagLessonStage | null;
 }
 
 export function useLessonContent(
@@ -55,8 +58,15 @@ export function useLessonContent(
   const [needsReview, setNeedsReview] = useState(false);
   const [activeModel, setActiveModel] = useState<string | undefined>(undefined);
   const [isOffline, setIsOffline] = useState(false);
+  const [stage, setStage] = useState<RagLessonStage | null>(null);
+  const inFlightRef = useRef<AbortController | null>(null);
 
-  const doFetch = useCallback(async () => {
+  const doFetch = useCallback(async (forceRefresh: boolean = false) => {
+    // Cancel the previous request (lessonId change / retry) so its late result is ignored.
+    inFlightRef.current?.abort();
+    inFlightRef.current = null;
+    setStage(null);
+
     if (!lessonId) {
       // A fetch was requested but no lesson can be identified: surface it
       // instead of leaving the initial loading state in place forever.
@@ -87,15 +97,18 @@ export function useLessonContent(
     setError(null);
     setIsOffline(false);
 
+    const controller = new AbortController();
+    inFlightRef.current = controller;
+
     try {
       const currentUser = getAuth().currentUser;
       const userId = currentUser?.uid;
 
-      const data = await fetchRagLesson({
-        ...request,
-        lessonId,
-        userId,
-      });
+      const data = await fetchRagLessonStream(
+        { ...request, lessonId, userId, ...(forceRefresh && { forceRefresh: true }) },
+        { signal: controller.signal, onStage: (next) => { if (!controller.signal.aborted) setStage(next); } },
+      );
+      if (controller.signal.aborted) return;
 
       setSections(data.sections);
       setSources(data.sources || []);
@@ -107,6 +120,7 @@ export function useLessonContent(
       setError(null);
       setIsOffline(false);
     } catch (err) {
+      if (controller.signal.aborted) return;
       const status = err instanceof ApiError ? err.status : undefined;
       const detail = err instanceof ApiError ? readFastApiErrorDetail(err) : null;
 
@@ -126,20 +140,25 @@ export function useLessonContent(
       setError(errorMsg);
       setIsOffline(offline);
       setSections([]);
-    } finally {
-      setIsLoading(false);
     }
+    if (inFlightRef.current === controller) inFlightRef.current = null;
+    setStage(null);
+    setIsLoading(false);
   }, [lessonId, enabled, JSON.stringify(request)]);
 
   useEffect(() => {
-    doFetch();
+    void doFetch();
+    return () => {
+      inFlightRef.current?.abort();
+      inFlightRef.current = null;
+    };
   }, [doFetch]);
 
   const retry = useCallback(() => {
     if (lessonId) sessionStorage.removeItem(getCacheKey(lessonId));
     setIsLoading(true);
     setError(null);
-    doFetch();
+    void doFetch(true);
   }, [doFetch, lessonId]);
 
   return {
@@ -153,6 +172,7 @@ export function useLessonContent(
     needsReview,
     activeModel,
     isOffline,
+    stage,
   };
 }
 

@@ -1,0 +1,20 @@
+........................................................................ [ 12%]
+........................................................................ [ 24%]
+........................................................................ [ 36%]
+........................................................................ [ 49%]
+........................................................................ [ 61%]
+........................................................................ [ 73%]
+........................................................................ [ 85%]
+........................................................................ [ 98%]
+...........                                                              [100%]
+============================== warnings summary ===============================
+..\..\..\AppData\Roaming\Python\Python312\site-packages\starlette\testclient.py:53
+  C:\Users\APG\AppData\Roaming\Python\Python312\site-packages\starlette\testclient.py:53: DeprecationWarning: The anyio.abc.BlockingPortal alias is deprecated, use anyio.from_thread.BlockingPortal instead.
+    _PortalFactoryType = Callable[[], AbstractContextManager[anyio.abc.BlockingPortal]]
+
+tests/test_api.py::TestChatEndpoint::test_chat_success
+  C:\Users\APG\Downloads\MATHPULSE-AI\backend\rag\vectorstore_loader.py:83: FutureWarning: The `get_sentence_embedding_dimension` method has been renamed to `get_embedding_dimension`.
+    actual_dim = getattr(embedder, "get_sentence_embedding_dimension", lambda: None)()
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+587 passed, 2 warnings in 161.87s (0:02:41)

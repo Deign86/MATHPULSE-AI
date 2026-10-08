@@ -5,7 +5,11 @@ Updated curriculum RAG with exact match retrieval and 7-section notebook output.
 from __future__ import annotations
 
 import re
+import threading
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 # Canonical retrieval-row keys: content, subject, quarter, content_domain,
 # chunk_type, source_file, storage_path, module_id, lesson_id,
@@ -292,6 +296,116 @@ def _query_embeddings_with_fallback(
     return collection, result, query_embedding
 
 
+# Per-process cache of one source file's chunks + normalized vectors. Chroma's
+# HNSW index here is missing most ids (filtered query / embedding reads raise
+# "Error finding id"), so file chunks are re-encoded; do that once per file.
+_FILE_CACHE_MAX = 64
+_file_cache: "OrderedDict[Tuple[str, ...], Tuple[List[str], List[Dict[str, Any]], Optional[np.ndarray]]]" = OrderedDict()
+_file_cache_lock = threading.Lock()
+# (collection, healthy) for the collection last probed; identity-checked so a
+# reset vectorstore singleton (new collection object) is re-probed.
+_index_health: Optional[Tuple[Any, bool]] = None
+
+
+def reset_exact_file_cache() -> None:
+    """Drop cached file vectors and the index-health verdict (tests / store swap)."""
+    global _index_health
+    with _file_cache_lock:
+        _file_cache.clear()
+        _index_health = None
+
+
+def _index_is_healthy(collection: Any, query_embedding: List[float]) -> bool:
+    """True when an unfiltered query can return every stored id (HNSW complete)."""
+    global _index_health
+    cached = _index_health
+    if cached is not None and cached[0] is collection:
+        return cached[1]
+    healthy = False
+    try:
+        total = collection.count()
+        if isinstance(total, int) and total > 0:
+            result = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=total,
+                include=["distances"],
+            )
+            healthy = len((result.get("ids") or [[]])[0]) == total
+    except Exception:
+        healthy = False
+    _index_health = (collection, healthy)
+    return healthy
+
+
+def _query_exact_file_fast(
+    collection: Any,
+    query_embedding: List[float],
+    where: Dict[str, object],
+    top_k: int,
+    storage_path: str,
+) -> List[CurriculumChunk]:
+    result = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=max(1, top_k),
+        where=where,
+        include=["documents", "metadatas", "distances"],
+    )
+    documents = (result.get("documents") or [[]])[0]
+    metadatas = (result.get("metadatas") or [[]])[0]
+    distances = (result.get("distances") or [[]])[0]
+    rows: List[CurriculumChunk] = []
+    for idx, content in enumerate(documents):
+        md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
+        distance = float(distances[idx]) if idx < len(distances) else 1.0
+        rows.append(_row_from_chunk(content, md, distance, storage_path=storage_path))
+    return rows
+
+
+def _load_file_chunks(
+    collection: Any,
+    embedder: Any,
+    storage_path: str,
+) -> Tuple[List[str], List[Dict[str, Any]], Optional[np.ndarray]]:
+    cand_paths, cand_files = _normalize_storage_candidates(storage_path)
+    key = tuple(cand_paths) + ("|",) + tuple(cand_files)
+    with _file_cache_lock:
+        hit = _file_cache.get(key)
+        if hit is not None:
+            _file_cache.move_to_end(key)
+            return hit
+    payload = collection.get(
+        where={
+            "$or": [
+                {"storage_path": {"$in": cand_paths}},
+                {"source_file": {"$in": cand_files}},
+            ]
+        },
+        include=["documents", "metadatas"],
+    )
+    ids = payload.get("ids") or []
+    documents = payload.get("documents") or []
+    metadatas = payload.get("metadatas") or []
+    texts = [str(documents[i]) if i < len(documents) else "" for i in range(len(ids))]
+    mds = [metadatas[i] if i < len(metadatas) and isinstance(metadatas[i], dict) else {} for i in range(len(ids))]
+    matrix: Optional[np.ndarray] = None
+    if texts:
+        try:
+            # Encoded outside the lock: a rare duplicate encode beats serializing requests.
+            candidate = np.asarray(embedder.encode(texts, normalize_embeddings=True).tolist(), dtype=np.float32)
+            if candidate.ndim == 2 and candidate.shape[0] == len(texts):
+                matrix = candidate
+        except Exception:
+            matrix = None
+    entry = (texts, mds, matrix)
+    if matrix is not None or not texts:
+        with _file_cache_lock:
+            _file_cache[key] = entry
+            _file_cache.move_to_end(key)
+            while len(_file_cache) > _FILE_CACHE_MAX:
+                _file_cache.popitem(last=False)
+    return entry
+
+
 def _retrieve_exact_file_chunks(
     collection: Any,
     embedder: Any,
@@ -306,25 +420,30 @@ def _retrieve_exact_file_chunks(
     competency_code: str | None,
     top_k: int,
 ) -> List[CurriculumChunk]:
-    """Exact-match retrieval for one source file via collection.get (server-side
-    metadata filtering works; only id-resolving vector reads are broken)."""
-    cand_paths, cand_files = _normalize_storage_candidates(storage_path)
-    payload = collection.get(
-        where={
-            "$or": [
-                {"storage_path": {"$in": cand_paths}},
-                {"source_file": {"$in": cand_files}},
-            ]
-        },
-        include=["documents", "metadatas"],
-    )
-    ids = payload.get("ids") or []
-    documents = payload.get("documents") or []
-    metadatas = payload.get("metadatas") or []
-    kept: List[Tuple[int, Dict[str, Any]]] = []
-    for idx in range(len(ids)):
-        md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
-        if not _metadata_matches(
+    """Exact-match retrieval for one source file. Uses a server-side filtered
+    query when the HNSW index is complete (no encoding); otherwise scores the
+    file's cached chunk vectors (see _load_file_chunks)."""
+    if _index_is_healthy(collection, query_embedding):
+        try:
+            where = _to_where(
+                subject=subject,
+                quarter=quarter,
+                content_domain=content_domain,
+                chunk_type=chunk_type,
+                module_id=module_id,
+                lesson_id=lesson_id,
+                competency_code=competency_code,
+                storage_path=storage_path,
+            )
+            return _query_exact_file_fast(collection, query_embedding, where or {}, top_k, storage_path)
+        except Exception:
+            pass  # fall back to the cached-encode path
+
+    texts, metadatas, matrix = _load_file_chunks(collection, embedder, storage_path)
+    kept = [
+        idx
+        for idx, md in enumerate(metadatas)
+        if _metadata_matches(
             md,
             subject=subject,
             quarter=quarter,
@@ -334,22 +453,20 @@ def _retrieve_exact_file_chunks(
             lesson_id=lesson_id,
             competency_code=competency_code,
             storage_path=storage_path,
-        ):
-            continue
-        kept.append((idx, md))
+        )
+    ]
     rows: List[CurriculumChunk] = []
     if kept:
-        texts = [str(documents[idx]) if idx < len(documents) else "" for idx, _ in kept]
-        try:
-            vectors = embedder.encode(texts, normalize_embeddings=True).tolist()
-        except Exception:
-            vectors = [None] * len(texts)
-        for (idx, md), text, vec in zip(kept, texts, vectors):
+        distances: List[float] = [1.0] * len(kept)
+        if matrix is not None:
             try:
-                distance = _cosine_distance(list(vec), query_embedding) if vec is not None else 1.0
+                query_vec = np.asarray(query_embedding, dtype=np.float32)
+                sims = matrix[kept] @ query_vec
+                distances = [max(0.0, 1.0 - float(sim)) for sim in sims]
             except (TypeError, ValueError):
-                distance = 1.0
-            rows.append(_row_from_chunk(text, md, distance, storage_path=storage_path))
+                pass
+        for idx, distance in zip(kept, distances):
+            rows.append(_row_from_chunk(texts[idx], metadatas[idx], distance, storage_path=storage_path))
     rows.sort(key=lambda row: row.get("score", 0.0), reverse=True)
     return rows[: max(1, top_k)]
 
@@ -585,14 +702,31 @@ def retrieve_lesson_pdf_context(
     return general_chunks, "general"
 
 
+_MAX_EXCERPT_CHARS = 1200
+_MAX_CONTEXT_CHARS = 9000
+_TRUNCATED = "…[truncated]"
+
+
 def format_retrieved_chunks(curriculum_chunks: list[dict]) -> str:
+    """Numbered excerpt list for prompts; each excerpt and the total are capped."""
     refs = []
+    used = 0
     for i, chunk in enumerate(curriculum_chunks, start=1):
-        refs.append(
+        content = str(chunk.get("content", "") or "")
+        if len(content) > _MAX_EXCERPT_CHARS:
+            content = content[:_MAX_EXCERPT_CHARS].rstrip() + _TRUNCATED
+        entry = (
             f"{i}. [{chunk.get('source_file')} p.{chunk.get('page')}] "
             f"({chunk.get('content_domain')}/{chunk.get('chunk_type')}) score={chunk.get('score')}\n"
-            f"   Excerpt: {chunk.get('content', '')}"
+            f"   Excerpt: {content}"
         )
+        remaining = _MAX_CONTEXT_CHARS - used
+        if len(entry) > remaining:
+            if remaining > 200:
+                refs.append(entry[:remaining].rstrip() + _TRUNCATED)
+            break
+        refs.append(entry)
+        used += len(entry) + 1
     return "\n".join(refs) if refs else "No curriculum context retrieved."
 
 
