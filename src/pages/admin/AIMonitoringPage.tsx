@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   RefreshCw, DollarSign, Cpu, Activity, Database, List,
-  Zap, ArrowUpRight, TrendingUp, Layers, HelpCircle
+  Zap, ArrowUpRight, TrendingUp, Layers, HelpCircle, AlertTriangle
 } from 'lucide-react';
 import { useAIMonitoring } from '../../hooks/useAIMonitoring';
 import { KPICard } from '../../components/admin/ai-monitoring/KPICard';
@@ -12,17 +12,25 @@ import { ResourceRankingRow } from '../../components/admin/ai-monitoring/Resourc
 import { SystemDirectoryModal } from '../../components/admin/ai-monitoring/SystemDirectoryModal';
 import { PricingInfoTooltip } from '../../components/admin/ai-monitoring/PricingInfoTooltip';
 
+const formatUsd = (amount: number | null, digits: number) => (amount === null ? '—' : `$${amount.toFixed(digits)}`);
+
 const AIMonitoringPage: React.FC = () => {
-  const { data, isLoading, refetch } = useAIMonitoring();
+  const { data, isLoading, isError, error, refetch } = useAIMonitoring();
   const [showDirectory, setShowDirectory] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    try { await refetch(); } finally { setRefreshing(false); }
+    try {
+      await refetch();
+    } catch {
+      // The query's own error state reports the failure below.
+    } finally {
+      setRefreshing(false);
+    }
   };
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <div className="space-y-5 sm:space-y-6 pt-4 sm:pt-6 pb-6 max-w-[1600px] mx-auto min-w-0 animate-in fade-in duration-300">
         <div className="h-[72px] w-full rounded-2xl bg-slate-100 dark:bg-slate-800 animate-pulse" />
@@ -47,6 +55,27 @@ const AIMonitoringPage: React.FC = () => {
             </div>
           ))}
         </div>
+      </div>
+    );
+  }
+
+  if (isError || !data) {
+    return (
+      <div role="alert" className="max-w-lg mx-auto mt-8 text-center rounded-3xl border border-rose-200 dark:border-rose-900/50 bg-white dark:bg-slate-900 p-8 shadow-sm">
+        <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 flex items-center justify-center mx-auto mb-4">
+          <AlertTriangle size={28} />
+        </div>
+        <h2 className="text-base font-bold text-slate-900 dark:text-white">Could not load AI monitoring metrics</h2>
+        <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{error instanceof Error ? error.message : 'The metrics request failed.'}</p>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          aria-label="Refresh AI monitoring metrics"
+          className="mt-5 inline-flex items-center gap-1.5 min-h-[38px] rounded-xl bg-gradient-to-r from-[#9956DE] to-[#7274ED] px-4 text-xs font-bold text-white shadow-md disabled:opacity-50 cursor-pointer"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          Retry
+        </button>
       </div>
     );
   }
@@ -106,12 +135,10 @@ const AIMonitoringPage: React.FC = () => {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <KPICard
           title="Monthly Cost"
-          value={`$${data.monthlyCost.toFixed(2)}`}
-          subValue={`Est. ~$${data.estimatedCostAfterPromo.toFixed(2)} at standard rate`}
+          value={formatUsd(data.monthlyCost, 2)}
+          subValue={data.monthlyCost === null ? 'Not tracked' : `Est. ~${formatUsd(data.estimatedCostAfterPromo, 2)} at standard rate`}
           icon={<DollarSign className="h-5 w-5" />}
           theme="emerald"
-          progressPercent={Math.min(100, Math.round((data.monthlyCost / 50) * 100))}
-          trend="+8.2%"
         />
         <KPICard
           title="Active Model"
@@ -131,12 +158,11 @@ const AIMonitoringPage: React.FC = () => {
         />
         <KPICard
           title="Cache Hit Efficiency"
-          value={`${(data.cacheHitRate * 100).toFixed(1)}%`}
-          subValue="Accelerated response cache hits"
+          value={data.cacheHitRate === null ? '—' : `${(data.cacheHitRate * 100).toFixed(1)}%`}
+          subValue={data.cacheHitRate === null ? 'Not tracked' : 'Accelerated response cache hits'}
           icon={<Database className="h-5 w-5" />}
           theme="sky"
-          progressPercent={Math.round(data.cacheHitRate * 100)}
-          trend="+5.1%"
+          progressPercent={data.cacheHitRate === null ? undefined : Math.round(data.cacheHitRate * 100)}
         />
       </div>
 
@@ -157,6 +183,8 @@ const AIMonitoringPage: React.FC = () => {
           progressPercent={data.telemetry.successRate ?? undefined}
         />
       </div>
+
+      <p className="text-xs text-slate-500 dark:text-slate-400">{data.costTrackingNote}</p>
 
       <dl aria-label="Daily AI attempts in Asia/Manila time">
         {data.telemetry.dailyMetrics.map((dailyMetric) => (
@@ -179,23 +207,23 @@ const AIMonitoringPage: React.FC = () => {
           <div>
             <div className="flex items-center justify-between mb-3">
               <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Inference Cost Tiers</p>
-              <span className="text-[9px] font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-full border border-emerald-200/80 dark:border-emerald-800/60">
-                Optimized
+              <span className="text-[9px] font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full border border-slate-200/80 dark:border-slate-700">
+                {data.costBreakdown ? 'Measured' : 'Not tracked'}
               </span>
             </div>
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between items-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                 <span className="text-slate-600 dark:text-slate-400 font-medium">Cached Answers</span>
-                <span className="font-bold text-slate-900 dark:text-white tabular-nums">${data.costBreakdown.cacheHitCost.toFixed(6)}</span>
+                <span className="font-bold text-slate-900 dark:text-white tabular-nums">{formatUsd(data.costBreakdown?.cacheHitCost ?? null, 6)}</span>
               </div>
               <div className="flex justify-between items-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                 <span className="text-slate-600 dark:text-slate-400 font-medium">New Cache-Miss Input</span>
-                <span className="font-bold text-slate-900 dark:text-white tabular-nums">${data.costBreakdown.cacheMissCost.toFixed(6)}</span>
+                <span className="font-bold text-slate-900 dark:text-white tabular-nums">{formatUsd(data.costBreakdown?.cacheMissCost ?? null, 6)}</span>
               </div>
               <div className="flex justify-between items-center p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60">
                 <span className="text-slate-600 dark:text-slate-400 font-medium">Reasoning Output</span>
-                <span className="font-bold text-slate-900 dark:text-white tabular-nums">${data.costBreakdown.outputCost.toFixed(6)}</span>
+                <span className="font-bold text-slate-900 dark:text-white tabular-nums">{formatUsd(data.costBreakdown?.outputCost ?? null, 6)}</span>
               </div>
             </div>
           </div>

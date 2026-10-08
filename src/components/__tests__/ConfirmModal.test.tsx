@@ -76,4 +76,22 @@ describe('ConfirmModal', () => {
     fireEvent.click(screen.getByText('Cancel'));
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
+
+  it('exposes an alert dialog labelled by its title and described by its message', () => {
+    render(<ConfirmModal isOpen onClose={vi.fn()} onConfirm={vi.fn()} title="Purge index" message="This cannot be undone." />);
+    const dialog = screen.getByRole('alertdialog', { name: 'Purge index' });
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+    expect(dialog.getAttribute('aria-describedby')).toBe(screen.getByText('This cannot be undone.').id);
+  });
+
+  it('closes on Escape while open and stops listening once closed', () => {
+    const handleClose = vi.fn();
+    const { rerender } = render(<ConfirmModal isOpen onClose={handleClose} onConfirm={vi.fn()} title="Escape me" message="Sure?" />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(handleClose).toHaveBeenCalledTimes(1);
+
+    rerender(<ConfirmModal isOpen={false} onClose={handleClose} onConfirm={vi.fn()} title="Escape me" message="Sure?" />);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
 });

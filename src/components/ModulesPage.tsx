@@ -2083,6 +2083,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               <button
                 type="button"
                 onClick={() => setSourcePreviewModule(null)}
+                aria-label="Close curriculum preview"
                 className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
               >
                 <X size={16} />
