@@ -361,7 +361,8 @@ describe('student modules', { tags: ['student', 'modules'] }, () => {
 
     await content.getByRole('button', /^Patterns, Sequences, and Series/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
-    await expect(content.getByText(/^Chapter \d+$/)).toBeVisible();
+    // The badge is CSS-uppercased, and text matching reads the rendered "CHAPTER 2".
+    await expect(content.getByText(/^chapter \d+$/i)).toBeVisible();
   });
 
   test('Study Materials turns into Review once the lesson has been opened', { session: 'student' }, async ({ app, agent, screen, browser }) => {

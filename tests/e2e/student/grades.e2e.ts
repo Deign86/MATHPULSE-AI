@@ -64,7 +64,7 @@ describe('student grades and assessment', { tags: ['student', 'grades'] }, () =>
       'the diagnostic lists no weak topics, so no Topics to Practice chips are rendered',
     );
 
-    await agent.act('On the "Initial Diagnostic Results" card, tap the first topic chip listed under "Topics to Practice"');
+    await agent.act('On the "Initial Diagnostic Results" card, tap the first topic chip listed under "Topics to Practice"; the app is expected to leave Grades for the Modules page');
     await expect(screen.getByText('Practice Center')).toBeVisible({ timeout: 30_000 });
     await expect(browser).toHaveURL('/modules');
   });
