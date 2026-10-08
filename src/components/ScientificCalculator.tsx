@@ -399,7 +399,9 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
 
       // Alt combinations
       if (e.altKey) {
+        if (key === 'k' || key === 'K') return;
         e.preventDefault();
+        e.stopPropagation();
         if (e.shiftKey) {
           if (key === 'S' || key === 's') { handleFunction('asin'); return; }
           if (key === 'C' || key === 'c') { handleFunction('acos'); return; }
