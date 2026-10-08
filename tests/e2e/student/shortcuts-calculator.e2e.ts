@@ -186,7 +186,7 @@ describe('student shell shortcuts and calculator', { tags: ['student', 'shell-sh
     await expect(calculator.getByRole('button', 'Verify with SymPy')).toBeEnabled();
   });
 
-  test('a failed SymPy verification is not labelled SymPy Verified', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
+  test('a failed SymPy verification is not labelled SymPy Verified', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await browser.route('**/api/calculator/evaluate', async (route) => {
       await route.abort();
     });
