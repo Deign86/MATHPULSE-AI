@@ -24,7 +24,7 @@ Decisions (data checked before coding):
   EVIDENCE: 866:        queueType: nextMode === 'online' ? prev.queueType : 'public_matchmaking',
 
 - [x] G274: rank bar message says "#1 rank" only when the rank is 1; unit test covers rank 1, rival, and outside-list cases
-  CHECK: npx vitest run --config ./vitest.lane-g.config.ts src/components/LeaderboardPage.test.tsx
+  CHECK: npx vitest run src/components/LeaderboardPage.test.tsx
   EXPECT: /Tests\s+\d+ passed/
   EVIDENCE: Test Files  1 passed (1) | Tests  2 passed (2)
 

@@ -39,7 +39,7 @@ Scope: issues #256 #257 #255 #254 #221 #220 #219 #218 #216 #261 #222 #223 #259 (
   EXPECT: /^1\s*$/m
   EVIDENCE: 1
 - [x] G261: HeroBanner keeps a stored dismissal when completion resolves from unknown (null) to true, and still clears it on a real false-to-true completion
-  CHECK: node -e "require('fs').writeFileSync('vitest.lane-a.tmp.config.ts', \"import { defineConfig, mergeConfig } from 'vitest/config';\nimport base from './vitest.config';\nexport default mergeConfig(base, defineConfig({ server: { fs: { allow: ['C:/Users/APG/Downloads/MATHPULSE-AI'] } } }));\n\")" && npx vitest run --config vitest.lane-a.tmp.config.ts src/components/HeroBanner.test.tsx src/components/AIChatPage.test.tsx src/App.test.tsx & del vitest.lane-a.tmp.config.ts
+  CHECK: npx vitest run src/components/HeroBanner.test.tsx src/components/AIChatPage.test.tsx src/App.test.tsx
   EXPECT: /Test Files\s+3 passed \(3\)[\s\S]*Tests\s+8 passed \(8\)/
   EVIDENCE: Start at  18:00:04 | Duration  7.79s (transform 6.20s, setup 4.83s, import 8.60s, tests 861ms, environment 4.38s)
 - [x] G222: RightSidebar Current XP receives displayXP (Rewards page and modal keep the in-level XP for their level bar)

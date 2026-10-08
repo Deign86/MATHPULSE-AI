@@ -3,7 +3,7 @@
 Scope: issues #298 #297 #296 #295 #249 #247 #246 #258 #294 (Admin RAG manager, AI monitoring, file inventory, confirm modal, mobile nav, accessible names). Worktree `.worktrees/lane-d2`, branch `fix/issues-lane-d2`. CHECKs run under cmd.exe from the worktree root; vitest CHECKs use the local uncommitted `vitest.worktree.config.ts` (junctioned node_modules), use `vitest.config.ts` from the main checkout.
 
 - [x] G298: RAG Manager shows a persistent error state with a Retry action when the inventory request fails, not the "No AI Knowledge Loaded Yet" empty state.
-  CHECK: npx vitest run --config vitest.worktree.config.ts src/components/AdminRagManager.regression.test.tsx
+  CHECK: npx vitest run src/components/AdminRagManager.regression.test.tsx
   EXPECT: /Tests\s+(\d+) passed \(\1\)/
   EVIDENCE: Tests  3 passed (3) incl. "shows an error state with Retry when the inventory request fails"
 - [x] G297: Accordion panel collapses on the first click (toggle treats an untouched key as expanded, matching the display default).
@@ -15,7 +15,7 @@ Scope: issues #298 #297 #296 #295 #249 #247 #246 #258 #294 (Admin RAG manager, A
   EXPECT: PricingInfoTooltip.tsx:3
   EVIDENCE: src/components/admin/ai-monitoring/PricingInfoTooltip.tsx:3
 - [x] G295: ConfirmModal is an alertdialog (aria-modal, labelled, described) and closes on Escape only while open.
-  CHECK: npx vitest run --config vitest.worktree.config.ts src/components/__tests__/ConfirmModal.test.tsx
+  CHECK: npx vitest run src/components/__tests__/ConfirmModal.test.tsx
   EXPECT: /Tests\s+(\d+) passed \(\1\)/
   EVIDENCE: Tests  5 passed (5) incl. alertdialog labelling and Escape-closes-only-while-open
 - [x] G249: File Inventory trash opens a ConfirmModal; no direct Firestore deleteDoc fallback; backend error surfaced in the toast.
@@ -23,7 +23,7 @@ Scope: issues #298 #297 #296 #295 #249 #247 #246 #258 #294 (Admin RAG manager, A
   EXPECT: deleteDoc=0 confirmModal=1 directTrash=0 pendingTrash=2
   EVIDENCE: deleteDoc=0 confirmModal=1 directTrash=0 pendingTrash=2
 - [x] G247: AI Monitoring shows an error message with a retry control when the summary request fails.
-  CHECK: npx vitest run --config vitest.worktree.config.ts src/pages/admin/AIMonitoringPage.regression.test.tsx
+  CHECK: npx vitest run src/pages/admin/AIMonitoringPage.regression.test.tsx
   EXPECT: /Tests\s+(\d+) passed \(\1\)/
   EVIDENCE: Tests  3 passed (3) incl. "shows an error state with a retry control when metrics fail"
 - [x] G246: Backend summary no longer fabricates cost/usage/cache figures (per-feature requests come from ai_usage_logs taskType; untracked figures are null and labelled "Not tracked"); hard-coded trend badges removed.
