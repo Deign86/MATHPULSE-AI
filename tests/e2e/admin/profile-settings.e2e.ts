@@ -175,7 +175,7 @@ describe('admin profile and settings', { tags: ['admin', 'profile-settings'], ti
     await expect.poll(isSmartDark).toBe(startedDark);
   });
 
-  test('Appearance: Discard reverts a previewed theme to the saved theme', { session: 'admin', tags: ['known-bug'] }, async ({ app, screen, browser }) => {
+  test('Appearance: Discard reverts a previewed theme to the saved theme', { session: 'admin' }, async ({ app, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', /^Profile menu: /).tap();
@@ -247,7 +247,7 @@ describe('admin profile and settings', { tags: ['admin', 'profile-settings'], ti
     await expect(main.getByRole('button', 'Save Settings')).toBeHidden();
   });
 
-  test('Notifications: Academic Support Alerts and Security & Ingestion Telemetry Alerts keep a saved change after a reload', { session: 'admin', tags: ['known-bug'] }, async ({ app, screen, browser }) => {
+  test('Notifications: Academic Support Alerts and Security & Ingestion Telemetry Alerts keep a saved change after a reload', { session: 'admin' }, async ({ app, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', /^Profile menu: /).tap();
@@ -340,7 +340,7 @@ describe('admin profile and settings', { tags: ['admin', 'profile-settings'], ti
     await expect(main.getByText('MathPulse AI Platform Environment')).toBeVisible();
   });
 
-  test('Data & Governance: Export CSV downloads the system audit trail as a .csv file', { session: 'admin', tags: ['known-bug'] }, async ({ app, screen, browser }) => {
+  test('Data & Governance: Export CSV downloads the system audit trail as a .csv file', { session: 'admin' }, async ({ app, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', /^Profile menu: /).tap();
