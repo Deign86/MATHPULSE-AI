@@ -20,7 +20,19 @@ interface PracticeCenterProps {
   searchQuery?: string;
   allowedSubjectIds?: SubjectId[];
   atRiskTopics?: string[];
+  assignedQuizzes?: React.ReactNode;
+  /** Increments whenever the Assigned filter should be opened (deep link / notification). */
+  assignedFilterRequest?: number;
 }
+
+type PracticeFilter = 'all' | 'completed' | 'recommended' | 'assigned';
+
+const PRACTICE_FILTERS: ReadonlyArray<readonly [PracticeFilter, string]> = [
+  ['all', 'All'],
+  ['completed', 'Completed'],
+  ['recommended', 'Recommended'],
+  ['assigned', 'Assigned'],
+];
 
 // A spawnable topic card — each represents a competency the AI can generate quizzes for
 interface TopicCard {
@@ -46,11 +58,15 @@ function getUnitStyle(unit: string) {
   return recordGet(UNIT_STYLE, unit) ?? { icon: PenTool, bg: 'bg-slate-500' };
 }
 
-const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, searchQuery = '', allowedSubjectIds, atRiskTopics = [] }) => {
+const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, searchQuery = '', allowedSubjectIds, atRiskTopics = [], assignedQuizzes, assignedFilterRequest = 0 }) => {
   const { userProfile } = useAuth();
   const [selectedSubject, setSelectedSubject] = useState<string>('all');
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'recommended'>('all');
+  const [selectedFilter, setSelectedFilter] = useState<PracticeFilter>(assignedFilterRequest > 0 ? 'assigned' : 'all');
+
+  useEffect(() => {
+    if (assignedFilterRequest > 0) setSelectedFilter('assigned');
+  }, [assignedFilterRequest]);
   const [practiceStats, setPracticeStats] = useState<PracticeStatsResponse | null>(null);
   const [statsLoading, setStatsLoading] = useState(false);
   const [generatingTopic, setGeneratingTopic] = useState<string | null>(null);
@@ -294,14 +310,14 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
 
         {/* Status filter pills */}
         <div className="flex items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm">
-          {([['all', 'All'], ['completed', 'Completed'], ['recommended', 'Recommended']] as const).map(([key, label]) => (
+          {PRACTICE_FILTERS.map(([key, label]) => (
             <button
               key={key}
-              // SAFETY: trusted internal value already conforms to the asserted type.
-              onClick={() => setSelectedFilter(key as any)}
+              onClick={() => setSelectedFilter(key)}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${selectedFilter === key
                 ? key === 'completed' ? 'bg-emerald-500 text-white shadow-sm'
                   : key === 'recommended' ? 'bg-purple-500 text-white shadow-sm'
+                  : key === 'assigned' ? 'bg-amber-500 text-white shadow-sm'
                   : 'bg-indigo-500 text-white shadow-sm'
                 : 'text-[#5a6578] hover:bg-[#edf1f7]'
               }`}
@@ -321,7 +337,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
         />
       )}
 
-      {/* Topics Grid */}
+      {selectedFilter === 'assigned' ? assignedQuizzes : (
       <div
         className="pr-2 pb-4 rounded-[2rem] border border-slate-200 shadow-inner relative"
         style={{
@@ -426,7 +442,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
               <>
                 <p className="font-medium">No recommended practice topics yet</p>
                 <p className="max-w-lg px-4 text-center text-sm">
-                  Recommended practice topics come from your diagnostic results. Teacher-assigned quizzes appear in the Assigned by your teacher section above.
+                  Recommended practice topics come from your diagnostic results. Teacher-assigned quizzes are under the Assigned filter.
                 </p>
               </>
             ) : (
@@ -438,6 +454,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
           </div>
         )}
       </div>
+      )}
 
       {/* Quiz History Modal */}
       <AnimatePresence>

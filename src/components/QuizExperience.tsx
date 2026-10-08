@@ -1243,7 +1243,7 @@ playSound('complete');
                              onClick={() => { if (isAllDisabled || isCurrentlyAnswered || isEliminated) return; handleAnswerSelect(idx); }}
                              className={`p-3 sm:p-4 md:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-sm sm:text-base md:text-lg text-left transition-all motion-reduce:transition-none flex items-center justify-between ${bgColor} ${isAllDisabled || isCurrentlyAnswered || isEliminated ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:scale-[0.98]'}`}
                            >
-                              <span className="truncate pr-4"><MathText>{opt}</MathText></span>
+                              <span className="min-w-0 break-words pr-4"><MathText>{opt}</MathText></span>
                               {isEliminated && <XCircle size={20} className="text-slate-400 shrink-0" />}
                               {isCurrentlyAnswered && idx === viewedQuestion.correctAnswer && <CheckCircle size={22} className="text-emerald-500 shrink-0" />}
                               {isCurrentlyAnswered && selectedAnswer === idx && idx !== viewedQuestion.correctAnswer && <XCircle size={22} className="text-rose-500 shrink-0" />}

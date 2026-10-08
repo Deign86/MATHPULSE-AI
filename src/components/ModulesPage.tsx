@@ -223,6 +223,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [pendingQuizzesError, setPendingQuizzesError] = useState(false);
   const [assignedQuizUnavailable, setAssignedQuizUnavailable] = useState(false);
   const [pendingQuizRefresh, setPendingQuizRefresh] = useState(0);
+  const [assignedFilterRequest, setAssignedFilterRequest] = useState(() =>
+    new URLSearchParams(window.location.search).get('section') === 'assigned-quizzes' ? 1 : 0,
+  );
   const [assignedQuizToOpen, setAssignedQuizToOpen] = useState<string | null>(() =>
     new URLSearchParams(window.location.search).get('quizId'),
   );
@@ -254,6 +257,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       if (!parsedDetail.success) return;
       const detail = parsedDetail.data;
       setActiveTab('practice');
+      setAssignedFilterRequest((request) => request + 1);
       setPendingQuizzesLoading(true);
       setPendingQuizzesLoaded(false);
       setPendingQuizzesError(false);
@@ -1253,8 +1257,56 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     );
   }
 
+  const assignedQuizzesSection = (
+    <section aria-label="Assigned by your teacher" className="mb-6 space-y-3">
+      <h2 className="text-lg font-bold text-slate-800">Assigned by your teacher</h2>
+      {assignedQuizUnavailable && !pendingQuizzesLoading && !pendingQuizzesError && (
+        <div role="status" className="text-sm text-slate-500">
+          <p>This assigned quiz is unavailable. It may have been removed or completed. Retry or check with your teacher.</p>
+          <button
+            type="button"
+            onClick={() => setPendingQuizRefresh((refresh) => refresh + 1)}
+            className="mt-2 font-semibold underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+      {pendingQuizzesLoading ? (
+        <p role="status" className="text-sm text-slate-500">Loading assigned quizzes…</p>
+      ) : pendingQuizzesError ? (
+        <div role="alert" className="text-sm text-rose-600">
+          <p>Could not load assigned quizzes.</p>
+          <button
+            type="button"
+            onClick={() => setPendingQuizRefresh((refresh) => refresh + 1)}
+            className="mt-2 font-semibold underline"
+          >
+            Retry
+          </button>
+        </div>
+      ) : pendingQuizzes.length === 0 ? (
+        <p className="text-sm text-slate-500">You have no pending assigned quizzes. Check back when your teacher assigns one.</p>
+      ) : pendingQuizzes.map((quiz) => (
+        <div key={quiz.generatedQuizId} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
+          <div>
+            <h3 className="font-bold text-slate-800">{quiz.title}</h3>
+            <p className="text-sm text-slate-500">{quiz.subject} · {quiz.questions} questions · {quiz.duration}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedQuiz(quiz)}
+            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
+          >
+            <Play size={14} /> Take quiz
+          </button>
+        </div>
+      ))}
+    </section>
+  );
+
   return (
-    <div 
+    <div
       className="h-full overflow-y-auto pt-3.5 px-5 sm:pt-4 sm:px-8 md:pt-2.5 md:px-8 lg:pt-0 lg:px-8 xl:px-12 pb-8 scrollbar-hide scroll-smooth relative"
       onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 100)}
     >
@@ -1764,53 +1816,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           </div>
         )}
 
-      {(activeTab === 'practice' || activeTab === 'recommended') && (
-        <section aria-label="Assigned by your teacher" className="mb-6 space-y-3">
-          <h2 className="text-lg font-bold text-slate-800">Assigned by your teacher</h2>
-          {assignedQuizUnavailable && !pendingQuizzesLoading && !pendingQuizzesError && (
-            <div role="status" className="text-sm text-slate-500">
-              <p>This assigned quiz is unavailable. It may have been removed or completed. Retry or check with your teacher.</p>
-              <button
-                type="button"
-                onClick={() => setPendingQuizRefresh((refresh) => refresh + 1)}
-                className="mt-2 font-semibold underline"
-              >
-                Retry
-              </button>
-            </div>
-          )}
-          {pendingQuizzesLoading ? (
-            <p role="status" className="text-sm text-slate-500">Loading assigned quizzes…</p>
-          ) : pendingQuizzesError ? (
-            <div role="alert" className="text-sm text-rose-600">
-              <p>Could not load assigned quizzes.</p>
-              <button
-                type="button"
-                onClick={() => setPendingQuizRefresh((refresh) => refresh + 1)}
-                className="mt-2 font-semibold underline"
-              >
-                Retry
-              </button>
-            </div>
-          ) : pendingQuizzes.length === 0 ? (
-            <p className="text-sm text-slate-500">You have no pending assigned quizzes. Check back when your teacher assigns one.</p>
-          ) : pendingQuizzes.map((quiz) => (
-            <div key={quiz.generatedQuizId} className="flex items-center justify-between gap-4 rounded-xl border border-slate-200 bg-white p-4">
-              <div>
-                <h3 className="font-bold text-slate-800">{quiz.title}</h3>
-                <p className="text-sm text-slate-500">{quiz.subject} · {quiz.questions} questions · {quiz.duration}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedQuiz(quiz)}
-                className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-bold text-white hover:bg-indigo-700"
-              >
-                <Play size={14} /> Take quiz
-              </button>
-            </div>
-          ))}
-        </section>
-      )}
+      {activeTab === 'recommended' && assignedQuizzesSection}
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -1868,6 +1874,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               }}
               searchQuery={searchQuery}
               atRiskTopics={normalizedRiskTopics}
+              assignedQuizzes={assignedQuizzesSection}
+              assignedFilterRequest={assignedFilterRequest}
             />
             </div>
           ) : activeTab === 'teacher_uploaded' ? (

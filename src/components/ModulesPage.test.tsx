@@ -67,7 +67,7 @@ vi.spyOn(ModulesMascotNs, 'default').mockImplementation(
 );
 vi.spyOn(DailyCheckInModalNs, 'default').mockImplementation(() => null);
 vi.spyOn(PracticeCenterNs, 'default').mockImplementation(
-  () => React.createElement('div', null, 'Practice Center Stub'),
+  ({ assignedQuizzes }) => React.createElement('div', null, 'Practice Center Stub', assignedQuizzes),
 );
 
 import ModulesPage from './ModulesPage';
@@ -94,7 +94,7 @@ describe('ModulesPage', () => {
     expect(await screen.findByText(/practice center stub/i, {}, { timeout: 5000 })).toBeInTheDocument();
   });
 
-  it('shows teacher assignments above Practice topics when loaded at the assigned section URL', async () => {
+  it('opens the Practice Assigned filter with teacher assignments when loaded at the assigned section URL', async () => {
     vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([
       {
         generatedQuizId: 'quiz-1',
@@ -119,7 +119,7 @@ describe('ModulesPage', () => {
     expect(await screen.findAllByRole('heading', { name: /assigned by your teacher/i })).not.toHaveLength(0);
     expect(await screen.findByText('Functions Review')).toBeInTheDocument();
     expect(screen.getAllByText(/practice center stub/i)).not.toHaveLength(0);
-    expect(screen.queryByRole('button', { name: /^assigned$/i })).not.toBeInTheDocument();
+    expect(vi.mocked(PracticeCenterNs.default).mock.lastCall?.[0].assignedFilterRequest).toBe(1);
     expect(window.location.search).toContain('section=assigned-quizzes');
   });
 

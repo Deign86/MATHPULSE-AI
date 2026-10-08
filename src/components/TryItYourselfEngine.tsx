@@ -1105,7 +1105,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                         }}
                         className={`p-4 sm:p-5 rounded-2xl shadow-sm border-[3px] font-extrabold text-base sm:text-lg text-left transition-all motion-reduce:transition-none flex items-center justify-between ${bgColor} ${qs?.resolved ? 'cursor-default' : 'hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98]'}`}
                       >
-                        <span className="truncate pr-4"><MathText>{optionText}</MathText></span>
+                        <span className="min-w-0 break-words pr-4"><MathText>{optionText}</MathText></span>
                         {(isRevealed || isAnsweredCorrect) && isCorrectOption && <Check size={24} className="text-emerald-500 shrink-0" />}
                         {isFailed && <X size={24} className="text-rose-500 shrink-0" />}
                       </button>

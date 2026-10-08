@@ -55,6 +55,22 @@ describe('PracticeCenter', () => {
     expect(screen.getByText(/teacher-assigned quiz/i)).toBeInTheDocument();
   });
 
+  it('shows teacher-assigned quizzes in place of topics under the Assigned filter', async () => {
+    render(<PracticeCenter userId="user-1" assignedQuizzes={<p>Assigned list</p>} />);
+    expect(await screen.findByText('Functions as Mathematical Models')).toBeInTheDocument();
+    expect(screen.queryByText('Assigned list')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Assigned' }));
+
+    expect(screen.getByText('Assigned list')).toBeInTheDocument();
+    expect(screen.queryByText('Functions as Mathematical Models')).not.toBeInTheDocument();
+  });
+
+  it('opens on the Assigned filter when requested by a deep link', () => {
+    render(<PracticeCenter userId="user-1" assignedQuizzes={<p>Assigned list</p>} assignedFilterRequest={1} />);
+    expect(screen.getByText('Assigned list')).toBeInTheDocument();
+  });
+
   it.each([
     ['BusinessMath', 'Simple and Compound Interest'],
     ['Logic', 'Truth Values and Truth Tables'],
