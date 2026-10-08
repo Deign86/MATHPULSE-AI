@@ -30,6 +30,10 @@ export default {
       username: process.env.E2E_USER_STUDENT_USERNAME ?? '',
       password: () => process.env.E2E_USER_STUDENT_PASSWORD ?? '',
     },
+    student2: {
+      username: process.env.E2E_USER_STUDENT2_USERNAME ?? '',
+      password: () => process.env.E2E_USER_STUDENT2_PASSWORD ?? '',
+    },
     teacher: {
       username: process.env.E2E_USER_TEACHER_USERNAME ?? '',
       password: () => process.env.E2E_USER_TEACHER_PASSWORD ?? '',
