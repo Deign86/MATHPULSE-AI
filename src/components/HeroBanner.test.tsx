@@ -1,12 +1,18 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest';
 import HeroBanner from './HeroBanner';
 
 describe('HeroBanner', () => {
   beforeEach(() => {
     // Clear localStorage between tests
     window.localStorage.clear();
+  });
+
+  // Vitest globals are off, so Testing Library does not unmount on its own; a still-mounted banner
+  // lets the lazy DashboardAvatar resolve after the jsdom environment is torn down.
+  afterEach(() => {
+    cleanup();
   });
 
   it('personalizes the banner and continues learning on request', () => {
