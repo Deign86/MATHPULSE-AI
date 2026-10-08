@@ -115,6 +115,58 @@ describe('notifications bell and PWA install', { tags: ['any', 'notifications-pw
     });
   }
 
+  // Mark read used to read the whole inbox from the server before queuing any write. On a stalled
+  // connection that read hung, and any notification arriving meanwhile made the listener re-send
+  // the unread server rows, so the inbox flipped back to unread although Mark read was tapped.
+  test('student Mark read stays applied when a notification arrives on a stalled connection', { session: 'student', tags: ['student'], timeout: 180_000 }, async ({ app, agent, browser, screen }) => {
+    const firestoreTraffic = '**/google.firestore.v1.Firestore/**';
+    const arrivalTitle = `E2E-arrival-${Date.now()}`;
+    await app.open('/');
+    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await agent.act(closeStudentPrompts);
+    await expect(screen.getByRole('dialog')).toBeHidden({ timeout: 10_000 });
+    const panel = screen.getByTestId('notification-panel');
+    const markRead = panel.getByRole('button', 'Mark all notifications as read');
+
+    await screen.getByRole('button', 'Notifications').tap();
+    await expect(panel.getByText(settledPanel).first()).toBeVisible({ timeout: 20_000 });
+    test.skip(!(await markRead.isVisible()), 'the e2e student has no unread notifications to mark');
+
+    // Hold Firestore requests open: an aborted request makes Firestore go offline and serve reads
+    // from cache, while a held one leaves a server read pending, as on a flaky network.
+    const releaseHeld: Array<() => Promise<void>> = [];
+    await browser.route(firestoreTraffic, (route) => new Promise<void>((resolve) => {
+      releaseHeld.push(async () => {
+        await route.continue().catch(() => undefined);
+        resolve();
+      });
+    }));
+    try {
+      await markRead.tap();
+      await expect(panel.getByText('All caught up')).toBeVisible({ timeout: 5_000 });
+
+      // The student's own notification, written through the app; Firestore applies it locally at
+      // once, which makes the inbox listener re-send every row while the network is still stalled.
+      await browser.evaluate(async (title) => {
+        const notificationService = '/src/features/notifications/notificationService.ts';
+        const firebaseModule = '/src/lib/firebase.ts';
+        const [{ notify }, { auth }] = await Promise.all([import(/* @vite-ignore */ notificationService), import(/* @vite-ignore */ firebaseModule)]);
+        void notify({ userId: auth.currentUser.uid, type: 'reminder', title, message: 'E2E arrival during a stalled Mark read' });
+        return true;
+      }, arrivalTitle);
+
+      await expect(panel.getByText(arrivalTitle)).toBeVisible({ timeout: 10_000 });
+      await expect(panel.getByText('1 unread alert')).toBeVisible();
+    } finally {
+      await browser.unroute(firestoreTraffic);
+      await Promise.all(releaseHeld.map((release) => release()));
+    }
+
+    // With the network back, clear the arrival too so the shared inbox is left read.
+    await markRead.tap();
+    await expect(panel.getByText('All caught up')).toBeVisible({ timeout: 15_000 });
+  });
+
   test('student daily check-in reminder opens Modules and is marked read', { session: 'student', tags: ['student'] }, async ({ app, agent, browser, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });

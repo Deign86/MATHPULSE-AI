@@ -170,7 +170,10 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await screen.getByRole('button', 'Back to Dashboard').tap();
     await expect(screen.getByRole('heading', 'Discard Unsaved Changes?')).toBeVisible();
     await screen.getByRole('button', 'Discard Changes').tap();
+    // The app-level route guard used to still see the draft and open a second prompt here.
+    await expect(screen.getByRole('heading', 'Leave Without Saving?')).toBeHidden();
     await expect(screen.getByRole('heading', 'My Profile')).toBeHidden({ timeout: 15_000 });
+    await expect(screen.getByRole('heading', 'Leave Without Saving?')).toBeHidden();
 
     await app.open('/profile');
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
