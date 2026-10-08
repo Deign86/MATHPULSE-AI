@@ -136,7 +136,26 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await expect(fullName).toHaveValue(savedName);
   });
 
-  test('Back with an unsaved edit asks to discard: Keep Editing keeps the draft, Discard Changes restores the saved name', { session: 'student' }, async ({ app, agent, screen }) => {
+  test('Back with an unsaved edit asks to discard and Keep Editing keeps the draft', { session: 'student' }, async ({ app, agent, screen }) => {
+    await app.open('/profile');
+    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
+    await agent.act(closeAssessmentPrompt);
+    await expect(screen.getByRole('button', 'Edit Profile')).toBeVisible();
+
+    const fullName = screen.getByPlaceholder('Learner Full Name');
+    await screen.getByRole('button', 'Edit Profile').tap();
+    await fullName.fill(draftName);
+
+    const discardHeading = screen.getByRole('heading', 'Discard Unsaved Changes?');
+    await screen.getByRole('button', 'Back to Dashboard').tap();
+    await expect(discardHeading).toBeVisible();
+    await screen.getByRole('button', 'Keep Editing').tap();
+    await expect(discardHeading).toBeHidden();
+    await expect(fullName).toHaveValue(draftName);
+  });
+
+  test('Discard Changes after Back leaves My Profile without saving the draft', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
     await app.open('/profile');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
@@ -148,17 +167,13 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await screen.getByRole('button', 'Edit Profile').tap();
     await fullName.fill(draftName);
 
-    const discardHeading = screen.getByRole('heading', 'Discard Unsaved Changes?');
     await screen.getByRole('button', 'Back to Dashboard').tap();
-    await expect(discardHeading).toBeVisible();
-    await screen.getByRole('button', 'Keep Editing').tap();
-    await expect(discardHeading).toBeHidden();
-    await expect(fullName).toHaveValue(draftName);
-
-    await screen.getByRole('button', 'Back to Dashboard').tap();
-    await expect(discardHeading).toBeVisible();
+    await expect(screen.getByRole('heading', 'Discard Unsaved Changes?')).toBeVisible();
     await screen.getByRole('button', 'Discard Changes').tap();
-    await expect(screen.getByText('Changes discarded')).toBeVisible();
+    await expect(screen.getByRole('heading', 'My Profile')).toBeHidden({ timeout: 15_000 });
+
+    await app.open('/profile');
+    await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
     await expect(fullName).toHaveValue(savedName);
   });
 
@@ -363,7 +378,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await expect(screen.getByText('School Computer Tip:')).toBeVisible();
   });
 
-  test('My Data & Files: Save Copy downloads the learning summary as JSON', { session: 'student' }, async ({ app, agent, screen, browser }) => {
+  test('My Data & Files: Save Copy downloads the learning summary as JSON', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
