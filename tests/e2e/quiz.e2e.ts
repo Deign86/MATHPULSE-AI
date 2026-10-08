@@ -78,7 +78,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible();
   });
 
-  test('reviewing an earlier question offers Back to Current Question instead of skipping the unanswered one', { session: 'student', timeout: 300_000, tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('reviewing an earlier question offers Back to Current Question instead of skipping the unanswered one', { session: 'student', timeout: 300_000 }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
@@ -112,7 +112,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await expect(screen.getByRole('heading', 'Study Journey')).toBeVisible();
   });
 
-  test('a correct answer shows the Correct! celebration on top of the question card', { session: 'student', timeout: 300_000, tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('a correct answer shows the Correct! celebration on top of the question card', { session: 'student', timeout: 300_000 }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();

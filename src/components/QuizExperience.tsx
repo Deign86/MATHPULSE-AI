@@ -363,10 +363,11 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   const [showRoundResult, setShowRoundResult] = useState(false);
   const { totalHintsAvailable } = useExtraHints(previewMode ? null : studentId || null);
   const [keysCount, setKeysCount] = useState(5);
+  const [extraHintsUsed, setExtraHintsUsed] = useState(0);
   const [heartsCount, setHeartsCount] = useState(15);
 
   // Augment local hint keys with extra hints from risk response system
-  const effectiveKeysCount = keysCount + totalHintsAvailable;
+  const effectiveKeysCount = keysCount + Math.max(0, totalHintsAvailable - extraHintsUsed);
   const [livesRanOutAt, setLivesRanOutAt] = useState<number | null>(null);
   const [showNoLivesModal, setShowNoLivesModal] = useState(false);
   const [nextHeartCountdown, setNextHeartCountdown] = useState(15 * 60 * 1000);
@@ -548,7 +549,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   };
 
   const handleHintUse = () => {
-    if (keysCount <= 0 || showExplanation) return;
+    if (effectiveKeysCount <= 0 || showExplanation) return;
     
     const alreadyEliminated = eliminatedByHint[currentQuestionIndex] || [];
     const wrongChoices = currentQuestion.options
@@ -562,7 +563,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
       ...prev,
       [currentQuestionIndex]: [...alreadyEliminated, randomWrong]
     }));
-    setKeysCount(k => Math.max(0, k - 1));
+    if (keysCount > 0) setKeysCount(k => k - 1);
+    else setExtraHintsUsed(n => n + 1);
     playSound('correct');
   };
 
@@ -815,18 +817,23 @@ playSound('complete');
         // iframe permissions) — the quiz works identically windowed.
         console.debug('[QuizExperience] enter fullscreen denied:', err);
       });
-      setIsFullscreen(true);
     } else {
       document.exitFullscreen().catch((err) => {
         // Issue #159: see above — exiting fullscreen is best-effort.
         console.debug('[QuizExperience] exit fullscreen failed:', err);
       });
-      setIsFullscreen(false);
     }
   };
 
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+
    if (showResults) {
      const percentage = Math.round((score / questions.length) * 100);
+
      const isExcellent = percentage >= 80;
      const isGood = percentage >= 50 && percentage < 80;
      const isNeedsWork = percentage < 50;
@@ -1039,7 +1046,7 @@ playSound('complete');
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center justify-center"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] pointer-events-none flex flex-col items-center justify-center"
           >
             <div className="bg-white/95 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.15)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
               <img src="/mascot/modules_avatar.png" alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.15)]" />
@@ -1323,7 +1330,7 @@ playSound('complete');
                       const eliminatedCount = (eliminatedByHint[currentQuestionIndex] || []).length;
                       const wrongChoicesCount = (currentQuestion.options || []).length - 1;
                       const allWrongEliminated = wrongChoicesCount > 0 && eliminatedCount >= wrongChoicesCount;
-                      const showNextButton = allWrongEliminated || isCurrentlyAnswered;
+                      const showNextButton = viewIndex === currentQuestionIndex && (allWrongEliminated || isCurrentlyAnswered);
                       
                       return showNextButton ? (
                         <button onClick={() => { setShowRoundResult(false); setAchievementPill(null); handleNextQuestion(); }} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-sm sm:text-base md:text-lg px-5 sm:px-8 py-3 sm:py-4 rounded-full flex items-center justify-center gap-2 sm:gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all motion-reduce:transition-none w-full max-w-md mx-auto">
