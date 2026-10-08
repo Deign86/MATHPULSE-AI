@@ -293,6 +293,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
         await saveAdminConfig(localAdminConfig);
         await updateMaintenanceMode(localMaintenanceMode);
       }
+      toast.success('Settings saved successfully');
       onClose();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save settings');
