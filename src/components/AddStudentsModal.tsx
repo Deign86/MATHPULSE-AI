@@ -104,7 +104,7 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
               </button>
             </div>
             <p className="text-xs text-[#64748b] dark:text-slate-400">{selected.size} of {filtered.length} selected</p>
-            <div className="flex-1 overflow-y-auto space-y-1 min-h-[300px]">
+            <div className="flex-1 overflow-y-auto space-y-1 min-h-[min(300px,35dvh)]">
               {loading ? (
                 <p className="text-sm text-center text-[#64748b] dark:text-slate-400 py-6">Loading...</p>
               ) : filtered.length === 0 ? (

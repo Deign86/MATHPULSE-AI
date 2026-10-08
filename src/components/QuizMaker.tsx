@@ -1231,7 +1231,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       {q.options.map((opt, oi) => {
                         const isCorrect = showAnswer && opt.includes(q.correctAnswer);
                         return (
-                          <div key={oi} className={`rounded-lg sm:rounded-[12px] p-2.5 sm:p-4 text-xs sm:text-[14px] font-medium transition-all cursor-pointer relative overflow-hidden ${
+                          <div key={oi} className={`rounded-lg sm:rounded-[12px] p-2.5 sm:p-4 pr-10 sm:pr-12 text-xs sm:text-[14px] font-medium transition-all cursor-pointer relative overflow-hidden ${
                             isCorrect
                               ? 'bg-gradient-to-r from-emerald-50 to-emerald-100/30 border-2 border-emerald-400 text-emerald-800 font-bold shadow-xs'
                               : 'bg-white border border-[#e2e8f0] text-[#475569] hover:border-[#a855f7] hover:shadow-[0_2px_8px_rgba(168,85,247,0.1)]'
@@ -1401,7 +1401,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center gap-2 sm:gap-4 mt-auto pt-3 sm:pt-5 border-t border-[#f1f5f9] pl-2 sm:pl-3">
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-auto pt-3 sm:pt-5 border-t border-[#f1f5f9] pl-2 sm:pl-3">
                         <button
                           onClick={(e) => { e.stopPropagation(); openQuizPreview(q); }}
                           className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13px] font-bold text-[#9333ea] hover:text-[#7e22ce] transition-colors bg-purple-50 border border-purple-200 px-3 sm:px-4 py-1.5 sm:py-2 rounded-full"

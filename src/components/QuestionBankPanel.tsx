@@ -300,7 +300,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
               type="button"
               onClick={fetchStatus}
               disabled={loading}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-2xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-2xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
               aria-label="Refresh processing status"
               title="Refresh processing status"
             >
@@ -380,12 +380,12 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                 <table className="w-full text-left border-collapse table-fixed">
                   <thead>
                     <tr className="bg-slate-50/90 border-b border-slate-200/80 text-slate-600">
-                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-4/12">Filename</th>
+                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-3/12">Filename</th>
                       <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-1/12 text-center">Grade</th>
                       <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-3/12">Topic</th>
-                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-1/12 text-center">Questions</th>
+                      <th className="h-9 px-2 text-[11px] font-bold uppercase tracking-wider w-[12%] text-center">Questions</th>
                       <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-2/12 text-center">Status</th>
-                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-1/12 text-right">Processed</th>
+                      <th className="h-9 px-2 text-[11px] font-bold uppercase tracking-wider w-[12%] text-right">Processed</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -446,7 +446,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
             <button
               onClick={fetchQuestions}
               disabled={questionsLoading}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              className="w-7 h-7 sm:w-8 sm:h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${questionsLoading ? 'animate-spin' : ''}`} />
             </button>
@@ -463,7 +463,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
               <p className="text-[11px] text-slate-400 mt-0.5">Ingest a PDF above to populate the question bank.</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+            <div className="space-y-2 max-h-[min(500px,60dvh)] overflow-y-auto">
               {questions.map((q) => (
                 <div
                   key={q.id}
@@ -472,7 +472,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                   <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={() => setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium text-[#1e293b] line-clamp-2">{q.question}</p>
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-semibold">Grade {q.grade_level}</span>
                         <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium">{q.topic}</span>
                         <span className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${

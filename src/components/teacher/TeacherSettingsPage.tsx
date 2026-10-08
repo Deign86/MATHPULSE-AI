@@ -190,7 +190,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
   ];
 
   return (
-    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 lg:space-y-6 pb-28 sm:pb-32 lg:pb-8 min-h-[calc(100vh-80px)] shrink-0">
+    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 lg:space-y-6 pb-28 sm:pb-32 lg:pb-8 shrink-0">
       {/* Navigation Header */}
       {onBack && (
         <div className="flex items-center justify-between gap-3">
@@ -228,13 +228,13 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
       <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
         {/* Left Column: Settings Navigation Sidebar (Sticky on mobile & desktop) */}
         <div data-tour="teacher-settings-sections" className="w-full lg:w-[260px] xl:w-[280px] shrink-0 space-y-2 lg:sticky lg:top-4 z-20">
-          <div data-tour-sticky="" className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-1.5 sm:p-2 shadow-xs flex lg:flex-col gap-1 overflow-x-auto scrollbar-none sticky top-0 lg:static z-20">
+          <div data-tour-sticky="" className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-1.5 sm:p-2 shadow-xs flex lg:flex-col gap-1 overflow-x-auto no-scrollbar sticky top-0 short:static lg:static z-20">
             {tabs.map((tabItem) => (
               <button
                 key={tabItem.id}
                 type="button"
                 onClick={() => setActiveTab(tabItem.id)}
-                className={`w-full flex items-center gap-2.5 sm:gap-3 px-3.5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 lg:shrink ${
+                className={`lg:w-full flex items-center gap-2.5 sm:gap-3 px-3.5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 lg:shrink ${
                   activeTab === tabItem.id
                     ? 'bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/80 shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white border border-transparent'
@@ -277,7 +277,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3 gap-4 pt-2">
                   {/* Light Mode Card */}
                   <button
                     type="button"
@@ -490,7 +490,8 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        className="absolute right-1 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600"
                       >
                         {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                       </button>
@@ -611,7 +612,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
 
           {/* Bottom Save Bar */}
           {activeTab !== 'security' && (
-            <div data-tour="teacher-settings-save" className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div data-tour="teacher-settings-save" className="flex flex-wrap items-center justify-between gap-2 p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
               <div className="flex items-center gap-2">
                 {isDirty ? (
                   <span className="text-xs font-bold text-amber-600 dark:text-amber-400">

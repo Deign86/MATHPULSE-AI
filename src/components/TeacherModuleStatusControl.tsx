@@ -240,7 +240,7 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
         </div>
 
         {/* Quick Stat Badges: Unified TeacherStatCards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 pt-1">
+        <div className="grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-4 pt-1">
           <TeacherStatCard
             color="green"
             title="Available"
@@ -488,7 +488,7 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
       {/* Edit Status Modal Dialog */}
       {editingBlueprint && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-150">
-          <div className="bg-white rounded-2xl max-w-lg w-full border border-slate-200 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-150">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[calc(100dvh-2rem)] overflow-y-auto border border-slate-200 shadow-2xl animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-100 flex items-center justify-between">
               <div>

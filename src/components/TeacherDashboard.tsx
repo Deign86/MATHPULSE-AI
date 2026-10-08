@@ -1816,7 +1816,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   }
 
   return (
-    <div className="relative flex h-dvh w-full bg-background overflow-hidden">
+    <div className="relative flex h-dvh w-full bg-background overflow-hidden pl-safe pr-safe">
 
       {/* Collapsible Sidebar (Desktop lg+) */}
       <motion.aside
@@ -1968,11 +1968,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {/* Header */}
           {['dashboard', 'analytics', 'intervention', 'competency', 'topic_mastery', 'calendar', 'notifications', 'question_bank', 'import', 'quiz_maker'].includes(activeView) && (
-            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3.5 sm:px-6 xl:px-8 py-3 sm:py-4 flex-shrink-0 z-30 w-full min-w-0 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
+            <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 px-3.5 sm:px-6 xl:px-8 py-3 sm:py-4 short:py-1.5 flex-shrink-0 z-30 w-full min-w-0 shadow-[0_1px_3px_rgba(0,0,0,0.03)]">
               <div className="flex flex-row items-center justify-between gap-2 sm:gap-4 mb-0 w-full min-w-0">
                 <div className="flex items-center gap-2.5 flex-1 min-w-0">
                   <div className="min-w-0 flex-1">
-                    <h1 className="font-display text-base sm:text-xl lg:text-[24px] font-black text-slate-900 dark:text-white tracking-tight leading-tight truncate">
+                    <h1 className="font-display text-base sm:text-xl lg:text-[24px] font-black text-slate-900 dark:text-white tracking-tight leading-tight line-clamp-2">
                       {activeView === 'dashboard' && 'Teacher Dashboard'}
                       {activeView === 'analytics' && 'Class Analytics'}
                       {activeView === 'intervention' && 'Intervention Center'}
@@ -1984,7 +1984,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       {activeView === 'import' && 'Data Import'}
                       {activeView === 'quiz_maker' && 'AI Quiz Maker'}
                     </h1>
-                    <p className="font-body text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
+                    <p className="font-body text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium short:hidden">
                       {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
                       {activeView === 'analytics' && 'Analyze class performance and risk metrics.'}
                       {activeView === 'intervention' && 'Identify and support at-risk students.'}
@@ -2031,7 +2031,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2.5 max-sm:pointer-coarse:gap-2 shrink-0">
                   <PageGuideConfirm
                     guide={teacherPageTour(activeView)?.label ?? null}
                     audience="teacher"
@@ -2040,7 +2040,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <button
                       type="button"
                       data-tour="page-guide"
-                      className="relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center bg-white/70 hover:bg-white dark:bg-slate-900/60 rounded-2xl backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/10 text-slate-700 dark:text-slate-100 hover:text-purple-600 hover:border-purple-200 transition-all cursor-pointer active:scale-95 shrink-0"
+                      className="relative w-9 h-9 sm:w-11 sm:h-11 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 flex items-center justify-center bg-white/70 hover:bg-white dark:bg-slate-900/60 rounded-2xl backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/10 text-slate-700 dark:text-slate-100 hover:text-purple-600 hover:border-purple-200 transition-all cursor-pointer active:scale-95 shrink-0"
                       title="Guide for this page"
                       aria-label="Guide for this page"
                     >
@@ -2056,7 +2056,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                         setInsightModalOpen(true);
                         setInsightDismissed(true);
                       }}
-                      className="relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center bg-white/70 hover:bg-white dark:bg-slate-900/60 rounded-2xl backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/10 text-[#a855f7] hover:border-purple-200 transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shrink-0"
+                      className="relative w-9 h-9 sm:w-11 sm:h-11 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 flex items-center justify-center bg-white/70 hover:bg-white dark:bg-slate-900/60 rounded-2xl backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/10 text-[#a855f7] hover:border-purple-200 transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shrink-0"
                       aria-label="View AI Insight"
                     >
                       <Sparkles size={16} className="sm:w-[18px] sm:h-[18px]" />
@@ -2078,7 +2078,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       type="button"
                       data-tour="teacher-schedule-toggle"
                       onClick={() => setShowMobileCalendar((v) => !v)}
-                      className={`relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-2xl backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shrink-0 ${
+                      className={`relative w-9 h-9 sm:w-11 sm:h-11 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 flex items-center justify-center rounded-2xl backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shrink-0 ${
                         showMobileCalendar
                           ? 'bg-violet-600 border-violet-600 text-white shadow-xs ring-2 ring-violet-500/20'
                           : 'bg-white/70 dark:bg-slate-900/60 border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/95 text-slate-700 hover:text-violet-600'
@@ -2103,7 +2103,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="w-9 h-9 sm:w-11 sm:h-11 rounded-full overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-purple-400 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-purple-500 shrink-0 p-0"
+                        className="w-9 h-9 sm:w-11 sm:h-11 pointer-coarse:w-11 pointer-coarse:h-11 rounded-full overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-purple-400 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-purple-500 shrink-0 p-0"
                         data-tour-group="Profile"
                         aria-label={`Profile menu: ${teacherName || 'Teacher'}`}
                         title={teacherName || 'Teacher'}
@@ -2161,7 +2161,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           )}
 
           {/* View Content */}
-          <main className={`flex-1 min-h-0 flex flex-col ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+          <main className={`@container flex-1 min-h-0 flex flex-col ${activeView === 'intervention' || activeView === 'analytics' ? 'overflow-hidden' : 'overflow-y-auto'}`}>
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeView}
@@ -2227,7 +2227,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="p-6 pb-32 sm:pb-36 lg:pb-12"
+                    className="h-full overflow-y-auto p-6 pb-32 sm:pb-36 lg:pb-12"
                   >
                     <div data-tour="class-empty" className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
                       <div className="w-12 h-12 rounded-xl bg-[#a855f7]/20 text-[#a855f7] flex items-center justify-center mb-4">
@@ -2457,7 +2457,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           ref={mobileNavRef}
           data-tour-sticky=""
           aria-label="Bottom Navigation"
-          className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden touch-manipulation"
+          className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 before:absolute before:inset-0 before:-z-10 before:pointer-events-none before:backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden touch-manipulation"
         >
           {/* Backdrop for open popup */}
           {openMobileMenu !== null && (
@@ -2798,7 +2798,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', stiffness: 340, damping: 34 }}
-              className="fixed top-0 right-0 bottom-0 z-50 w-[340px] max-w-[88vw] shadow-2xl bg-white overflow-hidden flex flex-col rounded-l-3xl border-l border-slate-200"
+              className="fixed top-0 right-0 bottom-0 z-50 w-[340px] max-w-[88vw] shadow-2xl bg-white overflow-hidden flex flex-col rounded-l-3xl border-l border-slate-200 pt-safe pb-safe pr-safe"
             >
               <DashboardRightSidebar
                 onViewCalendar={() => { setActiveView('calendar'); setShowMobileCalendar(false); }}
@@ -2822,9 +2822,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-white rounded-2xl shadow-xl w-full max-w-lg overflow-hidden border border-slate-200"
+              className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden border border-slate-200"
             >
-              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
                     <Sparkles size={16} />
@@ -2839,14 +2839,14 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   <X size={18} />
                 </button>
               </div>
-              <div className="p-6">
+              <div className="p-6 min-h-0 overflow-y-auto">
                 <div className="text-sm text-slate-600 leading-relaxed">
                   <ChatMarkdown>
                     {(dailyInsight?.replace(/[*_]*\s*\(?Word\s*count\s*:\s*[*_]*\s*\d+\)?\s*[*_]*/gi, '').trim()) || `**${totalAtRisk} students (${totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0}%)** are currently at high risk of falling behind in recent topics. Review their progress in the analytics view to plan interventions.`}
                   </ChatMarkdown>
                 </div>
               </div>
-              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2">
+              <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-2 shrink-0">
                 <button
                   onClick={() => { setInsightModalOpen(false); }}
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded-lg transition-colors"
@@ -3071,7 +3071,7 @@ const DashboardView: React.FC<{
       {/* STAT CARDS (4 Unified Cards in 2x2 Mobile / 4x1 Desktop Bento Grid)*/}
       {/* Styled with student-side vibrant gradients and frosted glass badges*/}
       {/* ------------------------------------------------------------------ */}
-      <div data-tour="teacher-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div data-tour="teacher-stats" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-4">
         {/* CARD 1: Total Students */}
         <TeacherStatCard
           color="green"
@@ -3215,7 +3215,7 @@ const DashboardView: React.FC<{
                     <div className="font-display text-[13.5px] sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors truncate">
                       {classItem.name}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+                    <div className="flex flex-wrap items-center gap-x-1.5 mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                       <span className="font-medium text-slate-600 dark:text-slate-300 truncate max-w-[90px] xs:max-w-none">{classItem.classification || 'Senior High'}</span>
                       <span>•</span>
                       <span className="tabular-nums font-semibold shrink-0">{classItem.studentCount} students</span>
@@ -3242,7 +3242,7 @@ const DashboardView: React.FC<{
 
                   <span className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-violet-600 via-[#8643C8] to-[#7274ED] group-hover:from-violet-700 group-hover:to-indigo-700 text-white font-bold text-xs shadow-sm shadow-purple-500/20 group-hover:shadow-md transition-all flex items-center gap-1 shrink-0 group-hover:scale-[1.02] active:scale-[0.98]">
                     <span className="hidden sm:inline">Manage Class</span>
-                    <span className="sm:hidden">Manage</span>
+                    <span className="hidden min-[360px]:inline sm:hidden">Manage</span>
                     <ChevronRight size={13} className="group-hover:translate-x-0.5 transition-transform" />
                   </span>
 
@@ -4249,7 +4249,7 @@ const AnalyticsView: React.FC<{
 
         </header>
 
-        <div data-tour="class-kpis" className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 w-full">
+        <div data-tour="class-kpis" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-4 w-full">
           {/* Card 1: Class Average */}
           <TeacherStatCard
             color="purple"
@@ -4305,7 +4305,7 @@ const AnalyticsView: React.FC<{
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-6 h-auto xl:h-[600px]">
           {/* Left Column - Student List */}
-          <div data-tour="class-students" className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[440px] sm:h-[480px] xl:h-full">
+          <div data-tour="class-students" className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[min(440px,65dvh)] sm:h-[min(480px,65dvh)] xl:h-full">
             <div className="p-3.5 sm:p-5 border-b border-[#f1f5f9] shrink-0">
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -5089,10 +5089,10 @@ const InterventionView: React.FC<{
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="w-full h-full flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden relative"
+      className="w-full h-full flex flex-col xl:flex-row overflow-y-auto xl:overflow-hidden relative"
     >
       {/* Center Scrollable Content: Insights & Tools */}
-      <div className="flex-1 overflow-y-visible lg:overflow-y-auto p-3.5 sm:p-6 xl:p-8 pb-28 sm:pb-32 lg:pb-8 no-scrollbar">
+      <div className="flex-1 overflow-y-visible xl:overflow-y-auto p-3.5 sm:p-6 xl:p-8 pb-28 sm:pb-32 lg:pb-8 no-scrollbar">
         <div className="max-w-[1000px] mx-auto space-y-4 sm:space-y-6">
 
           {/* Top Navigation Row: Back Button + Segmented Tabs */}
@@ -5141,7 +5141,7 @@ const InterventionView: React.FC<{
           </div>
 
           {/* Mobile Student Profile Card (Replaces the bottom column on mobile) */}
-          <div className="lg:hidden bg-white/95 dark:bg-slate-900/90 backdrop-blur-[16px] rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-sm transition-all">
+          <div className="xl:hidden bg-white/95 dark:bg-slate-900/90 backdrop-blur-[16px] rounded-2xl p-3.5 border border-slate-200/90 dark:border-slate-800 shadow-sm transition-all">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0 flex-1">
                 <img
@@ -5178,7 +5178,7 @@ const InterventionView: React.FC<{
                     setExportModalStep('choose');
                     setShowExportModal(true);
                   }}
-                  className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-violet-50 text-slate-600 dark:text-slate-300 hover:text-violet-600 flex items-center justify-center transition-colors border border-slate-200/80 dark:border-slate-700 active:scale-95"
+                  className="w-8 h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-violet-50 text-slate-600 dark:text-slate-300 hover:text-violet-600 flex items-center justify-center transition-colors border border-slate-200/80 dark:border-slate-700 active:scale-95"
                   title="Export Materials"
                   aria-label="Export materials"
                 >
@@ -5304,7 +5304,7 @@ const InterventionView: React.FC<{
             <button
               type="button"
               onClick={() => setInterventionTab('overview')}
-              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+              className={`flex-1 py-1.5 pointer-coarse:min-h-11 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
                 interventionTab === 'overview'
                   ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -5315,7 +5315,7 @@ const InterventionView: React.FC<{
             <button
               type="button"
               onClick={() => setInterventionTab('path')}
-              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+              className={`flex-1 py-1.5 pointer-coarse:min-h-11 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
                 interventionTab === 'path'
                   ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -5326,7 +5326,7 @@ const InterventionView: React.FC<{
             <button
               type="button"
               onClick={() => setInterventionTab('lesson')}
-              className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+              className={`flex-1 py-1.5 pointer-coarse:min-h-11 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
                 interventionTab === 'lesson'
                   ? 'bg-white dark:bg-slate-700 text-violet-700 dark:text-violet-300 shadow-sm'
                   : 'text-slate-500 hover:text-slate-800 dark:text-slate-400'
@@ -5409,7 +5409,7 @@ const InterventionView: React.FC<{
         {/* TAB 2: LEARNING PATH */}
         {interventionTab === 'path' && (
           <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-[24px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
-            <div className="flex items-center justify-between mb-6 border-b border-[#f1f5f9] pb-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-6 border-b border-[#f1f5f9] pb-4">
               <h3 className="text-[15px] font-semibold text-[#1e293b] text-balance">Generated Learning Path</h3>
               <div className="flex items-center gap-2">
                 <button disabled={!interventionPlan?.learning_path} onClick={async () => {
@@ -5683,7 +5683,7 @@ const InterventionView: React.FC<{
       </div>
 
       {/* RIGHT SIDEBAR: Student Profile & Actions (Desktop only — Mobile uses dedicated top card) */}
-      <aside className="hidden lg:flex lg:w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex-col shrink-0 lg:h-full lg:overflow-y-auto z-10 no-scrollbar relative">
+      <aside className="hidden xl:flex xl:w-[320px] 2xl:w-[340px] bg-white/70 backdrop-blur-[24px] border-l border-white shadow-[-4px_0_24px_rgba(0,0,0,0.02)] flex-col shrink-0 xl:h-full xl:overflow-y-auto z-10 no-scrollbar relative">
         <div className="p-4 sm:p-[24px] space-y-4 sm:space-y-[24px] flex flex-col items-center">
 
           {/* Profile Block */}
@@ -5756,7 +5756,7 @@ const InterventionView: React.FC<{
 
               {/* Modal card */}
               <div
-                className="relative bg-white rounded-[24px] shadow-[0_24px_64px_rgba(0,0,0,0.18)] w-full max-w-[460px] z-10 overflow-hidden"
+                className="relative bg-white rounded-[24px] shadow-[0_24px_64px_rgba(0,0,0,0.18)] w-full max-w-[460px] z-10 max-h-[calc(100dvh-2rem)] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Purple top bar */}
@@ -7198,14 +7198,14 @@ const DashboardRightSidebar: React.FC<{
   };
 
   return (
-    <aside className="w-full lg:w-[280px] bg-white border-l border-[#e2e8f0] flex flex-col flex-shrink-0 overflow-hidden h-full">
+    <aside className="w-full lg:w-[280px] bg-white border-l border-[#e2e8f0] flex flex-col flex-shrink-0 overflow-y-auto h-full">
       {/* Mobile Drawer Header Bar */}
       {onClose && (
         <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#f1f5f9] bg-slate-50/70 shrink-0">
           <span className="text-xs font-bold text-[#1e293b]">Activity & Calendar</span>
           <button
             onClick={onClose}
-            className="p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors active:scale-95"
+            className="relative p-1 rounded-full pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5 text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors active:scale-95"
             aria-label="Close drawer"
           >
             <X size={16} />
@@ -7337,7 +7337,7 @@ const DashboardRightSidebar: React.FC<{
       </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto p-[14px_16px]">
+      <div className="flex-1 min-h-48 overflow-y-auto p-[14px_16px]">
         {activeTab === 'pulse' && (
           <div className="flex flex-col gap-4">
             <div className="flex items-center justify-between mb-1">

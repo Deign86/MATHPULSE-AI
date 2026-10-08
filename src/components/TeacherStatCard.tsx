@@ -192,7 +192,7 @@ export const TeacherStatCard: React.FC<TeacherStatCardProps> = ({
       {/* CARD BODY */}
       <div className="relative z-10 my-auto py-0 sm:py-1 flex items-center justify-between gap-1.5 sm:gap-2">
         <div className="min-w-0 flex-1">
-          <div className="text-lg xs:text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-0.5 sm:mb-1 drop-shadow-xs">
+          <div className="text-lg xs:text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-0.5 sm:mb-1 break-words hyphens-auto drop-shadow-xs">
             {value}
           </div>
           {subtitle && (

@@ -443,7 +443,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/70'
           }`}
         >
-          <BarChart3 size={15} className="shrink-0" />
+          <BarChart3 size={15} className="hidden sm:block shrink-0" />
           <span className="sm:hidden">Mastery Matrix</span>
           <span className="hidden sm:inline">Student Mastery Matrix</span>
         </button>
@@ -457,7 +457,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/70'
           }`}
         >
-          <BookOpen size={15} className="shrink-0" />
+          <BookOpen size={15} className="hidden sm:block shrink-0" />
           <span className="sm:hidden">Module Availability</span>
           <span className="hidden sm:inline">Module Availability & Materials</span>
         </button>
@@ -527,7 +527,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
           </div>
 
           {/* 4 Stats Cards */}
-          <div data-tour="mastery-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div data-tour="mastery-kpis" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-4">
             <TeacherStatCard
               color="purple"
               title="Total Topics"
@@ -632,7 +632,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={validCurrentPage <= 1}
-                className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                className="w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
                 aria-label="Previous Page"
               >
                 <ChevronLeft size={14} />
@@ -644,7 +644,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={validCurrentPage >= totalPages}
-                className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                className="w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
                 aria-label="Next Page"
               >
                 <ChevronRight size={14} />
@@ -964,19 +964,19 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap justify-center items-center gap-1">
               <button
                 type="button"
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={validCurrentPage === 1}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 pointer-coarse:min-h-11 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Previous page"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 Previous
               </button>
 
-              <div className="flex items-center gap-1 px-1">
+              <div className="flex flex-wrap justify-center items-center gap-1 px-1">
                 {createPaginationItems(totalPages, validCurrentPage).map((item) =>
                   item.kind === 'ellipsis' ? (
                     <span key={item.id} className="px-1 text-xs text-slate-400">
@@ -987,7 +987,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                       key={item.page}
                       type="button"
                       onClick={() => setCurrentPage(item.page)}
-                      className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      className={`w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                         validCurrentPage === item.page
                           ? 'bg-[#9956DE] text-white shadow-xs font-bold'
                           : 'text-slate-600 hover:bg-slate-100'
@@ -1003,7 +1003,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 type="button"
                 onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                 disabled={validCurrentPage === totalPages}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 pointer-coarse:min-h-11 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Next page"
               >
                 Next
