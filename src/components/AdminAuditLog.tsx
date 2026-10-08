@@ -214,18 +214,21 @@ const AdminAuditLog: React.FC = () => {
   const visibleRangeStart = filteredLogs.length === 0 ? 0 : ((currentPage - 1) * pageSize) + 1;
   const visibleRangeEnd = Math.min(currentPage * pageSize, filteredLogs.length);
 
+  const filteredSharePercent = logs.length === 0 ? 0 : Math.round((filteredLogs.length / logs.length) * 100);
+  const adminSharePercent = logs.length === 0 ? 0 : Math.round((adminActionCount / logs.length) * 100);
+
   const kpis = [
     {
       title: 'Total Audit Events',
       value: loading ? null : logs.length.toLocaleString(),
       subValue: 'System & user telemetry',
       icon: FileText,
-      trend: '+18.4%',
+      trend: `${filteredLogs.length} shown`,
       badge: 'Audit Base',
       isPositive: true,
       gradient: 'bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED]',
       shadow: 'shadow-[0_8px_24px_-6px_rgba(153,86,222,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(153,86,222,0.48)]',
-      progressPercent: 84,
+      progressPercent: filteredSharePercent,
     },
     {
       title: 'Security & Warnings',
@@ -249,11 +252,11 @@ const AdminAuditLog: React.FC = () => {
       subValue: 'User and auth mutations',
       icon: UserCheck,
       badge: 'Admin Mutate',
-      trend: '+12.1%',
+      trend: `${adminSharePercent}% of events`,
       isPositive: true,
       gradient: 'bg-gradient-to-br from-[#6366F1] via-[#4F46E5] to-[#4338CA]',
       shadow: 'shadow-[0_8px_24px_-6px_rgba(99,102,241,0.38)] hover:shadow-[0_16px_32px_-6px_rgba(99,102,241,0.48)]',
-      progressPercent: 65,
+      progressPercent: adminSharePercent,
     },
     {
       title: 'Platform Integrity',
