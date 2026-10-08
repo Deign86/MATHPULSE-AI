@@ -20,7 +20,7 @@ The **Intervention Center is never opened** by the guide: mounting it starts AI 
 | File | Responsibility |
 | --- | --- |
 | `src/components/onboarding/teacherTourSteps.ts` | Teacher pages (`teacherTourPages`, each with an `overview` and detailed `steps`), general guide (`teacherTourSteps`), `teacherPageTour(view)`. Tabs are TeacherDashboard view ids. |
-| `src/components/TeacherDashboard.tsx` | Hook wiring (ready = data loaded; blocked = logout/create-class/add-students/insight modals, schedule drawer, delete/remove confirmations), view navigation for the guide, origin restore, phone submenu hint (`teaching` / `insights` / `tools`), header **?** button, `NavItem` `tourNav` anchors, phone popup `data-tour-nav` anchors, bottom nav `data-tour-sticky`, guide-safe outside-click handling. |
+| `src/components/TeacherDashboard.tsx` | Hook wiring (ready = data loaded; blocked = logout/create-class/add-students/insight modals, schedule drawer, delete/remove confirmations), view navigation for the guide, origin restore, phone submenu hint (`teaching` / `insights` / `tools`), the Topic Mastery tab for `view: 'mastery'` steps, header **?** button, `NavItem` `tourNav` anchors, phone popup `data-tour-nav` anchors, bottom nav `data-tour-sticky`, guide-safe outside-click handling. |
 | `src/components/teacher/TeacherSettingsPage.tsx` | Teacher guide card (`GuideReplayCard`), unsaved-edit protection. |
 | Teacher feature components | `data-tour` anchors listed below. |
 
@@ -31,7 +31,7 @@ The **Intervention Center is never opened** by the guide: mounting it starts AI 
 | Dashboard (`dashboard`) | Class snapshot (`teacher-stats`), AI insight banner* (`teacher-insight`), My Classes (`teacher-classes`), quick counts* (`teacher-quick-stats`, xl only), AI insight button, schedule & activity panel (`teacher-schedule-toggle`), notifications (`notifications`), profile menu (`data-tour-group="Profile"`), page-guide button (`page-guide`) |
 | My Classes (`analytics`) | Class switcher (`class-switcher`, or `class-empty` with no classes), class details*, class numbers*, students (with Intervention Center explanation)*, risk chart*, topic chart*, top performers / needs attention*, AI class insights*, section management* |
 | Schedule & Calendar (`calendar`) | Month navigation (`calendar-month`), month grid (`calendar-grid`), day agenda* (`calendar-agenda`) |
-| Topic Mastery (`topic_mastery`) | Mastery / availability tabs, filters, totals, topics with exclude (`mastery-*`) |
+| Topic Mastery (`topic_mastery`) | Mastery / availability tabs, filters, totals, topics with exclude (`mastery-*`). Its steps use `view: 'mastery'`, so the guide opens the Mastery Matrix tab even when Module Availability was left open (that tab unmounts the filters, totals and topics), and switches back when the guide ends. |
 | Competency Matrix (`competency`) | Filters (`competency-filters`, also `data-tour-sticky`), totals, curriculum topics*, table (`competency-*`) |
 | AI Quiz Maker (`quiz_maker`) | Create / Quiz Bank tabs (`quiz-tabs`), four-step flow*, guidelines*, basic settings* (`quiz-*`) |
 | Question Bank (`question_bank`) | Totals, PDF processing form, processing status, questions (`qbank-*`) |

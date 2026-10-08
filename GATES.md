@@ -339,3 +339,25 @@ Scope (user request): the header **?** button ("Guide for this page") asks befor
 
 - [x] PGC5: The student, teacher and admin onboarding guides and the onboarding codemap describe the confirmation.
   EVIDENCE: `docs/student-onboarding-guide.md` (page guides and the file table), `docs/teacher-onboarding-guide.md`, `docs/admin-onboarding-guide.md` and `src/components/onboarding/codemap.md` describe the question, its two buttons and the focus handling.
+
+## Topic Mastery guide view — 2026-10-08
+
+Found in the teacher layout check: when Topic Mastery was left on its Module Availability tab (also where Data Import's Go to Modules lands), the Topic Mastery guide's filter, totals and topic steps had nothing to highlight, because those parts render only on the Mastery Matrix tab.
+
+- [x] TMV1: Every Topic Mastery guide step asks for the Mastery Matrix view (`view: 'mastery'`); the teacher dashboard switches Topic Mastery to that tab while such a step is open and restores the teacher's tab when the guide ends (same pattern as the student Modules guide).
+  CHECK: npm test -- --run src/components/onboarding/teacherTourSteps.test.ts --maxWorkers=2
+  EXPECT: passed
+  EVIDENCE: The new test failed first (`expected [ undefined, … ] to deeply equal [ 'mastery', … ]`), then passed after the change: 1 file, 65 tests. `TeacherDashboard` remembers the tab in a ref while `view: 'mastery'` steps are open and restores it when the guide closes, like `ModulesPage`'s `tabBeforeTour`. Typecheck, ESLint and oxlint exit 0.
+
+- [x] TMV2: Real app: with Module Availability left open, the Topic Mastery guide highlights the tabs, filters, totals and topics (4 of 4 steps spotlighted) at 390x844 with touch and at 1440x900, and Module Availability is open again after the guide.
+  EVIDENCE: Onboarding-only build (dev server 5174), seeded teacher account. Module Availability opened first (filters, totals and topics not rendered), then ? → "Play the Topic Mastery guide?" → Play guide. 390x844 with touch: steps 1–4 highlighted mastery-tabs, the class-section filter, mastery-kpis and mastery-topics with the Mastery Matrix tab active; after Finish the page was still Topic Mastery with Module Availability active. 1440x900: the same four highlights, none covered by the card, and Module Availability restored after Finish and after Skip at step 2. Before the fix the same 390x844 run showed steps 2–4 with no highlight.
+
+- [x] TMV3: Full frontend checks pass after the change.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0.
+  EVIDENCE: Onboarding branch: Vitest 141 files / 837 tests passed (316 s); typecheck, `npm run lint -- --max-warnings=0` and anti-slop exit 0; `$env:VITE_API_URL='/api'; npm run build` exit 0 (check-api-url, check-prod-host and check-no-demo-creds PASS).
+
+- [x] TMV4: `docs/teacher-onboarding-guide.md` says the Topic Mastery guide opens the Mastery Matrix tab.
+  CHECK: git grep -c "Mastery Matrix tab" -- docs/teacher-onboarding-guide.md
+  EXPECT: docs/teacher-onboarding-guide.md:1
+  EVIDENCE: CHECK printed `docs/teacher-onboarding-guide.md:1`. The coverage row explains the `view: 'mastery'` steps and the switch back; the Files row lists the Topic Mastery tab handling in `TeacherDashboard.tsx`.

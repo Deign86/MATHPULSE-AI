@@ -892,6 +892,20 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     tourOrigin.current = null;
     setTourStep(null);
   }, [teacherTour.isOpen]);
+  // Module Availability unmounts the Mastery Matrix; show it while the guide explains it, then restore.
+  const masteryTabBeforeTour = useRef<'mastery' | 'availability' | null>(null);
+  const tourShowsMastery = teacherTour.isOpen && tourStep?.view === 'mastery';
+  useEffect(() => {
+    if (tourShowsMastery) {
+      masteryTabBeforeTour.current ??= topicMasteryTab;
+      setTopicMasteryTab('mastery');
+    } else if (masteryTabBeforeTour.current) {
+      setTopicMasteryTab(masteryTabBeforeTour.current);
+      masteryTabBeforeTour.current = null;
+    }
+    // topicMasteryTab is read only to remember the pre-guide tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourShowsMastery]);
   // Track mobile viewport (< 1024px = below lg breakpoint)
   useEffect(() => {
     const checkViewport = () => setIsMobileViewport(window.innerWidth < 1024);

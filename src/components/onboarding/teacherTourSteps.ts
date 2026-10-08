@@ -58,10 +58,10 @@ const topicMastery: TourPage = {
   label: 'Topic Mastery',
   overview: { tab: 'topic_mastery', title: 'Topic Mastery', description: 'How well students have mastered each math topic, and which modules are available to them. On a phone, it is in the Insights menu.', target: nav('topic_mastery'), menu: 'insights' },
   steps: [
-    { tab: 'topic_mastery', title: 'Mastery or module availability', description: 'Mastery Matrix shows topic results. Module Availability controls which modules students can open.', target: at('mastery-tabs') },
-    { tab: 'topic_mastery', title: 'Filters', description: 'Filter by class section, subject and grade, or search for a topic.', target: at('mastery-filters') },
-    { tab: 'topic_mastery', title: 'Topic totals', description: 'Total topics, mastered topics, topics that need work, and excluded topics.', target: at('mastery-kpis') },
-    { tab: 'topic_mastery', title: 'Topics', description: 'Each topic\'s mastery level. Exclude removes a topic from AI-generated quizzes; select several topics to exclude or include them together.', target: at('mastery-topics') },
+    { tab: 'topic_mastery', title: 'Mastery or module availability', description: 'Mastery Matrix shows topic results. Module Availability controls which modules students can open.', target: at('mastery-tabs'), view: 'mastery' },
+    { tab: 'topic_mastery', title: 'Filters', description: 'Filter by class section, subject and grade, or search for a topic.', target: at('mastery-filters'), view: 'mastery' },
+    { tab: 'topic_mastery', title: 'Topic totals', description: 'Total topics, mastered topics, topics that need work, and excluded topics.', target: at('mastery-kpis'), view: 'mastery' },
+    { tab: 'topic_mastery', title: 'Topics', description: 'Each topic\'s mastery level. Exclude removes a topic from AI-generated quizzes; select several topics to exclude or include them together.', target: at('mastery-topics'), view: 'mastery' },
   ],
 };
 

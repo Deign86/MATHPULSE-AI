@@ -44,6 +44,12 @@ describe('teacher guide configuration', () => {
     expect(allSteps.some(step => step.tab === 'intervention')).toBe(false);
   });
 
+  it('asks for the Mastery Matrix on every Topic Mastery step, since Module Availability unmounts it', () => {
+    const steps = teacherPageTour('topic_mastery')?.steps ?? [];
+    expect(steps.length).toBeGreaterThan(0);
+    expect(steps.map(step => step.view)).toEqual(steps.map(() => 'mastery'));
+  });
+
   it('keeps the first-use guide general and points to page guides', () => {
     expect(teacherTourSteps).toHaveLength(teacherTourPages.length + 1);
     expect(teacherTourSteps[0].description).toMatch(/step-by-step guide/);
