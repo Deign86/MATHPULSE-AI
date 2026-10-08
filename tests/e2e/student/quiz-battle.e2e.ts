@@ -177,9 +177,10 @@ describe('student quiz battle', { tags: ['student', 'quiz-battle'] }, () => {
   describe('live battle sessions', { serial: true, session: 'student2', tags: ['live-match'] }, () => {
     test('VS Bot battle plays every round, shows the results, and returns to the hub', { timeout: 240_000 }, async ({ app, agent, screen }) => {
       await app.open('/battle');
-      await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible({ timeout: 45_000 });
+      // student2 has no diagnostic, so the Initial Assessment dialog can cover the page on arrival.
+      await expect(screen.getByRole('button', 'Dashboard')).toBeAttached({ timeout: 45_000 });
       await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
-      await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible();
+      await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible({ timeout: 30_000 });
 
       await screen.getByRole('button', /^VS Bot/).tap();
       const start = screen.getByRole('button', 'Start Battle');
@@ -215,9 +216,10 @@ describe('student quiz battle', { tags: ['student', 'quiz-battle'] }, () => {
 
     test('Leave during a bot battle asks first, Keep playing resumes, and Leave forfeits', { timeout: 180_000 }, async ({ app, agent, screen }) => {
       await app.open('/battle');
-      await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible({ timeout: 45_000 });
+      // student2 has no diagnostic, so the Initial Assessment dialog can cover the page on arrival.
+      await expect(screen.getByRole('button', 'Dashboard')).toBeAttached({ timeout: 45_000 });
       await agent.act('if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing');
-      await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible();
+      await expect(screen.getByRole('heading', 'Quiz Battle')).toBeVisible({ timeout: 30_000 });
 
       await screen.getByRole('button', /^VS Bot/).tap();
       await screen.getByRole('button', '3 Qs').tap();

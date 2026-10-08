@@ -109,7 +109,7 @@ describe('public sign up', { tags: ['public', 'signup'] }, () => {
     await expect(screen.getByRole('listitem')).toHaveCount(0);
   });
 
-  test('a mismatched Confirm shows Passwords do not match until it matches', async ({ app, screen }) => {
+  test('a mismatched Confirm shows Passwords do not match until it matches', async ({ app, browser, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Welcome Back')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', "Don't have an account? Create one").tap();
@@ -124,10 +124,10 @@ describe('public sign up', { tags: ['public', 'signup'] }, () => {
     await expect(screen.getByText('Passwords do not match.')).toBeHidden();
 
     await screen.getByRole('button', 'Show password').tap();
-    await expect(screen.getByLabel('Password')).toHaveAttribute('type', 'text');
-    await expect(screen.getByLabel('Confirm')).toHaveAttribute('type', 'text');
+    await expect.poll(() => browser.evaluate(() => document.querySelector<HTMLInputElement>('#login-password')?.type)).toBe('text');
+    await expect.poll(() => browser.evaluate(() => document.querySelector<HTMLInputElement>('#login-confirm-password')?.type)).toBe('text');
     await screen.getByRole('button', 'Hide password').tap();
-    await expect(screen.getByLabel('Confirm')).toHaveAttribute('type', 'password');
+    await expect.poll(() => browser.evaluate(() => document.querySelector<HTMLInputElement>('#login-confirm-password')?.type)).toBe('password');
   });
 
   test('Already have an account? Sign in returns to Welcome Back', async ({ app, screen }) => {

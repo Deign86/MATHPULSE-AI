@@ -35,30 +35,30 @@ describe('public sign in', { tags: ['public', 'login'] }, () => {
     await expect(screen.getByRole('button', /^(Student|Teacher|Admin) Account/)).toHaveCount(0);
   });
 
-  test('Show password reveals the password and Hide password masks it again', async ({ app, screen }) => {
+  test('Show password reveals the password and Hide password masks it again', async ({ app, browser, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Welcome Back')).toBeVisible({ timeout: 45_000 });
     await screen.getByLabel('Password').fill('Visible-Check-1');
-    await expect(screen.getByLabel('Password')).toHaveAttribute('type', 'password');
+    await expect.poll(() => browser.evaluate(() => document.querySelector<HTMLInputElement>('#login-password')?.type)).toBe('password');
 
     await screen.getByRole('button', 'Show password').tap();
     await expect(screen.getByRole('button', 'Hide password')).toBeVisible();
-    await expect(screen.getByLabel('Password')).toHaveAttribute('type', 'text');
+    await expect.poll(() => browser.evaluate(() => document.querySelector<HTMLInputElement>('#login-password')?.type)).toBe('text');
 
     await screen.getByRole('button', 'Hide password').tap();
     await expect(screen.getByRole('button', 'Show password')).toBeVisible();
-    await expect(screen.getByLabel('Password')).toHaveAttribute('type', 'password');
+    await expect.poll(() => browser.evaluate(() => document.querySelector<HTMLInputElement>('#login-password')?.type)).toBe('password');
   });
 
-  test('a revealed password masks itself again after ten seconds', async ({ app, screen }) => {
+  test('a revealed password masks itself again after ten seconds', async ({ app, browser, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Welcome Back')).toBeVisible({ timeout: 45_000 });
     await screen.getByLabel('Password').fill('Visible-Check-1');
     await screen.getByRole('button', 'Show password').tap();
-    await expect(screen.getByLabel('Password')).toHaveAttribute('type', 'text');
+    await expect.poll(() => browser.evaluate(() => document.querySelector<HTMLInputElement>('#login-password')?.type)).toBe('text');
 
     await expect(screen.getByRole('button', 'Show password')).toBeVisible({ timeout: 15_000 });
-    await expect(screen.getByLabel('Password')).toHaveAttribute('type', 'password');
+    await expect.poll(() => browser.evaluate(() => document.querySelector<HTMLInputElement>('#login-password')?.type)).toBe('password');
   });
 
   test('an unknown example.test account gets the invalid credentials alert', async ({ app, screen }) => {
