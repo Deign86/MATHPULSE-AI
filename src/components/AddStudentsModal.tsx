@@ -85,7 +85,7 @@ export const AddStudentsModal: React.FC<AddStudentsModalProps> = ({ open, onClos
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xl w-full max-w-2xl max-h-[80dvh] flex flex-col overflow-hidden z-10">
           <div className="flex items-center justify-between p-5 border-b border-[#f1f5f9] dark:border-slate-800">
             <h2 className="text-base font-semibold text-[#1e293b] dark:text-white">Add Students to {grade} - {section}</h2>
-            <button onClick={onClose} aria-label="Close dialog" className="p-1 rounded-lg hover:bg-[#f1f5f9] dark:hover:bg-slate-800"><X size={18} className="text-[#64748b] dark:text-slate-400" /></button>
+            <button onClick={onClose} aria-label="Close dialog" className="relative shrink-0 p-1 rounded-lg hover:bg-[#f1f5f9] dark:hover:bg-slate-800 pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5"><X size={18} className="text-[#64748b] dark:text-slate-400" /></button>
           </div>
           <div className="p-4 space-y-3 flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center gap-3">

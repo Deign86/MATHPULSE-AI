@@ -1024,7 +1024,7 @@ export default function DataImportView({
                   <button 
                     type="button"
                     onClick={() => void refreshRecentMaterials()}
-                    className="text-xs font-semibold text-violet-600 hover:text-violet-700 transition-colors cursor-pointer"
+                    className="relative text-xs font-semibold text-violet-600 hover:text-violet-700 transition-colors cursor-pointer pointer-coarse:after:absolute pointer-coarse:after:-inset-x-2 pointer-coarse:after:-inset-y-3.5"
                   >
                     Refresh
                   </button>
@@ -1066,7 +1066,7 @@ export default function DataImportView({
                   <button
                     type="button"
                     onClick={() => window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }))}
-                    className="mt-2 text-xs font-semibold text-violet-700 hover:text-violet-800 underline"
+                    className="relative mt-2 text-xs font-semibold text-violet-700 hover:text-violet-800 underline pointer-coarse:after:absolute pointer-coarse:after:-inset-x-2 pointer-coarse:after:-inset-y-3.5"
                   >
                     Go to Modules
                   </button>

@@ -234,7 +234,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
                 key={tabItem.id}
                 type="button"
                 onClick={() => setActiveTab(tabItem.id)}
-                className={`lg:w-full flex items-center gap-2.5 sm:gap-3 px-3.5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 lg:shrink ${
+                className={`lg:w-full flex items-center gap-2.5 sm:gap-3 px-3.5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] pointer-coarse:min-h-11 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 lg:shrink ${
                   activeTab === tabItem.id
                     ? 'bg-violet-50 dark:bg-violet-950/60 text-violet-600 dark:text-violet-300 border border-violet-200/80 dark:border-violet-800/80 shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white border border-transparent'

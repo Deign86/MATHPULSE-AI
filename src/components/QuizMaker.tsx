@@ -1288,7 +1288,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
         <div data-tour="quiz-tabs" className="flex items-center gap-1 bg-white/50 backdrop-blur-md p-1 sm:p-1.5 rounded-full border border-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-full sm:w-max">
           <button
             onClick={() => setActiveTab('create')}
-            className={`flex-1 sm:flex-initial justify-center px-3.5 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-[13px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 ease-out ${
+            className={`flex-1 sm:flex-initial justify-center px-3.5 sm:px-6 py-1.5 sm:py-2 pointer-coarse:min-h-12 rounded-full text-xs sm:text-[13px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 ease-out ${
               activeTab === 'create'
                 ? 'bg-white text-[#a855f7] shadow-[0_2px_8px_rgba(168,85,247,0.15)] scale-100'
                 : 'bg-transparent text-[#64748b] hover:text-[#1e293b] hover:bg-white/60 scale-95 hover:scale-100'
@@ -1298,7 +1298,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
           </button>
           <button
             onClick={() => setActiveTab('bank')}
-            className={`flex-1 sm:flex-initial justify-center px-3.5 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-[13px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 ease-out ${
+            className={`flex-1 sm:flex-initial justify-center px-3.5 sm:px-6 py-1.5 sm:py-2 pointer-coarse:min-h-12 rounded-full text-xs sm:text-[13px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 ease-out ${
               activeTab === 'bank'
                 ? 'bg-white text-[#a855f7] shadow-[0_2px_8px_rgba(168,85,247,0.15)] scale-100'
                 : 'bg-transparent text-[#64748b] hover:text-[#1e293b] hover:bg-white/60 scale-95 hover:scale-100'
@@ -1628,10 +1628,10 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                   {/* Question Counter */}
                   <div className="flex-1 group">
                     <label htmlFor="quiz-num-questions" className="text-xs sm:text-[13px] font-semibold text-[#1e293b] mb-1.5 block group-hover:text-[#a855f7] transition-colors">Number of questions</label>
-                    <div className="flex items-center bg-white border border-[#e2e8f0] rounded-xl overflow-hidden focus-within:border-[#a855f7] focus-within:ring-2 focus-within:ring-[#a855f7]/10 transition-all duration-200 h-[40px] sm:h-[42px] shadow-xs hover:border-[#cbd5e1]">
+                    <div className="flex items-center bg-white border border-[#e2e8f0] rounded-xl overflow-hidden focus-within:border-[#a855f7] focus-within:ring-2 focus-within:ring-[#a855f7]/10 transition-all duration-200 h-[40px] sm:h-[42px] pointer-coarse:h-12 shadow-xs hover:border-[#cbd5e1]">
                       <button
                         onClick={() => setNumQuestions(Math.max(1, numQuestions - 1))}
-                        className="w-10 sm:w-11 h-full flex items-center justify-center text-[#64748b] bg-slate-50 hover:bg-slate-100 hover:text-[#1e293b] transition-colors border-r border-[#e2e8f0] active:bg-slate-200"
+                        className="w-10 sm:w-11 pointer-coarse:w-11 h-full flex items-center justify-center text-[#64748b] bg-slate-50 hover:bg-slate-100 hover:text-[#1e293b] transition-colors border-r border-[#e2e8f0] active:bg-slate-200"
                         aria-label="Decrease number of questions"
                       >
                         <Minus size={14} />
@@ -1647,7 +1647,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       />
                       <button
                         onClick={() => setNumQuestions(Math.min(MAX_QUESTIONS_LIMIT, numQuestions + 1))}
-                        className="w-10 sm:w-11 h-full flex items-center justify-center text-[#64748b] bg-slate-50 hover:bg-slate-100 hover:text-[#1e293b] transition-colors border-l border-[#e2e8f0] active:bg-slate-200"
+                        className="w-10 sm:w-11 pointer-coarse:w-11 h-full flex items-center justify-center text-[#64748b] bg-slate-50 hover:bg-slate-100 hover:text-[#1e293b] transition-colors border-l border-[#e2e8f0] active:bg-slate-200"
                         aria-label="Increase number of questions"
                       >
                         <Plus size={14} />

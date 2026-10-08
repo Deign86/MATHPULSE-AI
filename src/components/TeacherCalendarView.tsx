@@ -444,7 +444,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
   return (
     <div className="w-full min-h-full flex flex-col px-2 sm:px-6 xl:px-8 py-2 sm:py-6 xl:py-8 pb-32 sm:pb-36 lg:pb-8 overflow-y-auto">
       {/* Layout Grid */}
-      <div className="flex flex-col xl:flex-row gap-4 sm:gap-6 flex-1 min-h-0 w-full max-w-[1400px] mx-auto">
+      <div className="flex flex-col xl:flex-row gap-4 sm:gap-6 xl:flex-1 xl:min-h-0 w-full max-w-[1400px] mx-auto">
         
         {/* Main Calendar Area */}
         <div className={`flex flex-col flex-1 min-w-0 transition-all duration-500 ${showSidebar ? 'xl:w-[70%]' : 'xl:w-full'}`}>

@@ -175,10 +175,10 @@ export const TeacherStatCard: React.FC<TeacherStatCardProps> = ({
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
       {/* CARD HEADER */}
-      <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
-        <div className="flex items-center gap-1 sm:gap-1.5 text-white/95 min-w-0 flex-1">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-1 mb-1 sm:mb-2">
+        <div className="flex items-center gap-1 sm:gap-1.5 text-white/95 min-w-0 flex-auto">
           {renderIcon()}
-          <span className="text-[8px] xs:text-[9.5px] sm:text-xs font-black uppercase tracking-tight xs:tracking-wider text-white leading-tight truncate sm:whitespace-normal">
+          <span className="text-[8px] xs:text-[9.5px] sm:text-xs font-black uppercase tracking-tight xs:tracking-wider text-white leading-tight line-clamp-2">
             {title}
           </span>
         </div>

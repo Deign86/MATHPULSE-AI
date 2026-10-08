@@ -289,21 +289,22 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
 
       {/* Filter Toolbar */}
       <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-3 items-stretch md:items-center justify-between">
-        <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 flex-1 min-w-[200px]">
+        <label className="flex items-center gap-2 bg-slate-50 px-3 py-2 pointer-coarse:min-h-11 rounded-xl border border-slate-200 flex-1 min-w-[200px] cursor-text">
           <Search size={16} className="text-slate-400 shrink-0" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search module title, code, or domain..."
+            aria-label="Search modules"
             className="bg-transparent text-xs sm:text-sm text-slate-800 outline-none w-full"
           />
           {searchQuery && (
-            <button type="button" onClick={() => setSearchQuery('')} className="text-slate-400 hover:text-slate-600">
+            <button type="button" onClick={() => setSearchQuery('')} aria-label="Clear search" className="relative text-slate-400 hover:text-slate-600 pointer-coarse:after:absolute pointer-coarse:after:-inset-4">
               <X size={14} />
             </button>
           )}
-        </div>
+        </label>
 
         <div className="flex flex-wrap items-center gap-2">
           {/* Subject Filter */}
@@ -460,7 +461,7 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
                   type="button"
                   onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                   disabled={validCurrentPage <= 1}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                  className="w-8 h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
                   aria-label="Previous Page"
                 >
                   <ChevronLeft size={16} />
@@ -474,7 +475,7 @@ const TeacherModuleStatusControl: React.FC<TeacherModuleStatusControlProps> = ({
                   type="button"
                   onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                   disabled={validCurrentPage >= totalPages}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
+                  className="w-8 h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg flex items-center justify-center bg-white text-slate-700 hover:bg-indigo-50 hover:text-indigo-600 border border-slate-200 shadow-2xs disabled:opacity-40 disabled:pointer-events-none transition-all cursor-pointer"
                   aria-label="Next Page"
                 >
                   <ChevronRight size={16} />

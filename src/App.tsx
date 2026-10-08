@@ -1258,13 +1258,13 @@ const App = ({ authOverride }: AppProps = {}) => {
 
         {/* Main Content */}
         <div className={`flex-1 min-h-0 flex flex-col min-w-0 ${activeTab === 'Quiz Battle' ? 'bg-[#0B0F19]' : 'bg-gradient-to-br from-[#f8faff] via-[#f1f5fd] to-[#f5f0fc] dark:from-[#050d18] dark:via-[#0c1527] dark:to-[#120e24] shadow-[rgba(124,58,237,0.04)_0px_0px_30px_inset]'} relative z-10 overflow-hidden`}>
-          {/* Ambient glowing gradient orbs */}
+          {/* Ambient glowing gradient orbs, clipped so they never make the shell scrollable sideways */}
           {activeTab !== 'Quiz Battle' && (
-            <>
+            <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none">
               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-purple-200/30 via-indigo-100/20 to-transparent rounded-full blur-3xl pointer-events-none -translate-y-1/3 translate-x-1/4" />
               <div className="absolute bottom-0 left-0 w-[450px] h-[450px] bg-gradient-to-tr from-sky-200/25 via-purple-100/15 to-transparent rounded-full blur-3xl pointer-events-none translate-y-1/3 -translate-x-1/4" />
               <div className="absolute inset-0 bg-math-pattern opacity-10 mix-blend-overlay pointer-events-none z-0" />
-            </>
+            </div>
           )}
 
           <OnlineOfflineBanner />

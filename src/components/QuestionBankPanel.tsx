@@ -172,7 +172,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           <div className="relative overflow-hidden bg-gradient-to-br from-[#3b82f6] to-[#2563eb] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-5 shadow-[0_2px_8px_rgba(59,130,246,0.18)] sm:shadow-[0_4px_12px_rgba(59,130,246,0.2)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.28)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
             <div className="absolute -right-6 -bottom-6 sm:-right-12 sm:-bottom-12 w-20 h-20 sm:w-36 sm:h-36 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.6]"></div>
             <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-2 md:mb-3 gap-1">
-              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 truncate leading-tight">Total PDFs</span>
+              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 line-clamp-2 leading-tight">Total PDFs</span>
               <div className="w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
                 <FileText className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-white" />
               </div>
@@ -184,7 +184,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-5 shadow-[0_2px_8px_rgba(168,85,247,0.18)] sm:shadow-[0_4px_12px_rgba(168,85,247,0.2)] hover:shadow-[0_6px_20px_rgba(168,85,247,0.28)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
             <div className="absolute -right-6 -bottom-6 sm:-right-12 sm:-bottom-12 w-20 h-20 sm:w-36 sm:h-36 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.6]"></div>
             <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-2 md:mb-3 gap-1">
-              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 truncate leading-tight">
+              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 line-clamp-2 leading-tight">
                 <span className="inline sm:hidden">Questions</span>
                 <span className="hidden sm:inline">Total Questions</span>
               </span>
@@ -199,7 +199,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-5 shadow-[0_2px_8px_rgba(168,85,247,0.18)] sm:shadow-[0_4px_12px_rgba(168,85,247,0.2)] hover:shadow-[0_6px_20px_rgba(168,85,247,0.28)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
             <div className="absolute -right-6 -bottom-6 sm:-right-12 sm:-bottom-12 w-20 h-20 sm:w-36 sm:h-36 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.6]"></div>
             <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-2 md:mb-3 gap-1">
-              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 truncate leading-tight">Processed</span>
+              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 line-clamp-2 leading-tight">Processed</span>
               <div className="w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
                 <RefreshCw className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-white" />
               </div>

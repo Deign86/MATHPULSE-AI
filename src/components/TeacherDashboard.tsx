@@ -1984,7 +1984,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       {activeView === 'import' && 'Data Import'}
                       {activeView === 'quiz_maker' && 'AI Quiz Maker'}
                     </h1>
-                    <p className="font-body text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium short:hidden">
+                    <p className="font-body text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2 font-medium short:hidden">
                       {activeView === 'dashboard' && `Welcome back, ${teacherName}`}
                       {activeView === 'analytics' && 'Analyze class performance and risk metrics.'}
                       {activeView === 'intervention' && 'Identify and support at-risk students.'}
@@ -2834,7 +2834,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 <button
                   onClick={() => { setInsightModalOpen(false); }}
                   aria-label="Close insight dialog"
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
+                  className="relative shrink-0 p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5"
                 >
                   <X size={18} />
                 </button>
@@ -3144,7 +3144,7 @@ const DashboardView: React.FC<{
               <p className="font-body text-xs text-slate-500 mt-0.5 hidden sm:block">Select any class to manage students and class analytics</p>
             </div>
           </div>
-          <button onClick={onViewAllClasses} className="font-body text-xs text-violet-600 hover:text-indigo-600 font-extrabold cursor-pointer hover:underline flex items-center gap-1 shrink-0">
+          <button onClick={onViewAllClasses} className="relative font-body text-xs text-violet-600 hover:text-indigo-600 font-extrabold cursor-pointer hover:underline flex items-center gap-1 shrink-0 pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-3.5">
             <span>View all ({classes.length})</span>
             <ChevronRight size={14} />
           </button>
@@ -3212,11 +3212,11 @@ const DashboardView: React.FC<{
                     <BookOpen size={17} className="drop-shadow-xs" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="font-display text-[13.5px] sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors truncate">
+                    <div className="font-display text-[13.5px] sm:text-sm font-bold text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors line-clamp-2 break-words">
                       {classItem.name}
                     </div>
                     <div className="flex flex-wrap items-center gap-x-1.5 mt-0.5 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
-                      <span className="font-medium text-slate-600 dark:text-slate-300 truncate max-w-[90px] xs:max-w-none">{classItem.classification || 'Senior High'}</span>
+                      <span className="font-medium text-slate-600 dark:text-slate-300">{classItem.classification || 'Senior High'}</span>
                       <span>•</span>
                       <span className="tabular-nums font-semibold shrink-0">{classItem.studentCount} students</span>
                       {classItem.schedule && (
@@ -3256,7 +3256,7 @@ const DashboardView: React.FC<{
                         e.stopPropagation();
                         onDeleteClass(classItem);
                       }}
-                      className="w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-xl flex items-center justify-center border bg-white/80 dark:bg-slate-800/80 border-rose-200 dark:border-rose-800/70 text-rose-500 dark:text-rose-400 hover:bg-gradient-to-r hover:from-rose-500 hover:to-red-500 hover:text-white hover:border-rose-500 hover:shadow-sm hover:shadow-rose-500/25 active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="relative w-7 h-7 sm:w-8 sm:h-8 shrink-0 rounded-xl pointer-coarse:after:absolute pointer-coarse:after:-inset-y-2.5 pointer-coarse:after:-left-2 pointer-coarse:after:-right-3 flex items-center justify-center border bg-white/80 dark:bg-slate-800/80 border-rose-200 dark:border-rose-800/70 text-rose-500 dark:text-rose-400 hover:bg-gradient-to-r hover:from-rose-500 hover:to-red-500 hover:text-white hover:border-rose-500 hover:shadow-sm hover:shadow-rose-500/25 active:scale-95 transition-all cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {deletingClassId === classItem.id ? (
                         <Loader2 size={13} className="animate-spin" />
@@ -4124,7 +4124,7 @@ const AnalyticsView: React.FC<{
             {/* Class Switcher Pill on desktop */}
             <div data-tour="class-switcher" className="hidden sm:flex items-center min-w-0">
               {allClasses.length > 1 ? (
-                <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-1.5 sm:py-2 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 max-w-[260px] sm:max-w-xs min-w-0">
+                <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 max-w-[260px] sm:max-w-xs min-w-0">
                   <BookOpen size={14} className="text-indigo-600 mr-2 shrink-0" />
                   <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1.5 hidden md:inline shrink-0">Class:</span>
                   <select
@@ -4136,7 +4136,7 @@ const AnalyticsView: React.FC<{
                       }
                     }}
                     aria-label="Select class to view analytics"
-                    className="appearance-none bg-transparent text-xs sm:text-[13px] font-bold text-slate-800 border-none focus:outline-none cursor-pointer pr-6 truncate w-full min-w-0"
+                    className="appearance-none bg-transparent text-xs sm:text-[13px] font-bold text-slate-800 border-none focus:outline-none cursor-pointer py-1.5 sm:py-2 pointer-coarse:min-h-11 pr-6 truncate w-full min-w-0"
                   >
                     {allClasses.map((c) => (
                       <option key={c.id} value={c.id} className="text-slate-800 font-medium">
@@ -4169,7 +4169,7 @@ const AnalyticsView: React.FC<{
           {/* Class Switcher Pill on mobile: full width second row without overlapping */}
           <div data-tour="class-switcher" className="sm:hidden w-full min-w-0">
             {allClasses.length > 1 ? (
-              <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-2 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 w-full min-w-0">
+              <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 w-full min-w-0">
                 <BookOpen size={14} className="text-indigo-600 mr-2 shrink-0" />
                 <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mr-1.5 shrink-0">Class:</span>
                 <select
@@ -4181,7 +4181,7 @@ const AnalyticsView: React.FC<{
                     }
                   }}
                   aria-label="Select class to view analytics"
-                  className="appearance-none bg-transparent text-xs font-bold text-slate-800 border-none focus:outline-none cursor-pointer pr-6 truncate w-full min-w-0"
+                  className="appearance-none bg-transparent text-xs font-bold text-slate-800 border-none focus:outline-none cursor-pointer py-2 pointer-coarse:min-h-11 pr-6 truncate w-full min-w-0"
                 >
                   {allClasses.map((c) => (
                     <option key={c.id} value={c.id} className="text-slate-800 font-medium">
@@ -4320,31 +4320,32 @@ const AnalyticsView: React.FC<{
                   + Add
                 </button>
               </div>
-              <div className="flex items-center bg-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-[12px] sm:rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] group">
+              <label className="flex items-center bg-white px-3 sm:px-4 py-1.5 sm:py-2 pointer-coarse:min-h-11 rounded-[12px] sm:rounded-[14px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-[#f1f5f9] group cursor-text">
                 <Search className="w-4 h-4 text-[#64748b] shrink-0 group-focus-within:text-[#a855f7] transition-colors" />
                 <input
                   type="text"
                   placeholder="Search students..."
+                  aria-label="Search students"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="bg-transparent border-none focus:outline-none ml-2 text-[13px] w-full text-[#475569] placeholder:text-[#64748b]"
                 />
-              </div>
+              </label>
               <div className="flex items-center gap-1.5 sm:gap-2 mt-3 sm:mt-4 overflow-x-auto no-scrollbar pb-1">
                 <button
                   onClick={() => setFilterType('All')}
                   aria-label="Filter all students"
-                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'All' ? 'bg-[#a855f7] text-white shadow-[0_1px_4px_rgba(168,85,247,0.15)]' : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#f1f5f9]'}`}
+                  className={`px-3 py-1.5 pointer-coarse:min-h-11 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'All' ? 'bg-[#a855f7] text-white shadow-[0_1px_4px_rgba(168,85,247,0.15)]' : 'bg-[#f8fafc] text-[#64748b] hover:bg-[#f1f5f9]'}`}
                 >All Students</button>
                 <button
                   onClick={() => setFilterType('Good')}
                   aria-label="Filter top performers"
-                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Good' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-emerald-50/40 text-emerald-600 border border-emerald-50 hover:bg-emerald-50'}`}
+                  className={`px-3 py-1.5 pointer-coarse:min-h-11 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Good' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-emerald-50/40 text-emerald-600 border border-emerald-50 hover:bg-emerald-50'}`}
                 >Top Performers</button>
                 <button
                   onClick={() => setFilterType('Risk')}
                   aria-label="Filter students needing attention"
-                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Risk' ? 'bg-rose-50 text-rose-600 border border-rose-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-rose-50/40 text-rose-600 border border-rose-50 hover:bg-rose-50'}`}
+                  className={`px-3 py-1.5 pointer-coarse:min-h-11 text-[11px] font-semibold rounded-[14px] whitespace-nowrap transition-all hover:scale-[1.02] ${filterType === 'Risk' ? 'bg-rose-50 text-rose-600 border border-rose-100/50 shadow-[0_1px_4px_rgba(0,0,0,0.04)]' : 'bg-rose-50/40 text-rose-600 border border-rose-50 hover:bg-rose-50'}`}
                 >Needs Attention</button>
               </div>
             </div>
@@ -4516,7 +4517,7 @@ const AnalyticsView: React.FC<{
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => setShowInsights(!showInsights)}
-                className="flex items-center gap-2 text-[15px] font-semibold text-[#1e293b]"
+                className="relative flex items-center gap-2 text-[15px] font-semibold text-[#1e293b] pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-3"
               >
                 <Sparkles className="w-4 h-4 text-indigo-500" />
                 AI Class Insights
@@ -7220,7 +7221,7 @@ const DashboardRightSidebar: React.FC<{
         </div>
         <div className="text-[13.5px] font-semibold text-[#1e293b] mt-1">{teacherName}</div>
         <div className="text-[11px] text-[#94a3b8]">Teacher</div>
-        <button onClick={onOpenProfile} className="mt-[4px] py-[6px] px-[22px] bg-[#a855f7] hover:bg-[#9333ea] text-white rounded-full text-[11.5px] font-medium transition-colors">
+        <button onClick={onOpenProfile} className="relative mt-[4px] py-[6px] px-[22px] pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2 bg-[#a855f7] hover:bg-[#9333ea] text-white rounded-full text-[11.5px] font-medium transition-colors">
           Profile
         </button>
       </div>
@@ -7229,11 +7230,11 @@ const DashboardRightSidebar: React.FC<{
       <div className="border-b border-[#f1f5f9]">
         {/* Calendar header row with minimize toggle */}
         <div className="p-[10px_16px_8px] flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 pointer-coarse:gap-3">
             <button
               onClick={(e) => { e.stopPropagation(); goToPrevMonth(); }}
               aria-label="Previous month"
-              className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
+              className="relative w-6 h-6 flex items-center justify-center pointer-coarse:after:absolute pointer-coarse:after:-inset-3 bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
             >
               <ChevronLeft size={14} />
             </button>
@@ -7246,7 +7247,7 @@ const DashboardRightSidebar: React.FC<{
             <button
               onClick={(e) => { e.stopPropagation(); goToNextMonth(); }}
               aria-label="Next month"
-              className="w-6 h-6 flex items-center justify-center bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
+              className="relative w-6 h-6 flex items-center justify-center pointer-coarse:after:absolute pointer-coarse:after:-inset-3 bg-white border border-[#e2e8f0] rounded-[7px] text-[#64748b] hover:bg-[#f8fafc] cursor-pointer text-[14px] z-10"
             >
               <ChevronRight size={14} />
             </button>
@@ -7254,7 +7255,7 @@ const DashboardRightSidebar: React.FC<{
           {/* Minimize / expand toggle */}
           <button
             onClick={() => setCalendarCollapsed(c => !c)}
-            className="w-6 h-6 flex items-center justify-center rounded-[7px] text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#64748b] transition-colors"
+            className="relative w-6 h-6 flex items-center justify-center pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5 rounded-[7px] text-[#94a3b8] hover:bg-[#f1f5f9] hover:text-[#64748b] transition-colors"
             title={calendarCollapsed ? 'Show calendar' : 'Hide calendar'}
             aria-label={calendarCollapsed ? 'Expand calendar' : 'Collapse calendar'}
           >
@@ -7315,10 +7316,10 @@ const DashboardRightSidebar: React.FC<{
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-[18px] p-[12px_16px_0] border-b border-[#f1f5f9] flex-shrink-0">
+      <div className="flex gap-[18px] p-[12px_16px_0] pointer-coarse:pt-0 border-b border-[#f1f5f9] flex-shrink-0">
         <button
           onClick={() => setActiveTab('pulse')}
-          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${activeTab === 'pulse'
+          className={`text-[11.5px] font-semibold pb-[9px] pointer-coarse:min-h-11 border-b-[2.5px] transition-colors ${activeTab === 'pulse'
             ? 'text-[#10b981] border-[#10b981]'
             : 'text-[#94a3b8] border-transparent'
             }`}
@@ -7327,7 +7328,7 @@ const DashboardRightSidebar: React.FC<{
         </button>
         <button
           onClick={() => setActiveTab('reminders')}
-          className={`text-[11.5px] font-semibold pb-[9px] border-b-[2.5px] transition-colors ${activeTab === 'reminders'
+          className={`text-[11.5px] font-semibold pb-[9px] pointer-coarse:min-h-11 border-b-[2.5px] transition-colors ${activeTab === 'reminders'
             ? 'text-[#10b981] border-[#10b981]'
             : 'text-[#94a3b8] border-transparent'
             }`}
