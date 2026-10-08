@@ -157,6 +157,8 @@ const App = ({ authOverride }: AppProps = {}) => {
   // Gamification State (derived from Firebase user profile)
   // SAFETY: student sessions always carry a StudentProfile; teacher/admin roles never read these fields.
   const studentProfile = userProfile as StudentProfile;
+  // SAFETY: only read when userRole === 'admin'; handleSaveProfile persists the Admin ID under `lrn`.
+  const adminProfile = userProfile as AdminProfile & { lrn?: string };
   const [userLevel, setUserLevel] = useState(studentProfile?.level || 1);
   const [currentXP, setCurrentXP] = useState(studentProfile?.currentXP || 0);
   const [totalXP, setTotalXP] = useState(studentProfile?.totalXP || 0);
@@ -990,6 +992,11 @@ const App = ({ authOverride }: AppProps = {}) => {
       major: studentProfile.major,
       gpa: computedGpa,
     } : undefined),
+    ...(userRole === 'admin' && adminProfile ? {
+      lrn: adminProfile.lrn,
+      position: adminProfile.position,
+      department: adminProfile.department,
+    } : undefined),
     ...profileOverrides,
   } : {
     uid: undefined,
@@ -1000,7 +1007,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     avatarLayers: undefined,
     gender: 'prefer_not_to_say' as const,
     role: userRole,
-  }), [userProfile, userRole, studentProfile, computedGpa, profileOverrides]);
+  }), [userProfile, userRole, studentProfile, adminProfile, computedGpa, profileOverrides]);
 
   const firstName = profileData.name
     .trim()

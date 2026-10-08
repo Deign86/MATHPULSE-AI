@@ -155,7 +155,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await expect(fullName).toHaveValue(draftName);
   });
 
-  test('Discard Changes after Back leaves My Profile without saving the draft', { session: 'student', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('Discard Changes after Back leaves My Profile without saving the draft', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/profile');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });

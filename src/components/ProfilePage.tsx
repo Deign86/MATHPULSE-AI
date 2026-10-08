@@ -138,8 +138,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   const handleDiscardChanges = () => {
     setAccountData(profileData);
     setIsDirty(false);
+    setIsEditMode(false);
     setIsDiscardConfirmOpen(false);
     toast.info('Changes discarded');
+    onBack?.();
   };
 
   const handleCancelEdit = () => {
