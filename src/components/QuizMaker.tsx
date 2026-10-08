@@ -1886,9 +1886,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                           <motion.div animate={{ width: `${pct}%` }} className={`h-full rounded-full transition-all duration-500 ease-out ${colorMap[level]}`} />
                         </div>
                         <div className={`flex items-center bg-white border border-[#e2e8f0] rounded-xl shadow-xs overflow-hidden p-0.5 w-24 sm:w-28 h-8 sm:h-10 transition-colors ${borderMap[level]}`}>
-                          <button onClick={() => adjustDifficulty(level, -5)} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
+                          <button onClick={() => adjustDifficulty(level, -5)} aria-label={`Decrease ${level} share`} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
                           <input type="text" value={`${pct}%`} readOnly className="flex-1 text-center font-bold text-xs sm:text-[14px] text-[#1e293b] border-none outline-none focus:ring-0 w-full p-0 pointer-events-none" />
-                          <button onClick={() => adjustDifficulty(level, 5)} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
+                          <button onClick={() => adjustDifficulty(level, 5)} aria-label={`Increase ${level} share`} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
                         </div>
                       </div>
                     );
