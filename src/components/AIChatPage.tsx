@@ -12,11 +12,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import ChatMarkdown from './ChatMarkdown';
 import UserAvatar from './UserAvatar';
 
-const QUICK_PROMPTS = [
-  { label: 'Explain step-by-step', icon: BookOpen, prompt: 'Can you explain this step-by-step?' },
-  { label: 'SHS practice problem', icon: Calculator, prompt: 'Give me an SHS STEM practice problem on this topic.' },
-  { label: 'Simplify concept', icon: Brain, prompt: "Simplify this concept for me like I'm a Grade 11 student." },
-  { label: 'Check my solution', icon: FlaskConical, prompt: 'Can you check if my solution is correct?' },
+export const QUICK_PROMPTS = [
+  { label: 'Explain step-by-step', icon: BookOpen, prompt: 'Can you explain this math problem step-by-step?' },
+  { label: 'SHS practice problem', icon: Calculator, prompt: 'Give me an SHS STEM math practice problem on this topic.' },
+  { label: 'Simplify concept', icon: Brain, prompt: "Simplify this math concept for me like I'm a Grade 11 student." },
+  { label: 'Check my solution', icon: FlaskConical, prompt: 'Can you check if my math solution is correct?' },
 ] as const;
 
 const TOPIC_CARDS = [
@@ -522,11 +522,7 @@ const AIChatPage = () => {
                   {TOPIC_CARDS.map(({ label, icon: Icon, color, desc }) => (
                     <button
                       key={label}
-                      onClick={() => {
-                        const id = createNewSession();
-                        setActiveSessionId(id);
-                        setTimeout(() => handleSendMessage(`I want to learn about ${label} in SHS STEM`), 200);
-                      }}
+                      onClick={() => handleSendMessage(`I want to learn about ${label} in SHS STEM`)}
                       className="group p-4 bg-white rounded-2xl border border-[#e4e4e7] hover:border-[#9956DE]/30 hover:shadow-md transition-all text-left"
                     >
                       <div className={`w-10 h-10 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
