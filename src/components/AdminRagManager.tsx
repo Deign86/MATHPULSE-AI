@@ -60,6 +60,7 @@ const AdminRagManager: React.FC = () => {
   const [documents, setDocuments] = useState<RagDocument[]>([]);
   const [totalChunks, setTotalChunks] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [reingestStatus, setReingestStatus] = useState<ReingestStatusResponse | null>(null);
   const consecutiveFailuresRef = useRef<number>(0);
@@ -81,12 +82,14 @@ const AdminRagManager: React.FC = () => {
 
   const fetchDocuments = useCallback(async () => {
     setLoading(true);
+    setLoadError(null);
     try {
       const healthResponse = await apiFetch<RagHealthResponse>('/api/rag/documents');
       setDocuments(healthResponse.documents || []);
       setTotalChunks(healthResponse.total_chunks || 0);
     } catch (error) {
       console.error('Failed to fetch RAG documents:', error);
+      setLoadError(error instanceof Error ? error.message : 'Failed to load RAG inventory');
       toast.error('Failed to load RAG inventory');
     } finally {
       setLoading(false);
@@ -283,7 +286,7 @@ const AdminRagManager: React.FC = () => {
   const toggleAccordion = (subjectKey: string) => {
     setExpandedAccordions((prev) => ({
       ...prev,
-      [subjectKey]: !prev[subjectKey],
+      [subjectKey]: !(prev[subjectKey] ?? true),
     }));
   };
 
@@ -403,6 +406,7 @@ const AdminRagManager: React.FC = () => {
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
+                aria-label="Clear search"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 <X size={14} />
@@ -491,6 +495,20 @@ const AdminRagManager: React.FC = () => {
             <div className="h-12 rounded-xl bg-slate-100 dark:bg-slate-800" />
             <div className="h-48 rounded-xl bg-slate-100 dark:bg-slate-800" />
           </div>
+        </div>
+      ) : loadError ? (
+        <div role="alert" className="text-center py-16 px-6 bg-white dark:bg-slate-900 rounded-3xl border border-rose-200 dark:border-rose-900/50 shadow-sm max-w-lg mx-auto">
+          <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-100 dark:border-rose-900/50 flex items-center justify-center text-rose-600 dark:text-rose-400 mx-auto mb-4 shadow-sm">
+            <AlertTriangle size={30} />
+          </div>
+          <h3 className="font-bold text-base text-slate-900 dark:text-white">Could not load the RAG inventory</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5 leading-relaxed">{loadError}</p>
+          <Button
+            onClick={() => void fetchDocuments()}
+            className="mt-5 gap-2 bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white rounded-xl text-xs font-bold shadow-md shadow-purple-500/20 active:scale-95"
+          >
+            <RefreshCw size={14} /> Retry
+          </Button>
         </div>
       ) : subjectGroups.length === 0 ? (
         /* Empty State */
@@ -820,6 +838,8 @@ const AdminRagManager: React.FC = () => {
                     </Button>
                     <button
                       onClick={() => toggleAccordion(group.subject)}
+                      aria-label={isExpanded ? `Collapse ${group.subject}` : `Expand ${group.subject}`}
+                      aria-expanded={isExpanded}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
                     >
                       {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -856,6 +876,7 @@ const AdminRagManager: React.FC = () => {
                               <button
                                 onClick={() => setDeleteFileModal(file.source_file)}
                                 disabled={!!actionLoading}
+                                aria-label={`Remove ${file.source_file}`}
                                 className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                               >
                                 <Trash2 size={13} />

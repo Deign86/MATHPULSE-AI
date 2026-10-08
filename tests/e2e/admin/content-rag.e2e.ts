@@ -105,7 +105,7 @@ describe('admin content and RAG manager', { tags: ['admin', 'content-rag'] }, ()
     expect(writes).toEqual([]);
   });
 
-  test('an Accordion panel collapses on the first tap of its header and expands on the second', { session: 'admin', tags: ['known-bug'] }, async ({ app, browser, screen }) => {
+  test('an Accordion panel collapses on the first tap of its header and expands on the second', { session: 'admin' }, async ({ app, browser, screen }) => {
     const writes: string[] = [];
     await browser.route(ragWrites, abortWrites(writes));
     await app.open('/');
