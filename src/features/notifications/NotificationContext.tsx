@@ -38,6 +38,7 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   // Ref to always access current notifications state — avoids stale closure in revert
   const notificationsRef = useRef<Notification[]>([]);
   const markAllAsReadInFlightRef = useRef(false);
+  const markAllAsReadRerunRef = useRef(false);
   // Ids being marked read by an in-flight Mark all read. Snapshots that arrive before the write
   // is acknowledged (a reconnect re-sending the server copy) must not flip them back to unread.
   const pendingReadIdsRef = useRef<ReadonlySet<string>>(new Set());
@@ -87,13 +88,27 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   );
 
   const markAllAsRead = useCallback(async () => {
-    if (!userId || markAllAsReadInFlightRef.current) return;
+    if (!userId) return;
+    // Shows every visible unread notification as read and holds those ids against stale snapshots.
+    const markVisibleRead = (): number => {
+      const unreadIds = notificationsRef.current.filter((notification) => !notification.isRead).map((notification) => notification.id);
+      pendingReadIdsRef.current = new Set([...pendingReadIdsRef.current, ...unreadIds]);
+      setNotifications((curr) => curr.map((n) => (n.isRead ? n : { ...n, isRead: true })));
+      return unreadIds.length;
+    };
+    if (markAllAsReadInFlightRef.current) {
+      // Notifications that arrived while the first write is pending are written right after it.
+      if (markVisibleRead() > 0) markAllAsReadRerunRef.current = true;
+      return;
+    }
     markAllAsReadInFlightRef.current = true;
     const prev = notificationsRef.current;
-    pendingReadIdsRef.current = new Set(prev.filter((notification) => !notification.isRead).map((notification) => notification.id));
-    setNotifications((curr) => curr.map((n) => (n.isRead ? n : { ...n, isRead: true })));
+    markVisibleRead();
     try {
-      await firestoreMarkAllAsRead(userId);
+      do {
+        markAllAsReadRerunRef.current = false;
+        await firestoreMarkAllAsRead(userId);
+      } while (markAllAsReadRerunRef.current);
       pendingReadIdsRef.current = new Set();
     } catch (err) {
       pendingReadIdsRef.current = new Set();

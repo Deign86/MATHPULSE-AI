@@ -270,6 +270,65 @@ describe('NotificationContext', () => {
     });
   });
 
+  it('marks a notification that arrived during a pending Mark all read and writes it afterwards', async () => {
+    const first: Notification = {
+      id: 'first',
+      userId: 'user-123',
+      type: 'reminder',
+      title: 'First',
+      message: 'First message',
+      isRead: false,
+      createdAt: new Date(),
+    };
+    const late: Notification = { ...first, id: 'late', title: 'Late' };
+    let pushSnapshot: ((notifications: Notification[]) => void) | undefined;
+    subscribeToNotificationsSpy.mockImplementation((_userId, callback) => {
+      pushSnapshot = callback;
+      callback([first]);
+      return vi.fn();
+    });
+    let resolveFirstWrite: () => void = () => undefined;
+    markAllAsReadSpy
+      .mockImplementationOnce(() => new Promise<void>((resolve) => { resolveFirstWrite = resolve; }))
+      .mockImplementation(async () => undefined);
+
+    const TestComponent = () => {
+      const { markAllAsRead, unreadCount } = useNotifications();
+      return (
+        <>
+          <button onClick={() => markAllAsRead()}>Mark All Read</button>
+          <span data-testid="unread-count">{unreadCount}</span>
+        </>
+      );
+    };
+
+    render(
+      <NotificationProvider>
+        <TestComponent />
+      </NotificationProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('unread-count')).toHaveTextContent('1'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Mark All Read' }));
+    });
+    await act(async () => {
+      pushSnapshot?.([first, late]);
+    });
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('1');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Mark All Read' }));
+    });
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('0');
+    expect(notificationFirestoreNs.markAllAsRead).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      resolveFirstWrite();
+    });
+    await waitFor(() => expect(notificationFirestoreNs.markAllAsRead).toHaveBeenCalledTimes(2));
+  });
+
   it('keeps marked notifications read when a stale unread snapshot arrives before the write lands', async () => {
     const unread: Notification = {
       id: 'stale',
