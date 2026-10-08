@@ -63,4 +63,20 @@ describe('useLessonContent', () => {
     expect(result.current.error).toBeNull();
     expect(result.current.sections).toHaveLength(1);
   });
+
+  it('shows the curriculum-not-ingested message from a FastAPI 404 detail body', async () => {
+    const message = 'No curriculum content found for this lesson. Please ensure the PDF has been ingested.';
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      text: async () => JSON.stringify({ detail: { error: 'no_curriculum_context', message } }),
+    })));
+
+    const { result } = renderHook(() => useLessonContent('lesson-1', request));
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    expect(result.current.error).toBe(message);
+    expect(result.current.isOffline).toBe(true);
+  });
 });

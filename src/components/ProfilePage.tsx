@@ -141,6 +141,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
     setIsEditMode(false);
     setIsDiscardConfirmOpen(false);
     toast.info('Changes discarded');
+    // The sync effect runs after this render; clear the guard now so onBack is not blocked as unsaved.
+    if (unsavedChangesRef) unsavedChangesRef.current = false;
     onBack?.();
   };
 
