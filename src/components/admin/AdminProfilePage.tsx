@@ -352,8 +352,8 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
                     <div className="relative">
                       <Building size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
-                        value={accountData.school || accountData.department || 'Senior High School Mathematics'}
-                        onChange={(e) => handleFieldChange('school', e.target.value)}
+                        value={accountData.department || 'Senior High School Mathematics'}
+                        onChange={(e) => handleFieldChange('department', e.target.value)}
                         placeholder="Department or Division"
                         className="pl-10 h-10 text-xs rounded-xl"
                       />

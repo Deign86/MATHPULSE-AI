@@ -108,7 +108,7 @@ describe('admin profile and settings', { tags: ['admin', 'profile-settings'], ti
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible();
   });
 
-  test('Office / Department keeps a saved value after Save Changes and a reload', { session: 'admin', tags: ['known-bug'] }, async ({ app, screen, browser }) => {
+  test('Office / Department keeps a saved value after Save Changes and a reload', { session: 'admin' }, async ({ app, screen, browser }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', /^Profile menu: /).tap();
