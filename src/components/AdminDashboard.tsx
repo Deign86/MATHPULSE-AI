@@ -1295,7 +1295,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               sidebarCollapsed={sidebarCollapsed}
             />
           )}
-          {activeTab === 'Analytics' && <AdminAnalytics />}
+          {activeTab === 'Analytics' && <AdminAnalytics onManageSections={() => handleTabChange('Class Management')} />}
           {activeTab === 'AI Monitoring' && <AIMonitoringPage />}
           {activeTab === 'Class Management' && <AdminClassManagement />}
           
