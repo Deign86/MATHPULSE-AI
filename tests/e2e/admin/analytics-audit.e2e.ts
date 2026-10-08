@@ -254,7 +254,7 @@ describe('admin analytics and audit log', { tags: ['admin', 'analytics-audit'] }
     await expect(screen.getByText('Audit log exported successfully')).toBeVisible();
   });
 
-  test('the filter-toolbar Export button has an accessible name', { session: 'admin', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('the filter-toolbar Export button has an accessible name', { session: 'admin' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Insights & Security' }).getByRole('button', 'Audit Log').tap();
