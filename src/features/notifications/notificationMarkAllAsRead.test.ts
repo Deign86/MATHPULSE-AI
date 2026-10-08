@@ -31,6 +31,7 @@ vi.spyOn(firestore, 'collection').mockImplementation(
   () => mockCollectionRef as ReturnType<typeof collection>,
 );
 vi.spyOn(firestore, 'getDocs').mockImplementation(async () => snapshotWith({ docs: [] }));
+vi.spyOn(firestore, 'getDocsFromCache').mockImplementation(async () => snapshotWith({ docs: [], empty: true }));
 
 const mockWriteBatchWith = (overrides?: {
   update?: ReturnType<typeof vi.fn>;
@@ -62,6 +63,49 @@ describe('markAllAsRead', () => {
     vi.clearAllMocks();
     vi.mocked(getDocs).mockReset();
     vi.mocked(getDocs).mockResolvedValue(snapshotWith({ docs: [] }));
+    vi.mocked(firestore.getDocsFromCache).mockResolvedValue(snapshotWith({ docs: [], empty: true }));
+  });
+
+  it('marks the cached inbox without waiting on a server read', async () => {
+    vi.mocked(firestore.getDocsFromCache).mockResolvedValue(snapshotWith({
+      docs: [notificationDocWith('cached-1', { isRead: false }), notificationDocWith('cached-2', { isRead: true })],
+      empty: false,
+    }));
+    // A stalled connection: the server read never settles.
+    vi.mocked(getDocs).mockImplementation(() => new Promise(() => undefined));
+    const batchUpdate = vi.fn();
+    const batchCommit = vi.fn(async () => undefined);
+    vi.mocked(firestore.writeBatch).mockImplementation(
+      // SAFETY: mock WriteBatch handle; tests track batchUpdate and batchCommit calls.
+      () => mockWriteBatchWith({ update: batchUpdate, commit: batchCommit }),
+    );
+
+    await markAllAsRead('user-123');
+
+    expect(getDocs).not.toHaveBeenCalled();
+    expect(batchUpdate).toHaveBeenCalledTimes(1);
+    expect(batchUpdate).toHaveBeenCalledWith(expect.objectContaining({ id: 'cached-1' }), { isRead: true });
+    expect(batchCommit).toHaveBeenCalledTimes(1);
+  });
+
+  it('queues every batch even while the first server acknowledgement is pending', async () => {
+    vi.mocked(firestore.getDocsFromCache).mockResolvedValue(snapshotWith({
+      docs: Array.from({ length: 600 }, (_, index) => notificationDocWith(`doc-${index}`, { isRead: false })),
+      empty: false,
+    }));
+    const commits: Array<ReturnType<typeof vi.fn>> = [];
+    vi.mocked(firestore.writeBatch).mockImplementation(() => {
+      const isFirstBatch = commits.length === 0;
+      const batchCommit = vi.fn(() => (isFirstBatch ? new Promise<void>(() => undefined) : Promise.resolve()));
+      commits.push(batchCommit);
+      return mockWriteBatchWith({ commit: batchCommit });
+    });
+
+    void markAllAsRead('user-123');
+    await vi.waitFor(() => expect(commits).toHaveLength(2));
+
+    expect(commits[0]).toHaveBeenCalledTimes(1);
+    expect(commits[1]).toHaveBeenCalledTimes(1);
   });
 
   it('marks all unread notifications as read', async () => {

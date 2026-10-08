@@ -38,6 +38,9 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
   // Ref to always access current notifications state — avoids stale closure in revert
   const notificationsRef = useRef<Notification[]>([]);
   const markAllAsReadInFlightRef = useRef(false);
+  // Ids being marked read by an in-flight Mark all read. Snapshots that arrive before the write
+  // is acknowledged (a reconnect re-sending the server copy) must not flip them back to unread.
+  const pendingReadIdsRef = useRef<ReadonlySet<string>>(new Set());
 
   // Fire daily check-in reminder (students only)
   useDailyCheckInReminder(userProfile?.role === 'student' ? userId : null);
@@ -54,7 +57,11 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     // (or missing) so students never lose their inbox mid-load.
     const role = userProfile?.role ?? userRole;
     const unsubscribe = subscribeToNotifications(userId, (newNotifications) => {
-      setNotifications(dedupeNotifications(filterNotificationsForRole(newNotifications, role)));
+      const pendingReadIds = pendingReadIdsRef.current;
+      const visible = dedupeNotifications(filterNotificationsForRole(newNotifications, role));
+      setNotifications(pendingReadIds.size === 0
+        ? visible
+        : visible.map((notification) => (pendingReadIds.has(notification.id) ? { ...notification, isRead: true } : notification)));
       setIsLoading(false);
     });
 
@@ -83,13 +90,13 @@ export const NotificationProvider: React.FC<NotificationProviderProps> = ({ chil
     if (!userId || markAllAsReadInFlightRef.current) return;
     markAllAsReadInFlightRef.current = true;
     const prev = notificationsRef.current;
-    console.log('[markAllAsRead] prev count:', prev.filter(n => !n.isRead).length, 'notifications:', prev.length);
+    pendingReadIdsRef.current = new Set(prev.filter((notification) => !notification.isRead).map((notification) => notification.id));
     setNotifications((curr) => curr.map((n) => (n.isRead ? n : { ...n, isRead: true })));
-    console.log('[markAllAsRead] optimistic update applied, new count should be 0');
     try {
       await firestoreMarkAllAsRead(userId);
-      console.log('[markAllAsRead] Firestore update succeeded');
+      pendingReadIdsRef.current = new Set();
     } catch (err) {
+      pendingReadIdsRef.current = new Set();
       console.error('[markAllAsRead] Firestore update failed:', err);
       const previousById = new Map(prev.map((notification) => [notification.id, notification]));
       setNotifications((curr) => curr.map((notification) => {

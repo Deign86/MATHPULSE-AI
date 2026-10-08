@@ -269,4 +269,58 @@ describe('NotificationContext', () => {
       expect(screen.getByTestId('unread-count')).toHaveTextContent('2');
     });
   });
+
+  it('keeps marked notifications read when a stale unread snapshot arrives before the write lands', async () => {
+    const unread: Notification = {
+      id: 'stale',
+      userId: 'user-123',
+      type: 'reminder',
+      title: 'Welcome',
+      message: 'Complete your diagnostic',
+      isRead: false,
+      createdAt: new Date(),
+    };
+    let pushSnapshot: ((notifications: Notification[]) => void) | undefined;
+    subscribeToNotificationsSpy.mockImplementation((_userId, callback) => {
+      pushSnapshot = callback;
+      callback([unread]);
+      return vi.fn();
+    });
+    let resolveWrite: () => void = () => undefined;
+    markAllAsReadSpy.mockImplementation(() => new Promise<void>((resolve) => { resolveWrite = resolve; }));
+
+    const TestComponent = () => {
+      const { markAllAsRead, unreadCount } = useNotifications();
+      return (
+        <>
+          <button onClick={() => markAllAsRead()}>Mark All Read</button>
+          <span data-testid="unread-count">{unreadCount}</span>
+        </>
+      );
+    };
+
+    render(
+      <NotificationProvider>
+        <TestComponent />
+      </NotificationProvider>,
+    );
+    await waitFor(() => expect(screen.getByTestId('unread-count')).toHaveTextContent('1'));
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Mark All Read' }));
+    });
+    // A reconnecting listener re-sends the server copy, still unread, while the write is pending.
+    await act(async () => {
+      pushSnapshot?.([unread]);
+    });
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('0');
+
+    await act(async () => {
+      resolveWrite();
+    });
+    await act(async () => {
+      pushSnapshot?.([{ ...unread, isRead: true }]);
+    });
+    expect(screen.getByTestId('unread-count')).toHaveTextContent('0');
+  });
 });
