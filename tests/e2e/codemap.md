@@ -1,7 +1,7 @@
 # tests/e2e/
 
 ## Responsibility
-Agentic browser end-to-end suites driven by the tester-army/e2e runner (v0.16.0). They cover every reachable feature for signed-out visitors, students, teachers and admins against local dev servers.
+Agentic browser end-to-end suites driven by the tester-army/e2e runner (v0.18.0). They cover every reachable feature for signed-out visitors, students, teachers and admins against local dev servers.
 
 ## Design
 - `auth.setup.e2e.ts` signs in each e2e account once and saves the sessions `student`, `student2`, `teacher` and `admin`. Tests declare `{ session: '<name>' }` and start signed in. `smoke.e2e.ts` still exercises the agent-driven sign-in path.
