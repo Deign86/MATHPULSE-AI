@@ -85,7 +85,7 @@ const AIMonitoringPage: React.FC = () => {
         <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
           <button
             onClick={() => setShowDirectory(true)}
-            className="inline-flex items-center gap-1.5 min-h-[38px] rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-purple-300 dark:hover:border-purple-600 hover:text-[#9956DE] dark:hover:text-purple-300 hover:bg-purple-50/40 dark:hover:bg-purple-950/30 shadow-xs transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-1.5 min-h-[38px] pointer-coarse:min-h-11 rounded-xl border border-slate-200/80 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 px-3.5 text-xs font-bold text-slate-700 dark:text-slate-200 hover:border-purple-300 dark:hover:border-purple-600 hover:text-[#9956DE] dark:hover:text-purple-300 hover:bg-purple-50/40 dark:hover:bg-purple-950/30 shadow-xs transition-all active:scale-95 cursor-pointer"
           >
             <List className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
             System Directory
@@ -94,7 +94,7 @@ const AIMonitoringPage: React.FC = () => {
             onClick={handleRefresh}
             disabled={refreshing}
             aria-label="Refresh AI monitoring metrics"
-            className="inline-flex items-center gap-1.5 min-h-[38px] rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] px-3.5 text-xs font-bold text-white shadow-xs hover:shadow-md hover:shadow-purple-500/20 transition-all active:scale-95 disabled:opacity-50 border border-purple-400/30 cursor-pointer"
+            className="inline-flex items-center gap-1.5 min-h-[38px] pointer-coarse:min-h-11 rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] px-3.5 text-xs font-bold text-white shadow-xs hover:shadow-md hover:shadow-purple-500/20 transition-all active:scale-95 disabled:opacity-50 border border-purple-400/30 cursor-pointer"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             Refresh
@@ -103,7 +103,7 @@ const AIMonitoringPage: React.FC = () => {
       </div>
 
       {/* ── Top Executive KPI Bento Cards (Compact 2x2 on mobile) ── */}
-      <div data-tour="aimon-metrics" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div data-tour="aimon-metrics" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-4">
         <KPICard
           title="Monthly Cost"
           value={`$${data.monthlyCost.toFixed(2)}`}
@@ -158,11 +158,11 @@ const AIMonitoringPage: React.FC = () => {
         />
       </div>
 
-      <dl aria-label="Daily AI attempts in Asia/Manila time">
+      <dl aria-label="Daily AI attempts in Asia/Manila time" className="grid grid-cols-1 min-[420px]:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2 max-h-56 overflow-y-auto rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 text-xs">
         {data.telemetry.dailyMetrics.map((dailyMetric) => (
-          <div key={dailyMetric.date}>
-            <dt>{dailyMetric.date}</dt>
-            <dd>{dailyMetric.totalAttempts} attempts; {dailyMetric.successfulAttempts} successful</dd>
+          <div key={dailyMetric.date} className="flex items-baseline justify-between gap-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1.5">
+            <dt className="font-bold text-slate-700 dark:text-slate-200 tabular-nums">{dailyMetric.date}</dt>
+            <dd className="text-right text-slate-500 dark:text-slate-400 tabular-nums">{dailyMetric.totalAttempts} attempts; {dailyMetric.successfulAttempts} successful</dd>
           </div>
         ))}
       </dl>

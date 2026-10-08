@@ -238,7 +238,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   ];
 
   return (
-    <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300 min-h-[calc(100vh-80px)]">
+    <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {/* Navigation Header */}
       {onBack && (
         <div className="flex items-center justify-between gap-3">
@@ -276,13 +276,13 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
       <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
         {/* Left Column: Settings Navigation Sidebar (Sticky on mobile & desktop) */}
         <div data-tour="admin-settings-sections" className="w-full lg:w-[260px] xl:w-[280px] shrink-0 space-y-2 lg:sticky lg:top-4 z-20">
-          <div data-tour-sticky="" className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-1.5 sm:p-2 shadow-xs flex lg:flex-col gap-1 overflow-x-auto scrollbar-none sticky top-0 lg:static z-20">
+          <div data-tour-sticky="" className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-1.5 sm:p-2 shadow-xs flex lg:flex-col gap-1 overflow-x-auto no-scrollbar sticky top-0 short:static lg:static z-20">
             {tabs.map((tabItem) => (
               <button
                 key={tabItem.id}
                 type="button"
                 onClick={() => setActiveTab(tabItem.id)}
-                className={`w-full flex items-center gap-2.5 sm:gap-3 px-3.5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 lg:shrink ${
+                className={`lg:w-full flex items-center gap-2.5 sm:gap-3 px-3.5 py-2 sm:py-2.5 min-h-[40px] sm:min-h-[44px] rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer shrink-0 lg:shrink ${
                   activeTab === tabItem.id
                     ? 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/80 shadow-2xs'
                     : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white border border-transparent'
@@ -313,7 +313,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-indigo-600 pointer-events-none" />
 
             {/* Header: Tab Title + Save Actions */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-5 mb-6 border-b border-slate-200/80 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3 pb-5 mb-6 border-b border-slate-200/80 dark:border-slate-800">
               <div>
                 <h2 className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white tracking-tight">
                   {tabs.find((t) => t.id === activeTab)?.label}

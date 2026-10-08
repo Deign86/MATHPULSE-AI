@@ -14,7 +14,7 @@ export const PricingInfoTooltip: React.FC<PricingInfoTooltipProps> = ({ pricingM
       <button
         onMouseEnter={() => setShow(true)}
         onMouseLeave={() => setShow(false)}
-        className="rounded p-1 text-slate-400 hover:text-slate-600"
+        className="relative rounded p-1 text-slate-400 hover:text-slate-600 pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5"
         aria-label="Pricing info"
       >
         <Info className="h-4 w-4" />

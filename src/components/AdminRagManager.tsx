@@ -290,7 +290,7 @@ const AdminRagManager: React.FC = () => {
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {/* ── Top Bento Stats Header ── */}
-      <div data-tour="rag-stats" className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+      <div data-tour="rag-stats" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2 sm:gap-4">
         {[
           {
             label: 'Indexed Sections',
@@ -390,7 +390,7 @@ const AdminRagManager: React.FC = () => {
       )}
 
       {/* ── Control & Search Bar (Sticky Toolbar) ── */}
-      <div data-tour-sticky="" className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+      <div data-tour-sticky="" className="sticky top-0 short:static z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
         <div data-tour="rag-toolbar" className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2.5 p-2.5 sm:p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
           {/* Search Box */}
           <div className="relative flex-1 min-w-0">
@@ -412,13 +412,13 @@ const AdminRagManager: React.FC = () => {
           </div>
 
           {/* Action Buttons: Unified responsive toolbar on a single balanced line */}
-          <div className="flex items-center gap-1.5 sm:gap-2 justify-between xl:justify-end shrink-0 w-full xl:w-auto">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 justify-between xl:justify-end shrink-0 w-full xl:w-auto">
             {/* View Mode Switcher */}
             <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200/80 dark:border-slate-700 shrink-0">
               <button
                 type="button"
                 onClick={() => setViewLayout('master-detail')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewLayout === 'master-detail'
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -431,7 +431,7 @@ const AdminRagManager: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setViewLayout('accordion')}
-                className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`flex items-center justify-center gap-1.5 px-2.5 sm:px-3 py-1.5 pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   viewLayout === 'accordion'
                     ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs'
                     : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
@@ -447,7 +447,7 @@ const AdminRagManager: React.FC = () => {
               onClick={fetchDocuments}
               disabled={loading}
               variant="outline"
-              className="gap-1.5 h-10 px-2.5 sm:px-3 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:border-purple-300 hover:text-[#9956DE] active:scale-95 transition-all shrink-0"
+              className="gap-1.5 h-10 pointer-coarse:h-11 pointer-coarse:min-w-11 px-2.5 sm:px-3 text-xs font-bold rounded-xl border-slate-200 dark:border-slate-700 hover:border-purple-300 hover:text-[#9956DE] active:scale-95 transition-all shrink-0"
               title="Refresh Knowledge Index"
             >
               <RefreshCw size={13} className={loading ? 'animate-spin text-[#9956DE]' : ''} />
@@ -457,7 +457,7 @@ const AdminRagManager: React.FC = () => {
             <Button
               onClick={() => setReingestModalOpen(true)}
               disabled={!!actionLoading || isReingestRunning}
-              className="gap-1.5 h-10 px-3 sm:px-4 text-xs font-bold rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white shadow-sm shadow-purple-500/20 active:scale-95 transition-all border border-purple-400/30 shrink-0 whitespace-nowrap"
+              className="gap-1.5 h-10 pointer-coarse:h-11 px-3 sm:px-4 text-xs font-bold rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white shadow-sm shadow-purple-500/20 active:scale-95 transition-all border border-purple-400/30 shrink-0 whitespace-nowrap"
             >
               {actionLoading === 'reingest' || isReingestRunning ? (
                 <Loader2 size={13} className="animate-spin text-white shrink-0" />
@@ -470,7 +470,7 @@ const AdminRagManager: React.FC = () => {
             <Button
               onClick={() => setPurgeModalOpen(true)}
               variant="outline"
-              className="gap-1.5 h-10 px-2.5 sm:px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0"
+              className="gap-1.5 h-10 pointer-coarse:h-11 pointer-coarse:min-w-11 px-2.5 sm:px-3.5 text-rose-600 dark:text-rose-400 border-rose-200 dark:border-rose-900/50 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-xs font-bold rounded-xl active:scale-95 transition-all shrink-0"
               title="Clear All Vectors"
             >
               <Trash2 size={13} />
@@ -515,9 +515,9 @@ const AdminRagManager: React.FC = () => {
         /* ════════════════════════════════════════════════════════════════════════
            MASTER-DETAIL SPLIT VIEW (Zero Scroll Fatigue for Massive File Lists)
            ════════════════════════════════════════════════════════════════════════ */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
           {/* ── Left Column: Subject Directory (Desktop Only: 4 Cols) ── */}
-          <div data-tour="rag-subjects" className="hidden lg:block lg:col-span-4 space-y-3">
+          <div data-tour="rag-subjects" className="hidden xl:block xl:col-span-4 space-y-3">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Subjects Directory ({filteredGroups.length})
@@ -599,9 +599,9 @@ const AdminRagManager: React.FC = () => {
           </div>
 
           {/* ── Right Column: Selected Subject Source Files (8 Cols on Desktop, Full on Mobile) ── */}
-          <div data-tour="rag-detail" className="col-span-1 lg:col-span-8 w-full">
+          <div data-tour="rag-detail" className="col-span-1 xl:col-span-8 w-full">
             {/* Mobile Subject Dropdown Selector (< lg screens) */}
-            <div data-tour="rag-subjects" className="lg:hidden space-y-1.5 mb-4">
+            <div data-tour="rag-subjects" className="xl:hidden space-y-1.5 mb-4">
               <div className="flex items-center justify-between px-1">
                 <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Subject Directory ({filteredGroups.length})
@@ -632,7 +632,7 @@ const AdminRagManager: React.FC = () => {
                     </div>
                   </div>
                 </SelectTrigger>
-                <SelectContent className="max-h-[320px] rounded-2xl p-1.5 border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-xl">
+                <SelectContent className="max-h-[min(320px,var(--radix-select-content-available-height))] rounded-2xl p-1.5 border border-slate-200 dark:border-slate-800 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-xl">
                   {filteredGroups.map((grp) => {
                     const isCur = selectedSubject === grp.subject;
                     return (
@@ -723,7 +723,7 @@ const AdminRagManager: React.FC = () => {
                       No files match your search query in this subject.
                     </div>
                   ) : (
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[460px] overflow-y-auto pr-1">
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800 xl:max-h-[460px] xl:overflow-y-auto pr-1">
                       {activeSubjectFiles.map((file) => (
                         <div
                           key={file.source_file}
@@ -839,7 +839,7 @@ const AdminRagManager: React.FC = () => {
                       className="overflow-hidden"
                     >
                       <div className="p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800">
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800 max-h-[300px] overflow-y-auto pr-1">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 xl:max-h-[300px] xl:overflow-y-auto pr-1">
                           {group.files.map((file) => (
                             <div
                               key={file.source_file}

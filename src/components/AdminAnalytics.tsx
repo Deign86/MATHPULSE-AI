@@ -362,7 +362,7 @@ export const AdminAnalytics: React.FC = () => {
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`px-3 py-1 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg text-xs font-bold transition-all cursor-pointer ${
                   timeRange === range
                     ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
                     : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -379,7 +379,7 @@ export const AdminAnalytics: React.FC = () => {
             disabled={loadingKPIs}
             title="Refresh platform telemetry"
             aria-label="Refresh platform telemetry"
-            className="p-2 min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-[#9956DE] dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-700 shadow-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="p-2 min-w-[38px] min-h-[38px] pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-[#9956DE] dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-700 shadow-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw size={14} className={loadingKPIs ? 'animate-spin text-[#9956DE]' : ''} />
           </button>
@@ -388,7 +388,7 @@ export const AdminAnalytics: React.FC = () => {
           <button
             onClick={handleExportCSV}
             disabled={isExporting || loadingKPIs}
-            className="inline-flex items-center gap-1.5 min-h-[38px] rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] px-3.5 text-xs font-bold text-white shadow-xs hover:shadow-md hover:shadow-purple-500/20 transition-all active:scale-95 disabled:opacity-50 border border-purple-400/30 cursor-pointer"
+            className="inline-flex items-center gap-1.5 min-h-[38px] pointer-coarse:min-h-11 rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] px-3.5 text-xs font-bold text-white shadow-xs hover:shadow-md hover:shadow-purple-500/20 transition-all active:scale-95 disabled:opacity-50 border border-purple-400/30 cursor-pointer"
           >
             {isExporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
             Export Report
@@ -397,7 +397,7 @@ export const AdminAnalytics: React.FC = () => {
       </div>
 
       {/* ── Top Executive KPI Bento Cards (Full Color Gradients - 2x2 on mobile, 4-col on desktop) ── */}
-      <div data-tour="analytics-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div data-tour="analytics-kpis" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-4">
         {kpiBentos.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
@@ -415,7 +415,7 @@ export const AdminAnalytics: React.FC = () => {
               <div className="relative z-10 flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
                 <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
                   <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                    <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 truncate">
+                    <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 min-w-0 leading-tight">
                       {kpi.title}
                     </span>
                     {kpi.badge && (
@@ -444,7 +444,7 @@ export const AdminAnalytics: React.FC = () => {
               {/* Subtext and Progress Bar */}
               <div className="relative z-10 space-y-1.5 sm:space-y-2 mt-1 sm:mt-2 pt-1.5 sm:pt-2.5 border-t border-white/20">
                 <div className="flex items-center justify-between text-[10px] sm:text-[11px] gap-1.5">
-                  <span className="text-white/90 font-medium truncate drop-shadow-xs">
+                  <span className="text-white/90 font-medium min-w-0 leading-snug drop-shadow-xs">
                     {kpi.subValue}
                   </span>
                   {kpi.trend && (
@@ -470,42 +470,45 @@ export const AdminAnalytics: React.FC = () => {
       </div>
 
       {/* ── Categorized Focus Navigation Tabs (Sticky Header) ── */}
-      <div data-tour-sticky="" data-tour="analytics-tabs" className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
-        <div className="flex items-center gap-1.5 p-1 sm:p-1.5 bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 w-full sm:w-fit overflow-x-auto shadow-xs scrollbar-none">
+      <div data-tour-sticky="" data-tour="analytics-tabs" className="sticky top-0 short:static z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+        <div className="grid grid-cols-3 xl:flex xl:w-fit items-center gap-1.5 p-1 sm:p-1.5 bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 w-full shadow-xs">
           <button
             onClick={() => setActiveTab('outcomes')}
-            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`flex items-center justify-center xl:justify-start gap-2 min-w-0 h-full px-2 sm:px-4 py-2 sm:py-2.5 pointer-coarse:min-h-11 rounded-xl text-xs sm:text-sm font-bold leading-tight text-center xl:text-left xl:whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'outcomes'
                 ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
             }`}
           >
-            <TrendingUp size={15} />
-            <span>Learning Outcomes & Trajectory</span>
+            <TrendingUp size={15} className="hidden sm:block shrink-0" />
+            <span className="sm:hidden">Outcomes</span>
+            <span className="hidden sm:inline">Learning Outcomes & Trajectory</span>
           </button>
 
           <button
             onClick={() => setActiveTab('curriculum')}
-            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`flex items-center justify-center xl:justify-start gap-2 min-w-0 h-full px-2 sm:px-4 py-2 sm:py-2.5 pointer-coarse:min-h-11 rounded-xl text-xs sm:text-sm font-bold leading-tight text-center xl:text-left xl:whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'curriculum'
                 ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
             }`}
           >
-            <BookOpen size={15} />
-            <span>Curriculum & Subject Health</span>
+            <BookOpen size={15} className="hidden sm:block shrink-0" />
+            <span className="sm:hidden">Curriculum</span>
+            <span className="hidden sm:inline">Curriculum & Subject Health</span>
           </button>
 
           <button
             onClick={() => setActiveTab('engagement')}
-            className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all whitespace-nowrap cursor-pointer ${
+            className={`flex items-center justify-center xl:justify-start gap-2 min-w-0 h-full px-2 sm:px-4 py-2 sm:py-2.5 pointer-coarse:min-h-11 rounded-xl text-xs sm:text-sm font-bold leading-tight text-center xl:text-left xl:whitespace-nowrap transition-all cursor-pointer ${
               activeTab === 'engagement'
                 ? 'bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] text-white shadow-xs'
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
             }`}
           >
-            <Award size={15} />
-            <span>Engagement & Leaderboards</span>
+            <Award size={15} className="hidden sm:block shrink-0" />
+            <span className="sm:hidden">Engagement</span>
+            <span className="hidden sm:inline">Engagement & Leaderboards</span>
           </button>
         </div>
       </div>
@@ -552,7 +555,7 @@ export const AdminAnalytics: React.FC = () => {
                 </div>
 
                 {/* Recharts Area Curve */}
-                <div className="h-[280px] sm:h-[320px] w-full">
+                <div className="h-[280px] sm:h-[320px] short:h-[200px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={trajectoryData} margin={{ top: 10, right: 8, left: -20, bottom: 0 }}>
                       <defs>
@@ -1053,7 +1056,7 @@ export const AdminAnalytics: React.FC = () => {
               </div>
 
               {/* Recharts Bar Chart */}
-              <div className="h-[220px] sm:h-[240px] w-full">
+              <div className="h-[220px] sm:h-[240px] 2xl:h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={WEEKLY_ACTIVITY} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.6} />

@@ -172,14 +172,14 @@ const AdminClassManagement: React.FC = () => {
               <School size={12} className="sm:hidden text-white" />
               <School size={18} className="hidden sm:block text-white" />
             </div>
-            <span className="text-[7.5px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
+            <span className="max-[359px]:hidden text-[7.5px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
               Sections
             </span>
           </div>
 
           <div className="relative z-10 min-w-0">
             <p className="text-base sm:text-[30px] font-display font-black text-white leading-none sm:leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{classes.length}</p>
-            <p className="text-[9.5px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">Total Sections</p>
+            <p className="text-[9.5px] sm:text-sm font-bold text-white leading-tight sm:truncate mt-0.5 sm:mt-1 drop-shadow-xs">Total Sections</p>
             <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">Registered class sections</p>
           </div>
         </div>
@@ -194,13 +194,13 @@ const AdminClassManagement: React.FC = () => {
               <UserCheck size={12} className="sm:hidden text-white" />
               <UserCheck size={18} className="hidden sm:block text-white" />
             </div>
-            <span className="text-[7.5px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
+            <span className="max-[359px]:hidden text-[7.5px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
               Assigned
             </span>
           </div>
           <div className="relative z-10 min-w-0">
             <p className="text-base sm:text-[30px] font-display font-black text-white leading-none sm:leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{withManagerCount}</p>
-            <p className="text-[9.5px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">With Teacher</p>
+            <p className="text-[9.5px] sm:text-sm font-bold text-white leading-tight sm:truncate mt-0.5 sm:mt-1 drop-shadow-xs">With Teacher</p>
             <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">Assigned faculty advisers</p>
           </div>
         </div>
@@ -215,13 +215,13 @@ const AdminClassManagement: React.FC = () => {
               <Users size={12} className="sm:hidden text-white" />
               <Users size={18} className="hidden sm:block text-white" />
             </div>
-            <span className="text-[7.5px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
+            <span className="max-[359px]:hidden text-[7.5px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
               {unassignedCount > 0 ? 'Pending' : 'Optimal'}
             </span>
           </div>
           <div className="relative z-10 min-w-0">
             <p className="text-base sm:text-[30px] font-display font-black text-white leading-none sm:leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{unassignedCount}</p>
-            <p className="text-[9.5px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">No Teacher</p>
+            <p className="text-[9.5px] sm:text-sm font-bold text-white leading-tight sm:truncate mt-0.5 sm:mt-1 drop-shadow-xs">No Teacher</p>
             <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">Sections requiring adviser</p>
           </div>
         </div>

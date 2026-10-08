@@ -42,7 +42,7 @@ export const SystemDirectoryModal: React.FC<SystemDirectoryModalProps> = ({ open
           </div>
           <button
             onClick={onClose}
-            className="p-2 min-w-[36px] min-h-[36px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 active:scale-95 transition-all"
+            className="p-2 min-w-[36px] min-h-[36px] shrink-0 pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 active:scale-95 transition-all"
             aria-label="Close"
           >
             <X className="h-5 w-5" />

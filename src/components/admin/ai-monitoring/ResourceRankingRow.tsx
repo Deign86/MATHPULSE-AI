@@ -35,7 +35,7 @@ export const ResourceRankingRow: React.FC<ResourceRankingRowProps> = ({ features
         </div>
 
         {/* Search & Sort Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={13} />
             <input
@@ -50,7 +50,7 @@ export const ResourceRankingRow: React.FC<ResourceRankingRowProps> = ({ features
           <div className="flex items-center bg-slate-100 dark:bg-slate-900/70 p-0.5 rounded-xl border border-slate-200/80 dark:border-slate-700/60 text-xs">
             <button
               onClick={() => setSortBy('cost')}
-              className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+              className={`px-2.5 py-1 pointer-coarse:min-h-11 rounded-lg font-bold transition-all cursor-pointer ${
                 sortBy === 'cost' ? 'bg-white dark:bg-slate-800 text-[#9956DE] dark:text-purple-300 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -58,7 +58,7 @@ export const ResourceRankingRow: React.FC<ResourceRankingRowProps> = ({ features
             </button>
             <button
               onClick={() => setSortBy('requests')}
-              className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+              className={`px-2.5 py-1 pointer-coarse:min-h-11 rounded-lg font-bold transition-all cursor-pointer ${
                 sortBy === 'requests' ? 'bg-white dark:bg-slate-800 text-[#9956DE] dark:text-purple-300 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -66,7 +66,7 @@ export const ResourceRankingRow: React.FC<ResourceRankingRowProps> = ({ features
             </button>
             <button
               onClick={() => setSortBy('cache')}
-              className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+              className={`px-2.5 py-1 pointer-coarse:min-h-11 rounded-lg font-bold transition-all cursor-pointer ${
                 sortBy === 'cache' ? 'bg-white dark:bg-slate-800 text-[#9956DE] dark:text-purple-300 shadow-xs' : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
               }`}
             >
@@ -84,8 +84,8 @@ export const ResourceRankingRow: React.FC<ResourceRankingRowProps> = ({ features
             className="group flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl bg-slate-50/70 dark:bg-slate-900/40 border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-300 dark:hover:border-purple-800/60 hover:bg-purple-50/20 dark:hover:bg-purple-950/10 transition-all gap-2 sm:gap-4"
           >
             <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between text-xs mb-1.5">
-                <div className="flex items-center gap-2 truncate">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-xs mb-1.5">
+                <div className="flex items-center gap-2 min-w-0 max-w-full">
                   <span className="truncate font-bold text-slate-900 dark:text-white group-hover:text-[#9956DE] dark:group-hover:text-purple-300 transition-colors">
                     {f.featureName}
                   </span>

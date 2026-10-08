@@ -65,7 +65,7 @@ export const KPICard: React.FC<KPICardProps> = ({
       <div className="relative z-10 flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
         <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
           <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-            <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 truncate">
+            <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 min-w-0 leading-tight">
               {title}
             </span>
             {badge && (
@@ -75,7 +75,7 @@ export const KPICard: React.FC<KPICardProps> = ({
             )}
           </div>
           <div className="mt-0.5 sm:mt-1">
-            <p className="text-lg sm:text-3xl font-display font-black text-white tabular-nums tracking-tight leading-none drop-shadow-xs">
+            <p className="text-lg sm:text-3xl font-display font-black text-white tabular-nums tracking-tight leading-none break-words drop-shadow-xs">
               {value}
             </p>
           </div>
@@ -90,7 +90,7 @@ export const KPICard: React.FC<KPICardProps> = ({
       <div className="relative z-10 space-y-1.5 sm:space-y-2 mt-1 sm:mt-2 pt-1.5 sm:pt-2.5 border-t border-white/20">
         <div className="flex items-center justify-between text-[10px] sm:text-[11px] gap-1.5">
           {subValue && (
-            <span className="text-white/90 font-medium truncate drop-shadow-xs hidden sm:inline">
+            <span className="text-white/90 font-medium min-w-0 leading-snug drop-shadow-xs hidden sm:inline">
               {subValue}
             </span>
           )}

@@ -898,16 +898,16 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   const hasActiveFilters = searchQuery || roleFilter !== 'All Roles' || statusFilter !== 'All Status' || sectionFilter !== 'All Sections';
 
   return (
-    <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
+    <div className={`space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 animate-in fade-in duration-300 ${selectedCount > 0 ? 'pb-72 sm:pb-40 xl:pb-24' : 'pb-6'}`}>
       {/* ── Interactive KPI Quick-Filter Strip (Symmetrical Non-Scrolling Bento Grid) ── */}
       <div>
-        <div data-tour="users-kpis" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+        <div data-tour="users-kpis" className="grid grid-cols-2 sm:grid-cols-4 @4xl:grid-cols-5 gap-2 sm:gap-3">
           {loading && users.length === 0
             ? Array.from({ length: 5 }).map((_, idx) => (
                 <div
                   key={`kpi-skel-${idx}`}
                   className={`rounded-xl sm:rounded-2xl p-2.5 sm:p-4 bg-slate-200/60 dark:bg-slate-800 animate-pulse ${
-                    idx === 0 ? 'col-span-2 sm:col-span-4 lg:col-span-1 h-12 sm:min-h-[115px]' : 'col-span-1 h-16 sm:min-h-[115px]'
+                    idx === 0 ? 'col-span-2 sm:col-span-4 @4xl:col-span-1 h-12 sm:min-h-[115px]' : 'col-span-1 h-16 sm:min-h-[115px]'
                   }`}
                 >
                   <div className="h-3 w-14 bg-white/40 dark:bg-slate-700 rounded-full mb-2 sm:mb-4" />
@@ -921,7 +921,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                   onClick={card.onClick}
                   className={`group relative ${card.gradient} ${card.shadow} border border-white/25 hover:border-white/40 rounded-xl sm:rounded-2xl flex transition-all duration-300 ease-out text-left cursor-pointer overflow-hidden ${
                     idx === 0
-                      ? 'col-span-2 sm:col-span-4 lg:col-span-1 flex-row items-center justify-between p-2.5 sm:p-4 min-h-0 sm:min-h-[115px] sm:flex-row sm:items-center sm:justify-between lg:flex-col lg:items-start lg:justify-between'
+                      ? 'col-span-2 sm:col-span-4 @4xl:col-span-1 flex-row items-center justify-between p-2.5 sm:p-4 min-h-0 sm:min-h-[115px] sm:flex-row sm:items-center sm:justify-between @4xl:flex-col @4xl:items-start @4xl:justify-between'
                       : 'col-span-1 flex-col justify-between p-2 sm:p-4 min-h-[58px] sm:min-h-[115px]'
                   } ${
                     card.isActive ? 'ring-2 ring-white shadow-xl scale-[1.01] sm:scale-[1.02] brightness-110' : 'hover:-translate-y-0.5'
@@ -987,7 +987,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       </div>
 
       {/* ── Ultra-Compact Sticky Toolbar + Collapsible Filters ── */}
-      <div data-tour-sticky="" className="sticky top-0 z-20 px-1 pt-1.5 pb-2 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
+      <div data-tour-sticky="" className="sticky top-0 short:static z-20 px-1 pt-1.5 pb-2 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
         {/* Toolbar card */}
         <div data-tour="users-toolbar" className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2 sm:p-2.5 lg:px-4 lg:py-3 shadow-sm flex flex-col gap-2 w-full">
           {/* ── Line 1: Search, Filter Toggle & Action Buttons ── */}
@@ -997,7 +997,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 group-focus-within:text-[#9956DE] transition-colors shrink-0" size={15} />
               <Input
                 placeholder="Search name, email, LRN…"
-                className="pl-8.5 pr-7 h-9 sm:h-10 bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs font-semibold focus-visible:ring-1 focus-visible:ring-purple-400 focus-visible:border-purple-400 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-all w-full"
+                className="pl-8.5 pr-7 h-9 sm:h-10 pointer-coarse:h-11 bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs font-semibold focus-visible:ring-1 focus-visible:ring-purple-400 focus-visible:border-purple-400 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-all w-full"
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
@@ -1022,7 +1022,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               type="button"
               variant="outline"
               size="sm"
-              className={`h-9 sm:h-10 px-2.5 rounded-xl border font-bold text-xs gap-1.5 shrink-0 lg:hidden transition-all ${
+              className={`h-9 sm:h-10 pointer-coarse:h-11 pointer-coarse:min-w-11 px-2.5 rounded-xl border font-bold text-xs gap-1.5 shrink-0 lg:hidden transition-all ${
                 mobileFiltersOpen || (roleFilter !== 'All Roles' || statusFilter !== 'All Status' || sectionFilter !== 'All Sections')
                   ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-700 text-[#9956DE] dark:text-purple-300 shadow-2xs'
                   : 'border-slate-200/80 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -1044,7 +1044,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-200/60 transition-all shrink-0"
+              className="h-9 w-9 sm:h-10 sm:w-10 pointer-coarse:h-11 pointer-coarse:w-11 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-200/60 transition-all shrink-0"
               onClick={() => loadUsers(currentPage)}
               disabled={loading || isProcessingBulkAction}
               title="Refresh"
@@ -1055,9 +1055,10 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
             {/* Add User Button */}
             <Button
-              className="h-9 sm:h-10 gap-1.5 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white rounded-xl shadow-md shadow-purple-500/25 hover:shadow-purple-500/40 transition-all px-3 sm:px-4 font-bold text-xs shrink-0 border border-purple-400/30"
+              className="h-9 sm:h-10 pointer-coarse:h-11 pointer-coarse:min-w-11 gap-1.5 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white rounded-xl shadow-md shadow-purple-500/25 hover:shadow-purple-500/40 transition-all px-3 sm:px-4 font-bold text-xs shrink-0 border border-purple-400/30"
               onClick={() => handleOpenAddModal()}
               disabled={isProcessingBulkAction}
+              aria-label="Add User"
             >
               <UserPlus size={14} />
               <span className="hidden xs:inline sm:inline">Add User</span>
@@ -1221,7 +1222,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
       {/* Floating Bulk Action Bar */}
       {selectedCount > 0 && (
-        <div data-tour-sticky="" className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-[1000px] bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md border border-purple-500/30 text-white rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-3 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div data-tour-sticky="" className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-[1000px] bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md border border-purple-500/30 text-white rounded-2xl p-3 flex flex-col sm:flex-row items-center gap-3 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <div className="flex items-center gap-2.5 px-3 border-r border-slate-800 pr-5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9956DE] to-[#7274ED] flex items-center justify-center text-white font-black text-xs tabular-nums shadow-sm">
               {selectedCount}
@@ -1331,7 +1332,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-30"
+                className="h-6.5 w-6.5 pointer-coarse:h-11 pointer-coarse:w-11 rounded-md text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-30"
                 disabled={currentPage <= 1 || loading || isProcessingBulkAction}
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 aria-label="Previous page"
@@ -1344,7 +1345,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6.5 w-6.5 rounded-md text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-30"
+                className="h-6.5 w-6.5 pointer-coarse:h-11 pointer-coarse:w-11 rounded-md text-slate-600 dark:text-slate-300 hover:bg-purple-50 dark:hover:bg-purple-950/40 disabled:opacity-30"
                 disabled={!hasNextPage || loading || isProcessingBulkAction || currentPage >= totalPages}
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
                 aria-label="Next page"
@@ -1748,7 +1749,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
       {/* Add/Edit User Modal - Teacher & Executive Modern Styling */}
       <Dialog open={isModalOpen} onOpenChange={(open) => !saving && setIsModalOpen(open)}>
-        <DialogContent className="sm:max-w-[850px] rounded-[32px] border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-0 overflow-hidden [&>button:last-child]:hidden">
+        <DialogContent className="sm:max-w-[850px] rounded-[32px] border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-2xl p-0 [&>button:last-child]:hidden">
           <div className={`h-2 w-full bg-gradient-to-r ${editingUser ? 'from-[#9956DE] via-[#8643C8] to-[#7274ED]' : 'from-[#52B847] via-[#36962C] to-[#15803D]'}`} />
           <div className="p-6 sm:p-8 space-y-6 sm:space-y-8">
             <DialogHeader className="text-left">
