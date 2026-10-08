@@ -391,14 +391,14 @@ async def submit_practice(request: Request, body: PracticeSubmitRequest):
                 current_avg = current.get("averageScore", 0.0) or 0.0
                 new_quizzes = current_quizzes + 1
                 new_avg = round((current_avg * current_quizzes + score_percent) / new_quizzes, 1)
+                # XP for the attempt is credited once, client-side, when the
+                # results screen opens; crediting here again double-counted it (#213).
                 user_ref.update({
-                    "totalXP": fs.Increment(xp_earned),
                     "quizzesCompleted": fs.Increment(1),
                     "averageScore": new_avg,
                 })
-                updated_total_xp = (current.get("totalXP", 0) or 0) + xp_earned
                 updated_stats = UpdatedStats(
-                    totalXP=updated_total_xp,
+                    totalXP=current.get("totalXP", 0) or 0,
                     quizzesCompleted=new_quizzes,
                     averageScore=new_avg,
                 )

@@ -78,7 +78,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible();
   });
 
-  test('reviewing an earlier question offers Back to Current Question instead of skipping the unanswered one', { session: 'student', timeout: 300_000, tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('reviewing an earlier question offers Back to Current Question instead of skipping the unanswered one', { session: 'student', timeout: 300_000 }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
@@ -112,7 +112,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await expect(screen.getByRole('heading', 'Study Journey')).toBeVisible();
   });
 
-  test('a correct answer shows the Correct! celebration on top of the question card', { session: 'student', timeout: 300_000, tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('a correct answer shows the Correct! celebration on top of the question card', { session: 'student', timeout: 300_000 }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
@@ -186,7 +186,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await expect(screen.getByRole('heading', 'Leave this quiz?')).toBeHidden();
   });
 
-  test("finishing a lesson quiz turns that lesson's Quiz button into Retry", { session: 'student', timeout: 480_000, tags: ['known-bug'] }, async ({ app, agent, browser, screen }) => {
+  test("finishing a lesson quiz turns that lesson's Quiz button into Retry", { session: 'student', timeout: 480_000 }, async ({ app, agent, browser, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
