@@ -2,7 +2,7 @@ import { describe, test } from '@e2e-dev/web';
 import { expect } from 'e2e';
 
 describe('teacher at-risk chip', { tags: ['teacher', 'intervention'] }, () => {
-  test('the at-risk header chip opens an Intervention Center the teacher can act on', { session: 'teacher', tags: ['known-bug'] }, async ({ app, agent, screen }) => {
+  test('the at-risk header chip opens an Intervention Center the teacher can act on', { session: 'teacher' }, async ({ app, agent, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Classes')).toBeVisible();
