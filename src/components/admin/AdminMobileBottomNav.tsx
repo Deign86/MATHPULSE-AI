@@ -58,7 +58,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
   // Determine active category
   const isOverviewActive = activeTab === 'Overview';
   const isManagementActive = activeTab === 'User Management' || activeTab === 'Class Management';
-  const isAIActive = activeTab === 'RAG Manager' || activeTab === 'AI Monitoring';
+  const isAIActive = activeTab === 'RAG Manager';
   const isCurriculumActive = activeTab === 'Curriculum Control' || activeTab === 'Subjects' || activeTab === 'Content';
   const isInsightsActive = activeTab === 'Analytics' || activeTab === 'Audit Log';
 
@@ -143,7 +143,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
           )}
         </AnimatePresence>
 
-        {/* ─── 2. AI BRAIN POPUP (RAG Manager + AI Monitoring) ─── */}
+        {/* ─── 2. AI BRAIN POPUP (RAG Manager) ─── */}
         <AnimatePresence>
           {openMenu === 'ai' && (
             <motion.div
@@ -174,28 +174,6 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
                   <div className="text-left">
                     <p className="leading-tight">RAG Manager</p>
                     <p className={`text-[10px] font-normal leading-none mt-0.5 ${activeTab === 'RAG Manager' ? 'text-white/80' : 'text-slate-400'}`}>Vector Store & Health</p>
-                  </div>
-                </div>
-                <ChevronRight size={14} className="opacity-70" />
-              </button>
-
-              {/* AI Monitoring */}
-              <button
-                type="button"
-                onClick={() => handleSelectTabAndClose('AI Monitoring')}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 cursor-pointer ${
-                  activeTab === 'AI Monitoring'
-                    ? 'bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white shadow-xs'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50/80 dark:hover:bg-purple-950/40'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'AI Monitoring' ? 'bg-white/20 text-white' : 'bg-cyan-100 dark:bg-cyan-900/50 text-cyan-600'}`}>
-                    <Cpu size={15} aria-hidden="true" />
-                  </div>
-                  <div className="text-left">
-                    <p className="leading-tight">AI Monitoring</p>
-                    <p className={`text-[10px] font-normal leading-none mt-0.5 ${activeTab === 'AI Monitoring' ? 'text-white/80' : 'text-slate-400'}`}>Model Health & Tokens</p>
                   </div>
                 </div>
                 <ChevronRight size={14} className="opacity-70" />

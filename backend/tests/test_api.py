@@ -897,19 +897,6 @@ class TestQuizGeneration:
         assert "You are asking too fast, please wait a moment" in limited.json()["detail"]
 
 
-def test_ai_monitoring_summary_exposes_nested_telemetry_without_top_level_counters():
-    from routes import ai_monitoring
-
-    summary = ai_monitoring.get_monitoring_summary(_admin=object())
-
-    assert "telemetry" in summary
-    assert "dailyQuestions" not in summary
-    assert "averageLatencyMs" not in summary
-    assert "successRate" not in summary
-    assert "features" in summary
-    assert "pricingMeta" in summary
-
-
 class TestClassRecordImportMapping:
     def test_sanitize_column_mapping_drops_none_and_unknown_fields(self):
         raw_mapping = {

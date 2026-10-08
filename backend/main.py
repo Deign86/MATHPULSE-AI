@@ -93,7 +93,7 @@ import httpx
 import uvicorn
 from services.inference_client import (
     InferenceRequest, create_default_client,
-    get_model_for_task, get_current_runtime_config,
+    get_model_for_task,
 )
 from services.deterministic_cache import DeterministicResponseCache
 from services.logging_utils import log_model_call
@@ -124,7 +124,6 @@ from routes.risk_router import router as risk_router
 from routes.tutor_checkin import router as tutor_checkin_router
 from routes.practice import router as practice_router
 from routes.try_it_yourself import router as try_it_yourself_router
-from routes.ai_monitoring import router as ai_monitoring_router
 from routes.class_analytics_routes import router as class_analytics_router
 from routes.intervention_routes import router as intervention_router
 from routes.pipeline_routes import router as pipeline_router
@@ -469,7 +468,6 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/analytics/class-insights": TEACHER_OR_ADMIN,
     "/api/analytics/refresh-cache": ADMIN_ONLY,
     "/api/testing/reset-data": ALL_APP_ROLES,
-    "/api/hf/monitoring": ADMIN_ONLY,
     "/api/dev/generate-mock-data": ADMIN_ONLY,
     "/api/analytics/config": TEACHER_OR_ADMIN,
     "/api/analytics/imported-class-overview": TEACHER_OR_ADMIN,
@@ -1224,7 +1222,6 @@ app.include_router(risk_router)
 app.include_router(tutor_checkin_router)
 app.include_router(practice_router)
 app.include_router(try_it_yourself_router)
-app.include_router(ai_monitoring_router)
 app.include_router(class_analytics_router)
 app.include_router(intervention_router)
 app.include_router(pipeline_router)
@@ -9722,11 +9719,6 @@ class AsyncTaskCancelResponse(BaseModel):
     message: str
 
 
-class HFMonitoringDataResponse(BaseModel):
-    success: bool
-    data: Dict[str, Any]
-
-
 class ImportGroundedFeedbackRequest(BaseModel):
     flow: str = Field(..., description="Flow identifier: quiz or lesson")
     status: str = Field(..., description="Event status: success, failed, or skipped")
@@ -12302,83 +12294,6 @@ async def cancel_async_task(http_request: Request, task_id: str):
         status=updated_status,
         message="Cancellation request accepted.",
     )
-
-
-@app.get("/api/hf/monitoring", response_model=HFMonitoringDataResponse)
-async def get_hf_monitoring(http_request: Request):
-    """
-    Aggregates DeepSeek AI status, model config, and latency probe.
-    Returns distilled data safe for frontend consumption.
-
-    Requires admin authentication.
-    """
-    user = get_current_user(http_request)
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden for this role")
-
-    _ensure_deepseek_available()
-
-    try:
-        generation_model_id = get_model_for_task("chat")
-    except Exception:
-        generation_model_id = CHAT_MODEL
-
-    embedding_model_id = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
-
-    runtime_config = get_current_runtime_config()
-
-    task_resolved: dict[str, str] = {}
-    for task in [
-        "chat", "verify_solution", "lesson_generation", "quiz_generation",
-        "learning_path", "daily_insight", "risk_classification", "risk_narrative",
-        "rag_lesson", "rag_problem", "rag_analysis_context",
-    ]:
-        try:
-            task_resolved[task] = get_model_for_task(task)
-        except Exception:
-            task_resolved[task] = generation_model_id
-
-    result: Dict[str, Any] = {
-        "modelId": generation_model_id,
-        "modelStatus": "Operational",
-        "avgResponseTimeMs": 0,
-        "embeddingModelId": embedding_model_id,
-        "embeddingModelStatus": "Operational",
-        "inferenceBalance": 0.0,
-        "totalPeriodCost": 0.0,
-        "hubApiCallsUsed": 0,
-        "hubApiCallsLimit": 2500,
-        "zeroGpuMinutesUsed": 0,
-        "zeroGpuMinutesLimit": 25,
-        "publicStorageUsedTB": 0.0,
-        "publicStorageLimitTB": 11.2,
-        "lastChecked": datetime.now(timezone.utc).isoformat(),
-        "periodStart": "",
-        "periodEnd": "",
-        "activeProfile": runtime_config.get("profile") or os.getenv("MODEL_PROFILE", "dev"),
-        "runtimeOverridesActive": len(runtime_config.get("overrides", {})) > 0,
-        "resolvedModels": task_resolved,
-        "provider": "deepseek",
-        "apiBaseUrl": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-    }
-
-    try:
-        client = get_deepseek_client()
-        latency_start = time.time()
-        probe_response = client.chat.completions.create(
-            model=str(CHAT_MODEL),
-            messages=[{"role": "user", "content": "Hi"}],
-            max_tokens=1,
-            temperature=0.0,
-        )
-        latency_ms = int((time.time() - latency_start) * 1000)
-        result["avgResponseTimeMs"] = latency_ms
-        result["modelStatus"] = "Operational"
-    except Exception as e:
-        logger.warning(f"DeepSeek latency probe failed: {e}")
-        result["modelStatus"] = "Degraded"
-
-    return HFMonitoringDataResponse(success=True, data=result)
 
 
 @app.get("/api/quiz/topics")

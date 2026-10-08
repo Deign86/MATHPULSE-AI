@@ -233,7 +233,6 @@ describe('responsive bottom navigation', { tags: ['any', 'responsive-nav'] }, ()
         { menu: manage, option: /^Users/, heading: 'User Management' },
         { menu: manage, option: /^Classes/, heading: 'Class Management' },
         { menu: ai, option: /^RAG Manager/, heading: 'RAG Manager' },
-        { menu: ai, option: /^AI Monitoring/, heading: 'AI Monitoring' },
         { menu: curriculum, option: /^Curriculum Control/, heading: 'Curriculum Control' },
         { menu: curriculum, option: /^Content PDFs/, heading: 'Content' },
         { menu: insights, option: /^Analytics/, heading: 'Analytics' },

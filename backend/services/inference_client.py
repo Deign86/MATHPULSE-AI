@@ -540,39 +540,13 @@ class InferenceClient:
         except Exception as e:
             LOGGER.warning(f"?????? Failed to persist metrics: {e}")
 
-    def _record_attempt(self, *, task_type: str, provider: str, route: str, fallback_depth: int):
+    def _record_attempt(self, *, task_type: str, provider: str, route: str, fallback_depth: int) -> None:
         self._bump_metric("requests_total", 1)
         self._bump_bucket("task_counts", (task_type or "default").strip().lower(), 1)
         self._bump_bucket("provider_counts", provider, 1)
         self._bump_bucket("route_counts", route, 1)
         if fallback_depth > 0:
             self._bump_metric("fallback_attempts", 1)
-        try:
-            from datetime import datetime, timezone
-            from firebase_admin import firestore as firebase_firestore
-
-            firestore_client = self.firestore or firebase_firestore.client()
-            return firestore_client.collection("ai_usage_logs").add({
-                "timestamp": datetime.now(timezone.utc),
-                "taskType": task_type,
-                "provider": provider,
-                "route": route,
-                "fallbackDepth": fallback_depth,
-                "status": "pending",
-                "latencyMs": None,
-            })[1]
-        except Exception as exc:
-            LOGGER.warning("AI monitoring attempt logging skipped: %s", exc)
-            return None
-
-    @staticmethod
-    def _finish_telemetry_attempt(document, *, status: str, latency_ms: float) -> None:
-        if document is None:
-            return
-        try:
-            document.update({"status": status, "latencyMs": round(latency_ms, 2) if status == "success" else None})
-        except Exception as exc:
-            LOGGER.warning("AI monitoring attempt update skipped: %s", exc)
 
     def snapshot_metrics(self) -> Dict[str, Any]:
         with self._metrics_lock:
@@ -768,7 +742,7 @@ class InferenceClient:
             params["response_format"] = {"type": "json_object"}
 
         for attempt in range(max_retries):
-            telemetry_document = self._record_attempt(
+            self._record_attempt(
                 task_type=task_type,
                 provider="deepseek",
                 route=route,
@@ -803,12 +777,10 @@ class InferenceClient:
                 )
                 self._record_completion(latency_ms=latency_ms)
                 self._bump_metric("requests_ok", 1)
-                self._finish_telemetry_attempt(telemetry_document, status="success", latency_ms=latency_ms)
                 return text
 
             except RateLimitError:
                 latency_ms = (time.perf_counter() - start) * 1000
-                self._finish_telemetry_attempt(telemetry_document, status="error", latency_ms=latency_ms)
                 if attempt < max_retries - 1:
                     log_model_call(
                         LOGGER,
@@ -835,7 +807,6 @@ class InferenceClient:
 
             except APITimeoutError:
                 latency_ms = (time.perf_counter() - start) * 1000
-                self._finish_telemetry_attempt(telemetry_document, status="error", latency_ms=latency_ms)
                 if attempt < max_retries - 1:
                     log_model_call(
                         LOGGER,
@@ -862,7 +833,6 @@ class InferenceClient:
 
             except APIError as e:
                 latency_ms = (time.perf_counter() - start) * 1000
-                self._finish_telemetry_attempt(telemetry_document, status="error", latency_ms=latency_ms)
                 status = getattr(e, "status_code", None)
                 if status in (401, 403):
                     self._bump_metric("requests_error", 1)
@@ -934,7 +904,6 @@ class InferenceClient:
 
             except Exception as exc:
                 latency_ms = (time.perf_counter() - start) * 1000
-                self._finish_telemetry_attempt(telemetry_document, status="error", latency_ms=latency_ms)
                 self._bump_metric("requests_error", 1)
                 log_model_call(
                     LOGGER,
