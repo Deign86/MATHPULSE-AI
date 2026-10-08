@@ -1677,6 +1677,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                       isInQuizMode={isInQuizMode}
                       setIsInQuizMode={setIsInQuizMode}
                       hasCompletedDiagnostic={hasCompletedDiagnostic ?? false}
+                      onStreakChange={setCurrentStreak}
                     />
                   </Suspense>
                 ) : activeTab === 'Leaderboard' ? (

@@ -17,6 +17,10 @@ interface HistoryEntry {
   result: string;
 }
 
+type SympyVerification =
+  | { verified: true; response: CalculatorResponse }
+  | { verified: false };
+
 interface ScientificCalculatorProps {
   isOpen: boolean;
   onClose: () => void;
@@ -324,7 +328,7 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [isError, setIsError] = useState(false);
   const [sympyVerifying, setSympyVerifying] = useState(false);
-  const [sympyResult, setSympyResult] = useState<CalculatorResponse | null>(null);
+  const [sympyResult, setSympyResult] = useState<SympyVerification | null>(null);
   const [isMinimized, setIsMinimized] = useState(() => {
     try { return localStorage.getItem('mathpulse_calc_minimized') === 'true'; } catch { return false; }
   });
@@ -525,15 +529,9 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
         .replace(/\)(\d)/g, ')*$1');
 
       const response = await apiService.evaluateExpression(sympyExpr);
-      setSympyResult(response);
+      setSympyResult({ verified: true, response });
     } catch {
-      setSympyResult({
-        expression: exprToVerify,
-        result: 'Verification unavailable',
-        steps: ['Backend unavailable — using client-side result'],
-        simplified: null,
-        latex: null,
-      });
+      setSympyResult({ verified: false });
     } finally {
       setSympyVerifying(false);
     }
@@ -713,20 +711,33 @@ const ScientificCalculator: React.FC<ScientificCalculatorProps> = ({
               exit={{ opacity: 0, height: 0 }}
               className="mt-2 pt-2 border-t border-slate-200 dark:border-slate-800"
             >
-              <div className="flex items-center gap-1.5 mb-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
-                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">SymPy Verified</span>
-              </div>
-              <p className="text-xs text-slate-700 dark:text-slate-300 font-mono">{sympyResult.result}</p>
-              {sympyResult.latex && (
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">LaTeX: {sympyResult.latex}</p>
-              )}
-              {sympyResult.steps.length > 1 && (
-                <div className="mt-1 space-y-0.5">
-                  {sympyResult.steps.slice(1).map((step, i) => (
-                    <p key={i} className="text-[10px] text-slate-500 dark:text-slate-400">{step}</p>
-                  ))}
-                </div>
+              {sympyResult.verified ? (
+                <>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+                    <span className="text-[10px] text-purple-600 dark:text-purple-400 font-bold uppercase tracking-wider">SymPy Verified</span>
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-mono">{sympyResult.response.result}</p>
+                  {sympyResult.response.latex && (
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">LaTeX: {sympyResult.response.latex}</p>
+                  )}
+                  {sympyResult.response.steps.length > 1 && (
+                    <div className="mt-1 space-y-0.5">
+                      {sympyResult.response.steps.slice(1).map((step, i) => (
+                        <p key={i} className="text-[10px] text-slate-500 dark:text-slate-400">{step}</p>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold uppercase tracking-wider">SymPy Unavailable</span>
+                  </div>
+                  <p className="text-xs text-slate-700 dark:text-slate-300 font-mono">Verification unavailable</p>
+                  <p className="text-[10px] text-slate-500 dark:text-slate-400">Backend unavailable — using client-side result</p>
+                </>
               )}
             </motion.div>
           )}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAuth } from 'firebase/auth';
+import { ApiError, readFastApiErrorDetail } from '../services/apiUtils';
 import {
   fetchRagLesson,
   getRagLessonHealth,
@@ -105,15 +106,15 @@ export function useLessonContent(
       setCachedLesson(lessonId, data);
       setError(null);
       setIsOffline(false);
-    } catch (err: any) {
-      const status = err.status || err.response?.status;
-      const body = err.body || err.response;
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : undefined;
+      const detail = err instanceof ApiError ? readFastApiErrorDetail(err) : null;
 
       let errorMsg = 'Failed to load lesson content.';
       let offline = false;
 
-      if (status === 404 && body?.error === 'no_curriculum_context') {
-        errorMsg = body.message || 'Lesson source PDF not found or not yet ingested.';
+      if (status === 404 && detail?.error === 'no_curriculum_context') {
+        errorMsg = detail.message || 'Lesson source PDF not found or not yet ingested.';
         offline = true;
       } else if (status === 401) {
         errorMsg = 'Please sign in again to access lessons.';

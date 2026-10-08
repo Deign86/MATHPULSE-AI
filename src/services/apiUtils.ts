@@ -1,5 +1,6 @@
 // src/services/apiUtils.ts
 // Shared API utilities: retry logic, timeout handling, error classification, logging
+import { z } from 'zod';
 import type { ApiFieldValue } from './apiService';
 
 // ─── Constants ────────────────────────────────────────────────
@@ -34,6 +35,20 @@ export class ApiError extends Error {
     this.responseBody = opts.responseBody;
     this.retryable = opts.retryable;
     this.requestId = opts.requestId;
+  }
+}
+
+const fastApiErrorDetailSchema = z.object({
+  detail: z.object({ error: z.string(), message: z.string().optional() }),
+});
+
+/** FastAPI nests structured HTTPException payloads under `detail`; ApiError keeps the raw body as text. */
+export function readFastApiErrorDetail(err: ApiError): { error: string; message?: string } | null {
+  try {
+    const parsed = fastApiErrorDetailSchema.safeParse(JSON.parse(err.responseBody));
+    return parsed.success ? parsed.data.detail : null;
+  } catch {
+    return null;
   }
 }
 

@@ -86,6 +86,8 @@ interface ModulesPageProps {
   setIsInQuizMode?: (value: boolean) => void;
   /** Whether the initial assessment has been completed — REVIEW badge suppressed until true */
   hasCompletedDiagnostic?: boolean;
+  /** Streak after a successful daily-reward claim, so App can refresh the header/sidebar streak. */
+  onStreakChange?: (streak: number) => void;
 }
 
 const assignedQuizNavigationDetailSchema = z.object({
@@ -116,6 +118,20 @@ type LearningPathState =
 
 const IDLE_LEARNING_PATH: LearningPathState = { status: 'idle' };
 
+// Entries are [attemptKey, submittedStepIndexes]; attemptKey already includes the uid and module id.
+const INTERVENTION_STEPS_STORAGE_KEY = 'mathpulse_intervention_steps';
+const storedInterventionStepsSchema = z.array(z.tuple([z.string(), z.array(z.number())]));
+
+const readStoredInterventionSteps = (): Map<string, number[]> => {
+  try {
+    const stored = localStorage.getItem(INTERVENTION_STEPS_STORAGE_KEY);
+    const parsed = storedInterventionStepsSchema.safeParse(stored ? JSON.parse(stored) : []);
+    return new Map(parsed.success ? parsed.data : []);
+  } catch {
+    return new Map();
+  }
+};
+
 const interventionStepType = (section: TeacherUploadedModule['sections'][number]) =>
   section.stepType || (section.content.includes('video lesson') ? 'video_lesson'
     : section.content.includes('practice') ? 'practice'
@@ -131,6 +147,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   isInQuizMode = false,
   setIsInQuizMode,
   hasCompletedDiagnostic = false,
+  onStreakChange,
 }) => {
   const { userProfile, currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>(() => {
@@ -162,9 +179,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [sourcePreviewModule, setSourcePreviewModule] = useState<CurriculumModuleRuntime | null>(null);
   const [selectedTeacherModule, setSelectedTeacherModule] = useState<TeacherUploadedModule | null>(null);
   const [activeStepIndex, setActiveStepIndex] = useState<number | null>(null);
-  const [submittedInterventionSteps, setSubmittedInterventionSteps] = useState(() => new Map<string, number[]>());
+  const [submittedInterventionSteps, setSubmittedInterventionSteps] = useState(readStoredInterventionSteps);
   const [practiceAnswers, setPracticeAnswers] = useState<Record<number, string>>({});
   const [revealedExplanations, setRevealedExplanations] = useState<Record<number, boolean>>({});
+  useEffect(() => {
+    try {
+      localStorage.setItem(INTERVENTION_STEPS_STORAGE_KEY, JSON.stringify(Array.from(submittedInterventionSteps.entries())));
+    } catch { /* localStorage write failure is non-critical */ }
+  }, [submittedInterventionSteps]);
   const [userProgress, setUserProgress] = useState<UserProgress | null>(null);
 
   // Hide floating AI chatbot while in dedicated module step study guide
@@ -450,6 +472,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
       // Fire notification
       if (result?.success) {
+        onStreakChange?.(result.streakAfter);
         notify({
           userId: userProfile.uid,
           type: 'daily_checkin',
@@ -664,6 +687,11 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     const unique = new Set(modulePool.map((module) => module.subjectId));
     return Array.from(unique);
   }, [modulePool]);
+
+  const availableSubjectsSentence = useMemo(() => {
+    const labels = curriculumSubjects.map((subjectId) => CURRICULUM_SUBJECT_META[subjectId].label);
+    return labels.length > 1 ? `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}` : labels.join('');
+  }, [curriculumSubjects]);
 
   const activeFilterCount = useMemo(() => {
     let count = 0;
@@ -1310,9 +1338,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-200/80 space-y-2">
                   <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">Available Now</div>
                   <ul className="text-xs space-y-1 text-slate-700 list-disc list-inside">
-                    <li>General Mathematics</li>
-                    <li>Business Mathematics</li>
-                    <li>Statistics & Probability</li>
+                    {curriculumSubjects.map((subjectId) => (
+                      <li key={subjectId}>{CURRICULUM_SUBJECT_META[subjectId].label}</li>
+                    ))}
                   </ul>
                 </div>
                 <p className="text-xs text-slate-500">
@@ -1469,7 +1497,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             </button>
           </div>
           <p className="hidden lg:block text-[#3c4043] text-[13px] md:text-[17px] leading-relaxed md:leading-[1.7] md:pr-10">
-            MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Available now for Grade 11: General Mathematics, Business Mathematics, Statistics & Probability, and Finite Mathematics — every module fully unlocked.
+            MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Available now for {activeGradeLevel}: {availableSubjectsSentence} — every module fully unlocked.
           </p>
           <div className="mt-2 md:mt-4 flex items-center gap-2 md:gap-3">
             <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-bold text-sky-900">

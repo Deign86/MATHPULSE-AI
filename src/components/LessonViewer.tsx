@@ -498,11 +498,13 @@ function ErrorPanel({
   message,
   onRetry,
   onCancel,
+  cancelLabel = 'Back to lesson',
   isOffline,
 }: {
   message: string;
   onRetry: () => void;
   onCancel?: () => void;
+  cancelLabel?: string;
   isOffline: boolean;
 }) {
   return (
@@ -531,7 +533,7 @@ function ErrorPanel({
         </button>
         {onCancel && (
           <button onClick={onCancel} className="mt-3 ml-4 text-slate-500 text-xs hover:text-slate-700 underline">
-            Back to lesson
+            {cancelLabel}
           </button>
         )}
       </motion.div>
@@ -547,6 +549,7 @@ function PdfFallbackPanel({
   pdfUrl,
   reason,
   onRetry,
+  onBack,
 }: {
   lessonTitle: string;
   competencyCode?: string;
@@ -555,6 +558,7 @@ function PdfFallbackPanel({
   pdfUrl: string;
   reason?: string;
   onRetry: () => void;
+  onBack: () => void;
 }) {
   const [iframeLoading, setIframeLoading] = useState(true);
   const [iframeError, setIframeError] = useState(false);
@@ -563,6 +567,13 @@ function PdfFallbackPanel({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-50">
       <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
+        <button
+          onClick={onBack}
+          className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 shrink-0 cursor-pointer"
+          aria-label="Go back"
+        >
+          <ArrowLeft size={16} />
+        </button>
         <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
           <FileText className="text-blue-600" size={20} />
         </div>
@@ -1531,10 +1542,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           pdfUrl={depedPdfUrl}
           reason={error}
           onRetry={retry}
+          onBack={onBack}
         />
       );
     }
-    return <ErrorPanel message={error} onRetry={retry} isOffline={isOffline} />;
+    return <ErrorPanel message={error} onRetry={retry} onCancel={onBack} cancelLabel="Back to module" isOffline={isOffline} />;
   }
 
   // Derive lesson number from lessonId for the TryItYourselfEngine
