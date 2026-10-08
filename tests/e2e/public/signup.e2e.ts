@@ -124,10 +124,10 @@ describe('public sign up', { tags: ['public', 'signup'] }, () => {
     await expect(screen.getByText('Passwords do not match.')).toBeHidden();
 
     await screen.getByRole('button', 'Show password').tap();
-    await expect(screen.getByRole('textbox', 'Password')).toBeVisible();
-    await expect(screen.getByRole('textbox', 'Confirm')).toBeVisible();
+    await expect(screen.getByLabel('Password')).toHaveAttribute('type', 'text');
+    await expect(screen.getByLabel('Confirm')).toHaveAttribute('type', 'text');
     await screen.getByRole('button', 'Hide password').tap();
-    await expect(screen.getByRole('textbox', 'Confirm')).toBeHidden();
+    await expect(screen.getByLabel('Confirm')).toHaveAttribute('type', 'password');
   });
 
   test('Already have an account? Sign in returns to Welcome Back', async ({ app, screen }) => {
