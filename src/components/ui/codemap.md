@@ -7,6 +7,7 @@
 ## Design
 - Thin reusable components wrap Radix/shadcn-style primitives and expose composable typed props; styling variants are centralized per primitive.
 - Typical props are children, `className`, controlled `open/value`, and change callbacks; controlled state generally remains with consuming page/form. `MathPulseLoader` and `warp-background` provide standalone visual primitives.
+- `DialogContent` caps its height at `100dvh - 2rem` and scrolls (passing `overflow-hidden` clips it again). On touch screens `switch`, `checkbox` and the dialog close button carry invisible 44px hit areas and `toggle` grows to 44px (`pointer-coarse:`); mouse layouts are unchanged.
 
 ## Flow
 - A page supplies props/children → primitive composes behavior and accessible interaction → user event invokes the consumer's callback/state → consumer rerenders controlled value or visibility.
