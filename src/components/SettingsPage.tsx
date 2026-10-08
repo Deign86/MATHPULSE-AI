@@ -124,6 +124,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const [localSettings, setLocalSettings] = useState<UserSettings>(() =>
     settingsData ? JSON.parse(JSON.stringify(settingsData)) : cloneDefaultSettings(),
   );
+  const savedSettingsRef = useRef<UserSettings | undefined>(settingsData);
+  const previewedSettingsRef = useRef<UserSettings | undefined>(undefined);
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
@@ -170,17 +172,20 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   }, [profileData, isDirty]);
 
-  // Synchronize incoming settings
+  // Synchronize settings loaded or saved by the app; skip echoes of our own preview
   useEffect(() => {
-    if (settingsData) {
+    if (settingsData && settingsData !== previewedSettingsRef.current) {
+      savedSettingsRef.current = settingsData;
       setLocalSettings(JSON.parse(JSON.stringify(settingsData)));
     }
   }, [settingsData]);
 
-  // Live preview for appearance changes
-  useEffect(() => {
-    onApplySettingsPreview?.(localSettings);
-  }, [localSettings, onApplySettingsPreview]);
+  // Leaving the page drops any unsaved preview
+  useEffect(() => () => {
+    if (savedSettingsRef.current) {
+      onApplySettingsPreview?.(savedSettingsRef.current);
+    }
+  }, [onApplySettingsPreview]);
 
   // Handle local changes
   const handleAccountFieldChange = <K extends keyof ProfileData>(key: K, value: ProfileData[K]) => {
@@ -189,10 +194,10 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   };
 
   const updateSettings = (updater: (current: UserSettings) => UserSettings) => {
-    setLocalSettings((prev) => {
-      const next = updater(prev);
-      return next;
-    });
+    const next = updater(localSettings);
+    setLocalSettings(next);
+    previewedSettingsRef.current = next;
+    onApplySettingsPreview?.(next);
     setIsDirty(true);
   };
 
@@ -1369,7 +1374,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           await onResetData?.();
         }}
         title="Reset Diagnostic Assessment?"
-        message="Are you sure you want to reset your diagnostic testing data? This will clear your current benchmark scores and competency flags so you can retake the assessment."
+        message="Are you sure you want to reset your diagnostic testing data? This clears your benchmark scores and competency flags so you can retake the assessment. It also resets your XP, level and streak and deletes your chats, quiz and battle history, module progress, daily rewards and achievements. Your photo, avatar and owned items are kept. This cannot be undone."
         confirmText="Yes, Reset Data"
         cancelText="Cancel"
         type="warning"

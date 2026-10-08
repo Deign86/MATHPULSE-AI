@@ -864,7 +864,6 @@ const App = ({ authOverride }: AppProps = {}) => {
     try {
       const merged = await upsertUserSettings(userProfile.uid, settingsUpdates);
       setUserSettings(merged);
-      toast.success('Settings saved successfully');
     } catch (error) {
       console.error('Error saving settings:', error);
       toast.error('Failed to save settings');
@@ -886,17 +885,22 @@ const App = ({ authOverride }: AppProps = {}) => {
   const handleExportData = async () => {
     if (!userProfile?.uid) return;
 
-    const snapshot = await exportUserDataSnapshot(userProfile.uid);
-    const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement('a');
-    anchor.href = url;
-    anchor.download = `mathpulse-data-export-${userProfile.uid}-${Date.now()}.json`;
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-    toast.success('Data export downloaded');
+    try {
+      const snapshot = await exportUserDataSnapshot(userProfile.uid);
+      const blob = new Blob([JSON.stringify(snapshot, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `mathpulse-data-export-${userProfile.uid}-${Date.now()}.json`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      document.body.removeChild(anchor);
+      URL.revokeObjectURL(url);
+      toast.success('Data export downloaded');
+    } catch (error) {
+      console.error('Error exporting data:', error);
+      toast.error('Failed to export data');
+    }
   };
 
   const handleClearCache = async () => {
