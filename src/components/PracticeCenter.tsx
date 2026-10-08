@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Quiz, QuizAnswerRecord } from './QuizExperience';
 import MathPulseLoader from './ui/MathPulseLoader';
 import { useAuth } from '../contexts/AuthContext';
-import { SHS_MATH_SUBJECTS, type SubjectId } from '../data/subjects';
+import { SHS_MATH_SUBJECTS, getActiveSubjectIdsForGrade, type SubjectId } from '../data/subjects';
 import { normalizeDiagnosticTopic } from '../lib/diagnosticTopics';
 import {
   fetchPracticeStats,
@@ -57,9 +57,10 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
   const [historyModal, setHistoryModal] = useState<{ topic: string; items: Array<{ date: string; score: number; difficulty: string }> } | null>(null);
 
   const availableSubjects = useMemo(() => {
-    if (!allowedSubjectIds || allowedSubjectIds.length === 0) return SHS_MATH_SUBJECTS;
+    // Shelved subjects (stats-prob, business-math) stay hidden unless a caller allows them explicitly.
+    const visibleSubjectIds = allowedSubjectIds?.length ? allowedSubjectIds : getActiveSubjectIdsForGrade();
     // SAFETY: trusted internal value already conforms to the asserted type.
-    return SHS_MATH_SUBJECTS.filter((s) => allowedSubjectIds.includes(s.id as SubjectId));
+    return SHS_MATH_SUBJECTS.filter((s) => visibleSubjectIds.includes(s.id as SubjectId));
   }, [allowedSubjectIds]);
 
   // Build dynamic topic cards from curriculum
