@@ -114,7 +114,7 @@ describe('admin console', { tags: ['admin', 'admin-console'] }, () => {
     await expect(table.getByRole('button', `Edit ${userName}`).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test('search finds a student by LRN', { session: 'admin', timeout: 180_000, tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('search finds a student by LRN', { session: 'admin', timeout: 180_000 }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('navigation').filter({ hasText: 'Insights & Security' }).getByRole('button', 'User Management').tap();
@@ -146,14 +146,14 @@ describe('admin console', { tags: ['admin', 'admin-console'] }, () => {
     const roleFilter = screen.getByRole('combobox').filter({ hasText: 'All Roles' });
     await roleFilter.tap();
     await screen.getByRole('option', 'Educator').tap();
-    await expect(screen.getByText('Role: Teacher')).toBeVisible();
+    await expect(screen.getByText('Role: Educator')).toBeVisible();
     await expect(table.getByText('Student')).toHaveCount(0, { timeout: 30_000 });
     await expect(table.getByText('Administrator')).toHaveCount(0);
     await expect(table.getByText('Teacher').first()).toBeVisible();
 
     await screen.getByRole('button', 'Clear all').tap();
     await expect(roleFilter).toBeVisible();
-    await expect(screen.getByText('Role: Teacher')).toBeHidden();
+    await expect(screen.getByText('Role: Educator')).toBeHidden();
     await expect(editButtons.first()).toBeVisible({ timeout: 30_000 });
     await expect(footer).toHaveText(footerBefore, { timeout: 30_000 });
   });
