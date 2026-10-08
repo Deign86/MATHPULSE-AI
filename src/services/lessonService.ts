@@ -1,5 +1,6 @@
 import { auth } from '../lib/firebase';
 import { apiUrl } from '../config/env';
+import { ApiError } from './apiUtils';
 
 export interface RagLessonSection {
   type: 'introduction' | 'key_concepts' | 'video' | 'worked_examples' | 'important_notes' | 'try_it_yourself' | 'summary';
@@ -77,17 +78,6 @@ export interface VideoSearchResponse {
   cached: boolean;
 }
 
-/** True for non-null object values; lets error-body handling branch without loose casts. */
-function isObjectLike<V>(value: V): value is V & object {
-  return typeof value === 'object' && value !== null;
-}
-
-/** Error thrown for non-OK API responses; carries the HTTP status and parsed body. */
-interface LessonApiError extends Error {
-  status: number;
-  body?: string | object;
-}
-
 async function apiFetch<T>(endpoint: string, options?: RequestInit, forceRefresh: boolean = false): Promise<T> {
   const headers = new Headers(options?.headers);
   if (!headers.has('Content-Type')) {
@@ -115,19 +105,14 @@ async function apiFetch<T>(endpoint: string, options?: RequestInit, forceRefresh
   }
 
   if (!res.ok) {
-    let errorBody: any;
-    try {
-      errorBody = await res.json();
-    } catch {
-      errorBody = await res.text();
-    }
-    // SAFETY: non-OK API errors carry their status and raw body alongside the standard Error contract.
-    const error = new Error(
-      isObjectLike(errorBody) ? JSON.stringify(errorBody) : String(errorBody)
-    ) as LessonApiError;
-    error.status = res.status;
-    error.body = errorBody;
-    throw error;
+    // useLessonContent reads the status and FastAPI's nested `detail` from ApiError.
+    throw new ApiError({
+      status: res.status,
+      statusText: res.statusText,
+      endpoint,
+      responseBody: await res.text(),
+      retryable: res.status >= 500,
+    });
   }
 
   return res.json();
