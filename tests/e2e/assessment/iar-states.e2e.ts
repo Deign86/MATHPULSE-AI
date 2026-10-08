@@ -121,7 +121,7 @@ describe('student assessment hub', { tags: ['student', 'assessment'] }, () => {
     await expect(breakdownHeading).toBeHidden();
   });
 
-  test('Find matching lesson opens the matching lesson in Modules', { session: 'student', tags: ['known-bug'], timeout: 240_000 }, async ({ app, agent, screen }) => {
+  test('Find matching lesson opens the matching lesson in Modules', { session: 'student', timeout: 240_000 }, async ({ app, agent, screen }) => {
     await app.open('/assessment');
 
     const resultsDialog = screen.getByRole('dialog', 'Assessment Results');
@@ -142,7 +142,7 @@ describe('student assessment hub', { tags: ['student', 'assessment'] }, () => {
     await expect(screen.getByText(/^(Suggested Next|Study Journey)$/)).toBeVisible({ timeout: 30_000 });
   });
 
-  test('Practice Weak Areas in the hub breakdown opens the Modules Practice Center', { session: 'student', tags: ['known-bug'], timeout: 180_000 }, async ({ app, screen }) => {
+  test('Practice Weak Areas in the hub breakdown opens the Modules Practice Center', { session: 'student', timeout: 180_000 }, async ({ app, screen }) => {
     await app.open('/assessment');
 
     const resultsDialog = screen.getByRole('dialog', 'Assessment Results');

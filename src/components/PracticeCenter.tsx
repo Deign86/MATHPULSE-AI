@@ -46,9 +46,32 @@ function getUnitStyle(unit: string) {
   return recordGet(UNIT_STYLE, unit) ?? { icon: PenTool, bg: 'bg-slate-500' };
 }
 
+function topicMatchesFocus(topic: TopicCard, focus: string): boolean {
+  const normalizedFocus = focus.trim().toLowerCase();
+  if (!normalizedFocus) return false;
+  const unitFocus = topic.unit === 'Financial Mathematics'
+    ? 'BusinessMath'
+    : normalizeDiagnosticTopic(topic.unit);
+  const diagnosticFocus = normalizeDiagnosticTopic(focus);
+  return (diagnosticFocus !== null && diagnosticFocus === unitFocus)
+    || topic.name.toLowerCase().includes(normalizedFocus)
+    || normalizedFocus.includes(topic.name.toLowerCase());
+}
+
+// Grades and the Diagnostic Breakdown leave a one-shot topic/subject hint before navigating here.
+function consumePracticeFocusHint(): string | null {
+  const hint = sessionStorage.getItem('mathpulse_practice_topic') ?? sessionStorage.getItem('mathpulse_practice_subject');
+  sessionStorage.removeItem('mathpulse_practice_topic');
+  sessionStorage.removeItem('mathpulse_practice_subject');
+  return hint?.trim() || null;
+}
+
 const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, searchQuery = '', allowedSubjectIds, atRiskTopics = [] }) => {
   const { userProfile } = useAuth();
-  const [selectedSubject, setSelectedSubject] = useState<string>('all');
+  const [initialHint] = useState(consumePracticeFocusHint);
+  const hintedSubject = SHS_MATH_SUBJECTS.find((subject) => subject.name.toLowerCase() === initialHint?.toLowerCase());
+  const [selectedSubject, setSelectedSubject] = useState<string>(hintedSubject?.name ?? 'all');
+  const [focusTopic, setFocusTopic] = useState<string | null>(hintedSubject ? null : initialHint);
   const [selectedDifficulty, setSelectedDifficulty] = useState<'Easy' | 'Medium' | 'Hard'>('Medium');
   const [selectedFilter, setSelectedFilter] = useState<'all' | 'completed' | 'recommended'>('all');
   const [practiceStats, setPracticeStats] = useState<PracticeStatsResponse | null>(null);
@@ -114,10 +137,14 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
     return new Map<string, { bestScore: number; attempts: number; history: Array<{ date: string; score: number; difficulty: string }> }>();
   }, [STORAGE_KEY, completionVersion]);
 
+  // Free-text hints (e.g. an AI recommendation) that match no topic are ignored rather than emptying the list.
+  const activeFocus = focusTopic && topicCards.some((topic) => topicMatchesFocus(topic, focusTopic)) ? focusTopic : null;
+
   // Filter topics
   const filteredTopics = useMemo(() => {
     return topicCards.filter((topic) => {
       const subjectMatch = selectedSubject === 'all' || topic.subject === selectedSubject;
+      const focusMatch = !activeFocus || topicMatchesFocus(topic, activeFocus);
       const searchMatch = !searchQuery ||
         topic.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         topic.unit.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -128,22 +155,12 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
       if (selectedFilter === 'completed') {
         statusMatch = completedTopics.has(topic.name.toLowerCase());
       } else if (selectedFilter === 'recommended') {
-        const unitFocus = topic.unit === 'Financial Mathematics'
-          ? 'BusinessMath'
-          : normalizeDiagnosticTopic(topic.unit);
-        statusMatch = atRiskTopics.some((focus) => {
-          const normalizedFocus = focus.trim().toLowerCase();
-          if (!normalizedFocus) return false;
-          const diagnosticFocus = normalizeDiagnosticTopic(focus);
-          return (diagnosticFocus !== null && diagnosticFocus === unitFocus)
-            || topic.name.toLowerCase().includes(normalizedFocus)
-            || normalizedFocus.includes(topic.name.toLowerCase());
-        });
+        statusMatch = atRiskTopics.some((focus) => topicMatchesFocus(topic, focus));
       }
 
-      return subjectMatch && searchMatch && statusMatch;
+      return subjectMatch && focusMatch && searchMatch && statusMatch;
     });
-  }, [topicCards, selectedSubject, searchQuery, selectedFilter, completedTopics, atRiskTopics]);
+  }, [topicCards, selectedSubject, activeFocus, searchQuery, selectedFilter, completedTopics, atRiskTopics]);
 
   // Save a completed quiz to localStorage
 
@@ -272,6 +289,19 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
             <option key={subject.id} value={subject.name}>{subject.name}</option>
           ))}
         </select>
+
+        {activeFocus && (
+          <button
+            type="button"
+            onClick={() => setFocusTopic(null)}
+            aria-label={`Clear focus on ${activeFocus}`}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-50 border-2 border-purple-200 text-xs font-bold text-purple-700 hover:bg-purple-100"
+          >
+            <Target size={14} />
+            Focus: {activeFocus}
+            <X size={14} />
+          </button>
+        )}
 
         {/* Difficulty filter pills */}
         <div className="flex items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm">
