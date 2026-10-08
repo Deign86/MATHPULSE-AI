@@ -85,7 +85,7 @@ describe('admin profile and settings', { tags: ['admin', 'profile-settings'], ti
     await expect(discard).toBeHidden();
   });
 
-  test('Back to Overview with an unsaved profile edit asks first: Keep Editing stays, Discard Changes returns to the Admin Dashboard', { session: 'admin', tags: ['known-bug'] }, async ({ app, screen }) => {
+  test('Back to Overview with an unsaved profile edit asks first: Keep Editing stays, Discard Changes returns to the Admin Dashboard', { session: 'admin' }, async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 45_000 });
     await screen.getByRole('button', /^Profile menu: /).tap();
