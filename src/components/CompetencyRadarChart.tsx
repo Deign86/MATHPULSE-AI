@@ -221,7 +221,7 @@ export const CompetencyRadarChart: React.FC = () => {
           {!loading && (
             <button
               onClick={refresh}
-              className="w-8 h-8 rounded-xl bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:border-purple-300 transition-colors shadow-sm active:scale-95 cursor-pointer"
+              className="relative w-8 h-8 rounded-xl pointer-coarse:after:absolute pointer-coarse:after:-inset-2 bg-white/80 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center justify-center hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:border-purple-300 transition-colors shadow-sm active:scale-95 cursor-pointer"
               title="Refresh"
             >
               <RefreshCw size={13} className="text-slate-500 dark:text-slate-400" />

@@ -523,7 +523,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
   }
 
   return (
-    <div className="h-full overflow-y-auto scrollbar-hide px-4 md:px-6 lg:px-10 py-4 md:py-6 lg:py-8 relative">
+    <div className="h-full overflow-y-auto scrollbar-hide px-4 md:px-6 lg:px-10 pt-4 md:pt-6 lg:pt-8 pb-28 sm:pb-32 lg:pb-28 relative">
       {/* Header & Navigation */}
       <div className="relative mb-4 lg:mb-6 xl:mb-8 w-full lg:w-max">
         <button

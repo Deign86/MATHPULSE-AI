@@ -829,7 +829,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     }
 
     return (
-      <div className="h-full overflow-y-auto px-4 sm:px-8 xl:px-12 pt-3 pb-16 scrollbar-hide scroll-smooth relative font-sans">
+      <div className="h-full overflow-y-auto px-4 sm:px-8 xl:px-12 pt-3 pb-28 sm:pb-32 lg:pb-28 scrollbar-hide scroll-smooth relative font-sans">
         {/* Navigation & Header */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
           <button
@@ -917,10 +917,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveStepIndex(resumeIndex)}
-                className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 hover:from-rose-600 hover:via-purple-700 hover:to-indigo-700 text-white font-bold text-sm sm:text-base shadow-lg hover:shadow-rose-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer group whitespace-nowrap shrink-0"
+                className="inline-flex items-center justify-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-rose-500 via-purple-600 to-indigo-600 hover:from-rose-600 hover:via-purple-700 hover:to-indigo-700 text-white font-bold text-sm sm:text-base shadow-lg hover:shadow-rose-500/25 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer group"
               >
                 <Play size={18} className="fill-white group-hover:translate-x-0.5 transition-transform shrink-0" />
-                <span className="whitespace-nowrap">{ctaText}</span>
+                <span>{ctaText}</span>
                 <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform shrink-0" />
               </button>
 
@@ -950,7 +950,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         </div>
 
         {/* Bento Stat Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5 mb-8">
+        <div className="grid grid-cols-2 @4xl:grid-cols-4 gap-3.5 mb-8">
           <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs hover:border-rose-300 dark:hover:border-rose-700/60 transition-all group min-w-0">
             <div className="flex items-center justify-between gap-1 mb-2">
               <span className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider whitespace-nowrap truncate">Lesson Steps</span>
@@ -958,7 +958,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <Layers size={16} />
               </div>
             </div>
-            <div className="text-2xl font-display font-black text-slate-900 dark:text-white whitespace-nowrap">
+            <div className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white leading-tight break-words">
               {totalSections}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium whitespace-nowrap truncate">
@@ -973,7 +973,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <Clock size={16} />
               </div>
             </div>
-            <div className="text-2xl font-display font-black text-slate-900 dark:text-white whitespace-nowrap">
+            <div className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white leading-tight break-words">
               {totalDuration} mins
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium whitespace-nowrap truncate">
@@ -988,7 +988,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <Target size={16} />
               </div>
             </div>
-            <div className="text-2xl font-display font-black text-slate-900 dark:text-white whitespace-nowrap">
+            <div className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white leading-tight break-words">
               {selectedTeacherModule.practice?.length || 0} items
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium whitespace-nowrap truncate">
@@ -1003,7 +1003,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <Sparkles size={16} />
               </div>
             </div>
-            <div className="text-2xl font-display font-black text-slate-900 dark:text-white whitespace-nowrap">
+            <div className="text-xl sm:text-2xl font-display font-black text-slate-900 dark:text-white leading-tight break-words">
               SHS STEM
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 font-medium whitespace-nowrap truncate">
@@ -1276,7 +1276,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
   return (
     <div 
-      className="h-full overflow-y-auto pt-3.5 px-5 sm:pt-4 sm:px-8 md:pt-2.5 md:px-8 lg:pt-0 lg:px-8 xl:px-12 pb-8 scrollbar-hide scroll-smooth relative"
+      className="h-full overflow-y-auto pt-3.5 px-5 sm:pt-4 sm:px-8 md:pt-2.5 md:px-8 lg:pt-0 lg:px-8 xl:px-12 pb-28 sm:pb-32 lg:pb-28 scrollbar-hide scroll-smooth relative"
       onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 100)}
     >
       <DailyCheckInModal
@@ -1364,7 +1364,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 100 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-lg p-6 shadow-2xl border border-slate-100 max-h-[85vh] flex flex-col"
+              className="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-lg p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl border border-slate-100 max-h-[85dvh] flex flex-col"
             >
               <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
                 <div className="flex items-center gap-2">
@@ -1498,7 +1498,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             </div>
           </div>
         </div>
-        <div className="hidden lg:flex flex-shrink-0 items-center justify-end w-[350px]">
+        <div className="hidden xl:flex flex-shrink-0 items-center justify-end w-[300px] 2xl:w-[350px]">
           <ModulesMascot 
             // SAFETY: trusted internal value already conforms to the asserted type.
             assessmentDismissed={(userProfile as StudentProfile)?.assessmentDismissed}
@@ -1509,10 +1509,10 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       </div>
 
       {/* ── Sticky filter + tab bar ── */}
-      <div data-tour-sticky="" className={`sticky top-0 z-30 -mx-5 px-5 sm:-mx-8 sm:px-8 xl:-mx-12 xl:px-12 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
+      <div data-tour-sticky="" className={`sticky top-0 [@media(max-height:44rem)]:static z-30 -mx-5 px-5 sm:-mx-8 sm:px-8 xl:-mx-12 xl:px-12 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
         {/* Search + filters row */}
         <div data-tour="module-search" className="flex flex-col lg:flex-row items-center gap-3 w-full">
-          <div className="relative flex-1 w-full">
+          <div className="relative flex-1 w-full lg:min-w-[14rem]">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5f6368]">
               <Search size={16} strokeWidth={2.5} />
             </div>
@@ -1619,11 +1619,11 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           </div>
 
           {/* Desktop Filters: Preserved inline dropdowns */}
-          <div className="hidden lg:flex flex-row overflow-x-auto no-scrollbar items-center gap-2 shrink-0">
+          <div className="hidden lg:flex flex-row overflow-x-auto no-scrollbar items-center gap-2 min-w-0">
             <select
               value={subjectFilter}
               onChange={(e) => setSubjectFilter(e.target.value)}
-              className="shrink-0 rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
+              className="shrink-0 max-w-[11rem] rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
               aria-label="Subject"
             >
               <option value="all">All Subjects</option>
@@ -1638,7 +1638,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               value={quarterFilter}
               // SAFETY: trusted internal value already conforms to the asserted type.
               onChange={(e) => setQuarterFilter(e.target.value as 'all' | CurriculumQuarter)}
-              className="shrink-0 rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
+              className="shrink-0 max-w-[11rem] rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
               aria-label="Quarter"
             >
               {QUARTER_FILTERS.map((quarter) => (
@@ -1649,7 +1649,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             <select
               value={competencyFilter}
               onChange={(e) => setCompetencyFilter(e.target.value)}
-              className="shrink-0 rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
+              className="shrink-0 max-w-[11rem] rounded-xl border border-slate-200 bg-white pl-3 pr-8 py-2 text-xs font-semibold text-slate-700 focus:border-sky-400 focus:outline-none shadow-sm"
               aria-label="Competency Group"
             >
               <option value="all">All Competencies</option>
@@ -1685,7 +1685,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                   data-tour={`module-tab-${tab.id}`}
                   // SAFETY: trusted internal value already conforms to the asserted type.
                   onClick={() => setActiveTab(tab.id as ModulesTab)}
-                  className={`relative flex items-center justify-center gap-1.5 rounded-full text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
+                  className={`relative flex items-center justify-center gap-1.5 rounded-full pointer-coarse:min-h-11 pointer-coarse:min-w-11 text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
                     isActive
                       ? 'px-3.5 sm:px-4 py-1.5 shadow-sm'
                       : 'px-2.5 sm:px-4 py-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'
@@ -1718,7 +1718,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-500 shrink-0">
                   <Layers size={15} strokeWidth={2.5} className="shrink-0" />
                 </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap truncate">DepEd Strengthened SHS Modules</span>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight leading-tight line-clamp-2">DepEd Strengthened SHS Modules</span>
               </>
             )}
             {activeTab === 'recommended' && (
@@ -1726,7 +1726,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <div className="w-7 h-7 rounded-lg bg-[#75D06A]/10 flex items-center justify-center shrink-0">
                   <Sparkles size={15} className="text-[#75D06A] shrink-0" />
                 </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap truncate">Suggested Next</span>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight leading-tight line-clamp-2">Suggested Next</span>
               </>
             )}
             {activeTab === 'practice' && (
@@ -1734,7 +1734,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <div className="w-7 h-7 rounded-lg bg-[#FFB356]/10 flex items-center justify-center shrink-0">
                   <Target size={15} className="text-[#FFB356] shrink-0" />
                 </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap truncate">Practice Center</span>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight leading-tight line-clamp-2">Practice Center</span>
               </>
             )}
             {activeTab === 'teacher_uploaded' && (
@@ -1742,7 +1742,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                 <div className="w-7 h-7 rounded-lg bg-[#F08386]/15 border border-[#F08386]/30 flex items-center justify-center text-[#F08386] shrink-0">
                   <BookUser size={15} strokeWidth={2.5} className="shrink-0" />
                 </div>
-                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight whitespace-nowrap truncate">Teacher Uploaded Modules</span>
+                <span className="font-display font-black text-[15px] text-slate-700 tracking-tight leading-tight line-clamp-2">Teacher Uploaded Modules</span>
               </>
             )}
 
@@ -1922,7 +1922,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               </div>
 
               {teacherModulesLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 @5xl:grid-cols-3 gap-5 md:gap-6 mt-4">
                   {[1, 2, 3].map((i) => (
                     <div key={i} className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 animate-pulse space-y-4">
                       <div className="h-5 bg-slate-200 dark:bg-slate-800 rounded-lg w-1/3" />
@@ -1968,7 +1968,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 @5xl:grid-cols-3 gap-5 md:gap-6 mt-4">
                   {filteredTeacherModules.map((mod) => (
                     <div
                       key={mod.moduleId}
@@ -1991,7 +1991,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
                         <div className="relative z-10 flex-1 flex flex-col justify-between">
                           <div>
-                            <div className="flex items-center justify-between gap-2 mb-2">
+                            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                               <span className="rounded-full border border-white/30 bg-black/20 backdrop-blur-md px-2.5 py-0.5 text-[9px] md:text-[10px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] whitespace-nowrap shrink-0 truncate max-w-[130px]">
                                 {mod.subject}
                               </span>
@@ -2010,7 +2010,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                             </p>
                           </div>
 
-                          <div className="pt-3 border-t border-white/15 flex items-center justify-between gap-2 mt-auto">
+                          <div className="pt-3 border-t border-white/15 flex flex-wrap items-center justify-between gap-2 mt-auto">
                             <div className="flex items-center gap-1.5 text-white/90 text-[10px] md:text-[11px] font-bold shrink-0">
                               <span className="px-2 py-0.5 rounded-md bg-white/20 backdrop-blur-xs whitespace-nowrap shrink-0">
                                 {mod.sections?.length || 0} sections
@@ -2064,9 +2064,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: 24 }}
             transition={{ duration: 0.25 }}
-            className="fixed inset-y-0 right-0 z-[80] w-full max-w-xl border-l border-slate-200 bg-white p-6 shadow-2xl"
+            className="fixed inset-y-0 right-0 z-[80] w-full max-w-xl border-l border-slate-200 bg-white p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] shadow-2xl flex flex-col"
           >
-            <div className="mb-4 flex items-start justify-between gap-4">
+            <div className="mb-4 flex items-start justify-between gap-4 shrink-0">
               <div>
                 <p className="text-xs font-black uppercase tracking-wide text-sky-700">Curriculum Preview</p>
                 <h3 className="mt-1 text-xl font-black text-slate-900">{sourcePreviewModule.title}</h3>
@@ -2077,13 +2077,14 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               <button
                 type="button"
                 onClick={() => setSourcePreviewModule(null)}
-                className="rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50"
+                aria-label="Close curriculum preview"
+                className="relative shrink-0 rounded-lg border border-slate-200 p-2 text-slate-500 hover:bg-slate-50 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5"
               >
                 <X size={16} />
               </button>
             </div>
 
-            <div className="space-y-4 overflow-y-auto pr-1">
+            <div className="flex-1 min-h-0 space-y-4 overflow-y-auto pr-1">
               <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                 <p className="text-xs font-bold uppercase tracking-wide text-slate-500">Competency Group</p>
                 <p className="mt-1 text-sm font-semibold text-slate-800">{sourcePreviewModule.competency_group}</p>
@@ -2272,7 +2273,7 @@ const ModulesLibraryView: React.FC<{
             </p>
           </div>
         ) : (
-          <div data-tour="module-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div data-tour="module-grid" className="grid grid-cols-1 sm:grid-cols-2 @5xl:grid-cols-3 gap-4 md:gap-6">
             {modules.map((module, index) => {
               const isRecommended = matchesWeakTopic(module, weakTopics);
               return (
@@ -2334,7 +2335,7 @@ const RecommendedModulesView: React.FC<{
             <div className="w-10 h-10 rounded-[14px] bg-[#FF8B8B]/10 flex items-center justify-center text-[20px] shadow-inner"><Flame size={20} className="text-orange-500" /></div>
             <h2 className="font-display font-black text-[24px] text-slate-800 tracking-tight">Continue This Module</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 @5xl:grid-cols-3 gap-4 md:gap-6">
             {inProgress.slice(0, 4).map((module, index) => {
               const isRecommended = matchesWeakTopic(module, weakTopics);
               return (
@@ -2360,7 +2361,7 @@ const RecommendedModulesView: React.FC<{
             You are all caught up. Practice more quizzes to unlock additional recommendations.
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 @5xl:grid-cols-3 gap-4 md:gap-6">
             {suggested.map((module, index) => {
               const isRecommended = matchesWeakTopic(module, weakTopics);
               return (

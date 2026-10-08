@@ -239,7 +239,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
               <Zap size={16} className="sm:hidden" />
               <Zap size={24} className="hidden sm:block" />
             </div>
-            <span className="text-xl sm:text-3xl font-bold">{totalXPEarned.toLocaleString()}</span>
+            <span className="text-base min-[360px]:text-xl sm:text-3xl font-bold tabular-nums">{totalXPEarned.toLocaleString()}</span>
           </div>
           <p className="text-[10px] sm:text-sm font-medium text-cyan-100 leading-tight">Total XP Earned</p>
         </motion.div>
@@ -260,7 +260,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-6" data-tour="practice-filters">
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-2 sm:gap-3 mb-6" data-tour="practice-filters">
         {/* Subject select */}
         <select
           value={selectedSubject}
@@ -274,7 +274,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
         </select>
 
         {/* Difficulty filter pills */}
-        <div className="flex items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm">
           <span className="px-2 text-xs font-bold text-slate-400">Difficulty:</span>
           {(['Easy', 'Medium', 'Hard'] as const).map((diff) => (
             <button
@@ -293,7 +293,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
         </div>
 
         {/* Status filter pills */}
-        <div className="flex items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 bg-white rounded-xl p-1 shadow-sm">
           {([['all', 'All'], ['completed', 'Completed'], ['recommended', 'Recommended']] as const).map(([key, label]) => (
             <button
               key={key}

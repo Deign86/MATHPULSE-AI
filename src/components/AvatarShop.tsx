@@ -693,7 +693,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
       className={`relative w-full bg-[#0a0f1d] overflow-hidden flex flex-col justify-between ${
         isDesktop
           ? 'h-full flex-1'
-          : 'h-[36vh] min-h-[240px] max-h-[300px] border-b border-sky-950/40'
+          : 'h-[36vh] min-h-[240px] short:min-h-[160px] max-h-[300px] border-b border-sky-950/40'
       }`}
       data-tour="avatar-preview"
     >
@@ -764,7 +764,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
               <button
                 type="button"
                 onClick={handleRandomize}
-                className="p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sky-200 hover:text-white border border-white/10 backdrop-blur-sm transition-all active:scale-95 cursor-pointer"
+                className="relative p-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-sky-200 hover:text-white border border-white/10 backdrop-blur-sm transition-all active:scale-95 cursor-pointer pointer-coarse:after:absolute pointer-coarse:after:-inset-2.5"
                 aria-label="Surprise Outfit"
               >
                 <Dices size={15} />
@@ -781,7 +781,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                 <button
                   type="button"
                   onClick={onNavigateToModules}
-                  className="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 shadow-md shadow-orange-500/25 active:scale-95 transition-all cursor-pointer"
+                  className="bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-500 hover:to-orange-600 text-white px-2.5 py-1 rounded-lg text-xs font-black flex items-center gap-1 shadow-md shadow-orange-500/25 active:scale-95 transition-all cursor-pointer relative pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5"
                 >
                   <Zap size={11} className="fill-white" />
                   <span>{currentXP} XP</span>
@@ -878,9 +878,9 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
         </div>
 
         {/* Outer Flex Container: Left panel (wardrobe) + Right panel (avatar stage) */}
-        <div className="relative z-10 w-full h-full flex items-center justify-between p-3 sm:p-4 md:p-4 lg:p-6 xl:p-8 pb-24 md:pb-24 lg:pb-6 xl:pb-8 gap-3 sm:gap-4 md:gap-4 lg:gap-6 xl:gap-8 overflow-hidden">
+        <div className="relative z-10 w-full h-full flex items-center short:items-start justify-between p-3 sm:p-4 md:p-4 lg:p-6 xl:p-8 pb-24 md:pb-24 lg:pb-6 xl:pb-8 gap-3 sm:gap-4 md:gap-4 lg:gap-6 xl:gap-8 overflow-hidden short:overflow-y-auto">
           {/* Left Column: Warm Scandinavian Light Oak Wooden Closet & Bookshelf Container */}
-          <div className="w-[360px] md:w-[380px] lg:w-[460px] xl:w-[520px] 2xl:w-[580px] h-full max-h-[840px] rounded-[2.25rem] bg-gradient-to-b from-[#fcf9f4] via-[#f7f2ea] to-[#eee4d6] border-2 border-[#d9cab4] shadow-[0_25px_60px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(180,155,130,0.25)] flex flex-col overflow-hidden shrink-0 relative">
+          <div className="w-[360px] md:w-[380px] xl:w-[520px] 2xl:w-[580px] h-full max-h-[840px] short:min-h-[26rem] rounded-[2.25rem] bg-gradient-to-b from-[#fcf9f4] via-[#f7f2ea] to-[#eee4d6] border-2 border-[#d9cab4] shadow-[0_25px_60px_rgba(0,0,0,0.5),inset_0_1px_2px_rgba(255,255,255,0.9),inset_0_-2px_4px_rgba(180,155,130,0.25)] flex flex-col overflow-hidden shrink-0 relative">
             {/* Closet Interior Ceiling Canopy & Ambient Warm LED Strip Light */}
             <div className="w-full relative shrink-0">
               <div className="h-1.5 w-full bg-gradient-to-r from-amber-400/20 via-amber-300/85 to-amber-400/20 shadow-[0_0_14px_rgba(245,158,11,0.45)]" />
@@ -896,7 +896,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <h2 className="text-sm sm:text-base font-display font-black text-amber-950 tracking-tight truncate">
+                      <h2 className="text-sm sm:text-base font-display font-black text-amber-950 tracking-tight line-clamp-2">
                         {studentDisplayName}&apos;s Closet
                       </h2>
                       <span className="hidden xl:inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider uppercase bg-amber-100 border border-amber-300 text-amber-800 shrink-0">
@@ -933,7 +933,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                     <button
                       type="button"
                       onClick={handleRandomize}
-                      className="p-2 rounded-xl bg-[#f2e9dc] hover:bg-[#ebe0cf] text-amber-900 border border-[#d9cab4] transition-all active:scale-95 cursor-pointer shadow-sm"
+                      className="relative p-2 rounded-xl bg-[#f2e9dc] hover:bg-[#ebe0cf] text-amber-900 border border-[#d9cab4] transition-all active:scale-95 cursor-pointer shadow-sm pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5"
                       aria-label="Surprise Outfit"
                     >
                       <Dices size={16} />
@@ -949,7 +949,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                     <button
                       type="button"
                       onClick={onNavigateToModules}
-                      className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md shadow-orange-500/25 active:scale-95 transition-all cursor-pointer"
+                      className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-1.5 shadow-md shadow-orange-500/25 active:scale-95 transition-all cursor-pointer relative pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2"
                     >
                       <Zap className="fill-white" size={13} />
                       <span>{currentXP} XP</span>
@@ -990,7 +990,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                       <Tabs.Trigger
                         key={cat.id}
                         value={cat.id}
-                        className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all outline-none whitespace-nowrap min-h-[34px] cursor-pointer ${
+                        className={`relative flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all outline-none whitespace-nowrap min-h-[34px] pointer-coarse:min-h-11 cursor-pointer ${
                           isActive
                             ? cat.id === 'exclusive'
                               ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-500/30 scale-[1.02] border border-amber-400 ring-1 ring-amber-400/40'
@@ -1148,12 +1148,12 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
           MOBILE VIEW (< md screens, < 768px)
           Compact top dark stage with bottom slide-out wardrobe chest drawer
          ══════════════════════════════════════════════════════════════ */}
-      <div className="md:hidden h-full w-full flex flex-col overflow-hidden bg-[#0a0f1d] p-0">
+      <div className="md:hidden h-full w-full flex flex-col overflow-hidden short:overflow-y-auto bg-[#0a0f1d] p-0">
         {/* Top Pinned Avatar Stage */}
         {renderAvatarShowcase(false)}
 
         {/* Bottom Wardrobe Closet Chest Drawer */}
-        <div className="flex-1 min-h-0 bg-gradient-to-b from-[#fcf9f4] via-[#f7f2ea] to-[#eee4d6] rounded-t-[2rem] border-t-2 border-[#d9cab4] shadow-[0_-12px_40px_rgba(0,0,0,0.3)] flex flex-col relative z-20 overflow-hidden">
+        <div className="flex-1 min-h-0 short:flex-none short:h-[24rem] bg-gradient-to-b from-[#fcf9f4] via-[#f7f2ea] to-[#eee4d6] rounded-t-[2rem] border-t-2 border-[#d9cab4] shadow-[0_-12px_40px_rgba(0,0,0,0.3)] flex flex-col relative z-20 overflow-hidden">
           {/* Polished Brass Closet Drawer Pull Bar */}
           <div className="w-full pt-2.5 pb-1 flex justify-center shrink-0">
             <div className="w-14 h-1.5 bg-gradient-to-r from-amber-400 via-amber-200 to-amber-400 rounded-full shadow-[0_1px_3px_rgba(180,120,50,0.35)]" />
@@ -1183,7 +1183,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                     <Tabs.Trigger
                       key={cat.id}
                       value={cat.id}
-                      className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all outline-none whitespace-nowrap min-h-[34px] cursor-pointer ${
+                      className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl font-bold text-xs transition-all outline-none whitespace-nowrap min-h-[34px] pointer-coarse:min-h-11 pointer-coarse:min-w-11 cursor-pointer ${
                         isActive
                           ? cat.id === 'exclusive'
                             ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/30 scale-[1.02] border border-amber-400'

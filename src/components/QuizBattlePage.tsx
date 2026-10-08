@@ -2387,7 +2387,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode, tourPr
 
             <div className="flex-1 flex flex-col justify-center items-center w-full min-h-0 relative">
               {activeMatch.status === 'completed' ? (
-                <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-slate-900/50 backdrop-blur-md px-4">
+                <div className="fixed inset-0 z-[200] flex flex-col items-center justify-center-safe overflow-y-auto bg-slate-900/50 backdrop-blur-md px-4 py-4">
                   <motion.div
                     initial={{ opacity: 0, scale: 0.9, y: 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -2558,7 +2558,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode, tourPr
                 >
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
                     {/* Left Column (~70% on desktop: Hero Banner & Battle Modes) */}
-                    <div className="lg:col-span-8 space-y-6 sm:space-y-7">
+                    <div className="lg:col-span-7 xl:col-span-8 space-y-6 sm:space-y-7">
 
                   {/* 1. Hero Banner — Pop-out Overlapping Hero Avatar */}
                   <div className="relative select-none mt-2 sm:mt-4 lg:mt-5 rounded-2xl sm:rounded-3xl lg:rounded-[2rem] border border-white/20 shadow-[0_16px_40px_-12px_rgba(99,102,241,0.35)] shrink-0 overflow-visible">
@@ -2743,7 +2743,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode, tourPr
                     </div>
 
                     {/* Right Column (~30% on desktop: Hall of Fame, My Stats Bento HUD, Match History) */}
-                    <div className="lg:col-span-4 space-y-4 sm:space-y-5">
+                    <div className="lg:col-span-5 xl:col-span-4 space-y-4 sm:space-y-5">
 
                       {/* 1. Hall of Fame Widget — Ornate Trophy Showcase */}
                       {widgetErrorCard(['leaderboard'])}

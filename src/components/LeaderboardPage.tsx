@@ -270,7 +270,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
   return (
     <div
       ref={rootRef}
-      className="w-full relative min-h-full lg:h-full lg:overflow-hidden flex flex-col font-body text-slate-900 overflow-x-hidden"
+      className="w-full relative min-h-full xl:h-full xl:overflow-hidden flex flex-col font-body text-slate-900 overflow-x-hidden"
     >
       {/* ========================================================================= */}
       {/* 1. ROOT BACKGROUND LAYER: SUNBURST RAYS CENTERED ON 1ST PLACE CHAMPION    */}
@@ -401,13 +401,13 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
       {/* ========================================================================= */}
       {/* 3. MAIN LAYOUT (DESKTOP: SPLIT VIEW, TABLET/MOBILE: VERTICAL FLOW)        */}
       {/* ========================================================================= */}
-      <div className="w-full max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-6 pb-4 flex-1 lg:h-full lg:overflow-hidden flex flex-col lg:flex-row lg:items-stretch lg:gap-8 relative z-10">
+      <div className="w-full max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-6 lg:pt-6 pb-4 xl:pb-28 flex-1 xl:h-full xl:overflow-hidden flex flex-col xl:flex-row xl:items-stretch xl:gap-8 relative z-10">
         
         {/* ======================================================================= */}
         {/* LEFT COLUMN (DESKTOP): HIGHLIGHTING TOP 1, 2, 3 PODIUMS ONLY            */}
         {/* (Nothing follows below it on desktop! Whole page does not scroll)       */}
         {/* ======================================================================= */}
-        <div className="flex-1 flex flex-col items-center justify-between min-h-0 lg:py-1 relative">
+        <div className="flex-1 flex flex-col items-center justify-between min-h-0 xl:py-1 relative">
           
           {/* Centered Header Stack (Badge -> Leaderboard -> Filters) */}
           <div className="w-full flex flex-col items-center text-center mb-1">
@@ -431,7 +431,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                   type="button"
                   onClick={() => setTimeFilter(mode)}
                   aria-label={`Show ${mode === 'all' ? 'All Time' : mode} leaderboard`}
-                  className={`px-4 py-1.5 rounded-full text-xs font-bold transition-all capitalize inline-flex justify-center items-center cursor-pointer ${
+                  className={`px-4 py-1.5 pointer-coarse:min-h-11 rounded-full text-xs font-bold transition-all capitalize inline-flex justify-center items-center cursor-pointer ${
                     timeFilter === mode
                       ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-md'
                       : 'text-purple-950/80 hover:text-purple-950 hover:bg-white/30'
@@ -655,7 +655,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
               <span className="w-7 h-7 rounded-xl bg-purple-600 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
                 #{yourRank}
               </span>
-              <p className="text-xs font-bold truncate">
+              <p className="text-xs font-bold leading-snug line-clamp-2">
                 {rivalStudent
                   ? `Only ${rivalXpGap} XP needed to overtake ${rivalStudent.name}!`
                   : 'You hold the #1 rank! Keep mastering drills!'}
@@ -664,7 +664,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
             <button
               type="button"
               onClick={() => handleNavigateTab('Quiz Battle')}
-              className="px-3 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 shadow-xs"
+              className="relative px-3 py-1 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold shrink-0 transition-colors cursor-pointer flex items-center gap-1 shadow-xs pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5"
             >
               <Zap size={12} className="text-yellow-300 fill-yellow-300" />
               <span>Battle</span>
@@ -677,7 +677,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
         {/* - Desktop: Locked to viewport height, only the students list scrolls    */}
         {/* - Mobile: Fixed card height (h-[calc(100dvh-140px)]), no endless scroll */}
         {/* ======================================================================= */}
-        <div className="w-full lg:w-[390px] xl:w-[430px] shrink-0 mt-6 lg:mt-0 flex flex-col h-[calc(100dvh-140px)] sm:h-[calc(100dvh-150px)] lg:h-full min-h-0">
+        <div className="w-full xl:w-[430px] shrink-0 mt-6 xl:mt-0 flex flex-col h-[calc(100dvh-140px)] sm:h-[calc(100dvh-150px)] xl:h-full min-h-0">
           <div className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl p-4 sm:p-5 border border-white/80 dark:border-slate-800 shadow-[0_18px_45px_rgba(0,0,0,0.12)] flex flex-col h-full min-h-0 relative overflow-hidden" data-tour="leaderboard-standings">
             {/* Elegant Accent Gradient Border Line */}
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-amber-400" />
@@ -716,7 +716,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: Math.min(index * 0.03, 0.25) }}
                     onClick={() => setSelectedStudent(student)}
-                    className={`flex items-center gap-3 p-3 rounded-2xl cursor-pointer border transition-all duration-200 group ${
+                    className={`flex items-center gap-2 min-[360px]:gap-3 p-3 rounded-2xl cursor-pointer border transition-all duration-200 group ${
                       student.isYou
                         ? 'border-purple-500 bg-gradient-to-r from-purple-50/90 to-fuchsia-50/80 dark:from-purple-950/50 dark:to-fuchsia-950/40 shadow-md shadow-purple-500/10 ring-2 ring-purple-400/20'
                         : 'bg-white/80 dark:bg-slate-800/80 border-slate-100 dark:border-slate-700/80 shadow-xs hover:shadow-md hover:bg-white dark:hover:bg-slate-800 hover:border-purple-200 dark:hover:border-purple-800'
@@ -734,7 +734,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                     </div>
 
                     {/* Avatar with Status Ring */}
-                    <div className="w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center overflow-hidden shrink-0 border-2 border-slate-200 dark:border-slate-600 group-hover:border-purple-300 transition-colors">
+                    <div className="max-[359px]:hidden w-10 h-10 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center overflow-hidden shrink-0 border-2 border-slate-200 dark:border-slate-600 group-hover:border-purple-300 transition-colors">
                       {renderAvatar(student.avatar, 22)}
                     </div>
 

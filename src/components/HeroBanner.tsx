@@ -232,7 +232,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
               aria-label="Dismiss assessment complete notification"
               title="Close"
               onClick={handleDismissAssessmentComplete}
-              className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-teal-100/60 transition-colors z-40"
+              className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 p-1 rounded-full text-slate-400 hover:text-slate-700 hover:bg-teal-100/60 transition-colors z-40 pointer-coarse:after:absolute pointer-coarse:after:-inset-3"
             >
               <X size={13} />
             </button>
