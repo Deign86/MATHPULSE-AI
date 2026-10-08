@@ -33,6 +33,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useAuth } from '../contexts/AuthContext';
 import { GuidedTour, type TourStep } from './onboarding/GuidedTour';
 import { teacherPageTour, teacherTourPages, teacherTourSteps } from './onboarding/teacherTourSteps';
+import { PageGuideConfirm } from './onboarding/PageGuideConfirm';
 import { useOnboardingTour } from '../hooks/useOnboardingTour';
 import {
   getClassAnalytics,
@@ -2017,16 +2018,21 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-                  <button
-                    type="button"
-                    data-tour="page-guide"
-                    onClick={() => teacherTour.start(teacherPageTour(activeView) ? activeView : null)}
-                    className="relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center bg-white/70 hover:bg-white dark:bg-slate-900/60 rounded-2xl backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/10 text-slate-700 dark:text-slate-100 hover:text-purple-600 hover:border-purple-200 transition-all cursor-pointer active:scale-95 shrink-0"
-                    title="Guide for this page"
-                    aria-label="Guide for this page"
+                  <PageGuideConfirm
+                    guide={teacherPageTour(activeView)?.label ?? null}
+                    audience="teacher"
+                    onPlay={() => teacherTour.start(teacherPageTour(activeView) ? activeView : null)}
                   >
-                    <CircleHelp size={16} className="sm:w-[18px] sm:h-[18px]" />
-                  </button>
+                    <button
+                      type="button"
+                      data-tour="page-guide"
+                      className="relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center bg-white/70 hover:bg-white dark:bg-slate-900/60 rounded-2xl backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/10 text-slate-700 dark:text-slate-100 hover:text-purple-600 hover:border-purple-200 transition-all cursor-pointer active:scale-95 shrink-0"
+                      title="Guide for this page"
+                      aria-label="Guide for this page"
+                    >
+                      <CircleHelp size={16} className="sm:w-[18px] sm:h-[18px]" />
+                    </button>
+                  </PageGuideConfirm>
 
                   {/* AI Insights Button */}
                   <div className="relative group">

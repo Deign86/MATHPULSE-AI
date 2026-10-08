@@ -5,7 +5,7 @@ The teacher guide reuses the student guide's engine (`GuidedTour`), hook (`useOn
 ## Teacher experience
 
 - **General guide (first use):** launches once on the teacher Dashboard after data loads, when no modal or drawer is open. 12 steps: a welcome, one overview per teacher page (what it is for and where it lives in navigation), and a closing step on the **?** button. The welcome and closing steps say that step-by-step help lives in each page's guide.
-- **Page guides:** the **?** button in the teacher header plays the guide for the current page. Teacher Settings → Teacher guide lists every page guide and replays the general guide. Buttons are disabled while Settings has unsaved edits, an unsubmitted password, or a save in progress.
+- **Page guides:** the **?** button in the teacher header asks "Play the <page> guide?" (**Play guide** or **Skip**), then plays the guide for the current page. Teacher Settings → Teacher guide lists every page guide and replays the general guide. Buttons are disabled while Settings has unsaved edits, an unsubmitted password, or a save in progress.
 - A guide started from a page returns there when it finishes or is skipped.
 - First use is tracked per account and role: `mathpulse:teacher-tour:v1:<uid>` (students use `mathpulse:student-tour:v1:<uid>`).
 

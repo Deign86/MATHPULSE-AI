@@ -59,6 +59,7 @@ import { NotificationBell } from '@/features/notifications';
 import AdminMobileBottomNav from './admin/AdminMobileBottomNav';
 import { GuidedTour, type TourStep } from './onboarding/GuidedTour';
 import { adminPageTour, adminTourPages, adminTourSteps } from './onboarding/adminTourSteps';
+import { PageGuideConfirm } from './onboarding/PageGuideConfirm';
 import { useOnboardingTour } from '../hooks/useOnboardingTour';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, 
@@ -495,16 +496,21 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              <button
-                type="button"
-                data-tour="page-guide"
-                onClick={() => adminTour.start(adminPageTour(activeTab) ? activeTab : null)}
-                className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] text-slate-700 dark:text-slate-100 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 shrink-0"
-                title="Guide for this page"
-                aria-label="Guide for this page"
+              <PageGuideConfirm
+                guide={adminPageTour(activeTab)?.label ?? null}
+                audience="admin"
+                onPlay={() => adminTour.start(adminPageTour(activeTab) ? activeTab : null)}
               >
-                <CircleHelp size={18} />
-              </button>
+                <button
+                  type="button"
+                  data-tour="page-guide"
+                  className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] text-slate-700 dark:text-slate-100 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 shrink-0"
+                  title="Guide for this page"
+                  aria-label="Guide for this page"
+                >
+                  <CircleHelp size={18} />
+                </button>
+              </PageGuideConfirm>
 
               {/* Help Toggle (Curriculum Control / Subjects) */}
               {(activeTab === 'Curriculum Control' || activeTab === 'Subjects') && (

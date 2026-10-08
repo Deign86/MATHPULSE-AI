@@ -6,6 +6,7 @@ import Sidebar from '../../src/components/Sidebar';
 import MobileBottomNav from '../../src/components/MobileBottomNav';
 import SettingsPage from '../../src/components/SettingsPage';
 import { GuidedTour, type TourStep } from '../../src/components/onboarding/GuidedTour';
+import { PageGuideConfirm } from '../../src/components/onboarding/PageGuideConfirm';
 import { studentPageTour, studentTourPages, studentTourSteps } from '../../src/components/onboarding/studentTourSteps';
 import { useOnboardingTour } from '../../src/hooks/useOnboardingTour';
 
@@ -58,7 +59,9 @@ function StudentTourFixture() {
         <header className="flex shrink-0 items-center justify-between gap-2 border-b p-4">
           <div data-tour="level" className="rounded-xl bg-purple-100 p-3 text-purple-900">Lv 1 · XP</div>
           <div className="flex gap-2">
-            <button data-tour="page-guide" aria-label="Guide for this page" className="rounded-xl bg-white p-3" onClick={() => tour.start(studentPageTour(tab) ? tab : null)}><CircleHelp size={16} aria-hidden="true" /></button>
+            <PageGuideConfirm guide={studentPageTour(tab)?.label ?? null} audience="student" onPlay={() => tour.start(studentPageTour(tab) ? tab : null)}>
+              <button data-tour="page-guide" aria-label="Guide for this page" className="rounded-xl bg-white p-3"><CircleHelp size={16} aria-hidden="true" /></button>
+            </PageGuideConfirm>
             <button aria-label="Scientific Calculator" className="rounded-xl bg-white p-3"><Calculator size={16} aria-hidden="true" /></button>
             <button data-tour="notifications" aria-label="Notifications" className="rounded-xl bg-white p-3"><Bell size={16} aria-hidden="true" /></button>
             <button data-tour-group="Profile" className="hidden rounded-xl bg-white p-3 md:block" onClick={() => setTab('Profile')}>Profile</button>

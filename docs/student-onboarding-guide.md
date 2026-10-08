@@ -24,7 +24,7 @@ Students can use Back, Continue, Finish tour, or the header close button labelle
 
 Every page has its own short guide:
 
-- The **?** button in the top bar plays the guide for the page the student is on.
+- The **?** button in the top bar asks first ("Play the Modules guide?", with **Play guide** and **Skip**), then plays the guide for the page the student is on. Skip and Escape close the question and return focus to the button.
 - Settings → Student guide lists every page guide, plus **Replay student guide** for the full walkthrough.
 
 A page guide stays on its page and returns there when finished. A guide requested while the profile is still loading opens as soon as it is ready. Replay and page guides are disabled while Settings has unsaved edits or a password field holds unsubmitted text.
@@ -37,8 +37,9 @@ First-use means the account has not dismissed this version of the guide in this 
 | --- | --- |
 | `src/components/onboarding/GuidedTour.tsx` | Role-neutral spotlight and explanation dialog. Owns step index, target discovery, scrolling, optional-step skipping, placement, progress, focus, and keyboard dismissal. |
 | `src/components/onboarding/studentTourSteps.ts` | Per-page student guides (`studentTourPages`, each with one general `overview` step and detailed `steps`), the general guide (`studentTourSteps`), and `studentPageTour(tab)`. |
+| `src/components/onboarding/PageGuideConfirm.tsx` | The question the header **?** button asks before a guide plays, shared by all three roles. It wraps the button as its trigger, so Skip and Escape return focus there; Play guide hands focus to the guide card. |
 | `src/hooks/useOnboardingTour.ts` | Student eligibility, delayed first launch, full or page replay, dismissal, browser-history dismissal, account isolation, and local persistence. |
-| `src/App.tsx` | Assessment safety, real student navigation, history replacement, original-screen restoration, hardware back, header page-guide button, and passing the current step's menu/view to pages. |
+| `src/App.tsx` | Assessment safety, real student navigation, history replacement, original-screen restoration, hardware back, header page-guide button with its confirmation, and passing the current step's menu/view to pages. |
 | `src/components/ModulesPage.tsx` | Holds the Daily Check-In while a guide is open (`tourActive`); shows the explained sub-tab (`tourView`) and restores the student's tab afterwards. |
 | `src/components/QuizBattlePage.tsx` | `tourPreview` blocks session resume; `tourView` shows the read-only setup screen. |
 | `src/components/SettingsPage.tsx` | Student guide card (shared `onboarding/GuideReplayCard.tsx`: full replay, page-guide grid, unsaved-change protection). Teacher/admin consumers receive no student guide. |

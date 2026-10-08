@@ -114,9 +114,19 @@ try {
         record.pageGuides[guide] = (await walkGuide(page, size, `${size.name}-${guide.replace(/\W+/g, '-')}`)).length;
         await page.getByRole('group', { name: 'Page guides' }).waitFor({ timeout: 5000 });
       }
+      // The header button asks first: Skip leaves the page alone, Play guide starts this page's guide.
+      const confirm = page.getByRole('alertdialog');
       await page.getByRole('button', { name: 'Guide for this page' }).click();
+      await confirm.waitFor();
+      assert.match(await confirm.textContent(), /Play the Settings guide\?/, 'header button must offer the current page guide');
+      await confirm.getByRole('button', { name: 'Skip' }).click();
+      await confirm.waitFor({ state: 'detached' });
+      assert.equal(await dialog.count(), 0, 'Skip must not start the guide');
+      await page.getByRole('button', { name: 'Guide for this page' }).click();
+      await confirm.getByRole('button', { name: 'Play guide' }).click();
       await dialog.waitFor();
       assert.match(await dialog.textContent(), /Settings guide/, 'header button must play the current page guide');
+      await page.waitForFunction(() => Boolean(document.activeElement?.closest('[data-tour-dialog]')), null, { timeout: 5000 });
       await page.keyboard.press('Escape');
       await dialog.waitFor({ state: 'detached' });
     }

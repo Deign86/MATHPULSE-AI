@@ -1,6 +1,7 @@
 import { useOnboardingTour } from './hooks/useOnboardingTour';
 import { GuidedTour, type TourStep } from './components/onboarding/GuidedTour';
 import { studentPageTour, studentTourPages, studentTourSteps } from './components/onboarding/studentTourSteps';
+import { PageGuideConfirm } from './components/onboarding/PageGuideConfirm';
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -1305,16 +1306,21 @@ const App = ({ authOverride }: AppProps = {}) => {
                 <InstallPwaButton />
 
                 {userRole === 'student' && (
-                  <button
-                    type="button"
-                    data-tour="page-guide"
-                    onClick={() => studentTour.start(studentPageTour(activeTab) ? activeTab : null)}
-                    className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/80 border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:border-purple-200/80 text-slate-700 dark:text-slate-100 hover:text-purple-600 transition-all flex items-center justify-center cursor-pointer active:scale-95"
-                    title="Guide for this page"
-                    aria-label="Guide for this page"
+                  <PageGuideConfirm
+                    guide={studentPageTour(activeTab)?.label ?? null}
+                    audience="student"
+                    onPlay={() => studentTour.start(studentPageTour(activeTab) ? activeTab : null)}
                   >
-                    <CircleHelp size={16} className="stroke-[2.2]" />
-                  </button>
+                    <button
+                      type="button"
+                      data-tour="page-guide"
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/80 border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:border-purple-200/80 text-slate-700 dark:text-slate-100 hover:text-purple-600 transition-all flex items-center justify-center cursor-pointer active:scale-95"
+                      title="Guide for this page"
+                      aria-label="Guide for this page"
+                    >
+                      <CircleHelp size={16} className="stroke-[2.2]" />
+                    </button>
+                  </PageGuideConfirm>
                 )}
 
                 <button

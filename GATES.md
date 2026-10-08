@@ -314,3 +314,28 @@ ABANDON: TOUR8 no `E2E_USER_STUDENT_*` credentials are configured locally; the b
   CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
   EXPECT: All commands exit 0.
   EVIDENCE: 2026-10-08 Vitest 140 files / 832 tests passed (354 s); typecheck, ESLint `--max-warnings=0` and anti-slop exit 0; `VITE_API_URL=/api npm run build` exit 0 with check-api-url, check-prod-host and check-no-demo-creds PASS; `node tests/browser/student-tour-smoke.mjs` PASS on all 8 viewports. Worktree installed with `npm ci --legacy-peer-deps` (same as CI; plain `npm ci` fails on the @capacitor-firebase/firebase peer range). The real-app Modules guide re-run is tracked in the responsiveness section (needs a student sign-in).
+
+## Page guide confirmation — 2026-10-08
+
+Scope (user request): the header **?** button ("Guide for this page") asks before it plays a guide: "Play the <page> guide?" with **Play guide** and **Skip**. Student, teacher and admin headers share one component. The Settings guide list still starts guides directly, because a named guide is already chosen there.
+
+- [x] PGC1: Clicking the header ? button opens a confirmation titled "Play the <page> guide?" ("Play the full <role> guide?" on a page without its own guide) with Play guide and Skip. Play guide starts that guide; Skip and Escape close the dialog without starting it.
+  CHECK: npm test -- --run src/components/onboarding/PageGuideConfirm.test.tsx --maxWorkers=2
+  EXPECT: passed
+  EVIDENCE: CHECK passed: 1 file, 4 tests (`PageGuideConfirm.test.tsx`): nothing shows until ? is pressed; the dialog names the page guide and plays only from Play guide; Skip and Escape close it without playing and return focus to the ? button; pages without their own guide get the full-guide wording.
+
+- [x] PGC2: Real app (student, teacher, admin): the confirmation names the current page's guide; Play guide starts it with focus inside the guide card; Skip leaves the page as it was; the dialog fits 320x568 and 844x390, and its buttons are at least 44px on touch.
+  EVIDENCE: Real app on the onboarding-only build (dev server 5174). Student Modules at 320x568 with touch: the dialog (288x258) fits, Skip and Play guide are 44px tall, Skip returns focus to ?, and Play guide starts the 13-step Modules guide with focus in its card. At 844x390 the dialog (384x178) fits. Teacher Dashboard ("Play the Dashboard guide?", 9-step guide) and admin Overview ("Play the Overview guide?", 13 steps) pass at pane size. The same component also passed on the responsiveness tree at 390x844, 320x568, 844x390 and 1440x900 for all three roles.
+
+- [x] PGC3: The browser fixture's header button uses the same confirmation, and the smoke test covers Play guide and Skip.
+  CHECK: node tests/browser/student-tour-smoke.mjs
+  EXPECT: PASS: student tour browser checks
+  EVIDENCE: `node tests/browser/student-tour-smoke.mjs` PASS on all 8 viewports. The header-button check now asserts the "Play the Settings guide?" question, that Skip starts nothing, and that Play guide starts the Settings guide with focus inside it.
+
+- [x] PGC4: Full frontend checks pass after the change.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0.
+  EVIDENCE: Onboarding branch: Vitest 141 files / 836 tests passed; typecheck, `npm run lint -- --max-warnings=0` and anti-slop exit 0; `$env:VITE_API_URL='/api'; npm run build` exit 0 (check-api-url, check-prod-host and check-no-demo-creds PASS).
+
+- [x] PGC5: The student, teacher and admin onboarding guides and the onboarding codemap describe the confirmation.
+  EVIDENCE: `docs/student-onboarding-guide.md` (page guides and the file table), `docs/teacher-onboarding-guide.md`, `docs/admin-onboarding-guide.md` and `src/components/onboarding/codemap.md` describe the question, its two buttons and the focus handling.
