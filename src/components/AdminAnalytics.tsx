@@ -342,7 +342,7 @@ export const AdminAnalytics: React.FC = () => {
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-8 animate-in fade-in duration-300">
 
       {/* ── Top Utility & Action Toolbar ── */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+      <div data-tour="analytics-toolbar" className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -397,7 +397,7 @@ export const AdminAnalytics: React.FC = () => {
       </div>
 
       {/* ── Top Executive KPI Bento Cards (Full Color Gradients - 2x2 on mobile, 4-col on desktop) ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div data-tour="analytics-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {kpiBentos.map((kpi, idx) => {
           const Icon = kpi.icon;
           return (
@@ -470,7 +470,7 @@ export const AdminAnalytics: React.FC = () => {
       </div>
 
       {/* ── Categorized Focus Navigation Tabs (Sticky Header) ── */}
-      <div className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+      <div data-tour-sticky="" data-tour="analytics-tabs" className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
         <div className="flex items-center gap-1.5 p-1 sm:p-1.5 bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 w-full sm:w-fit overflow-x-auto shadow-xs scrollbar-none">
           <button
             onClick={() => setActiveTab('outcomes')}
@@ -517,6 +517,7 @@ export const AdminAnalytics: React.FC = () => {
         {activeTab === 'outcomes' && (
           <motion.div
             key="tab-outcomes"
+            data-tour="analytics-outcomes"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}

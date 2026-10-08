@@ -149,7 +149,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2 self-end sm:self-auto">
+        <div data-tour="teacher-profile-actions" className="flex items-center gap-2 self-end sm:self-auto">
           {!isEditMode ? (
             <Button
               type="button"
@@ -225,7 +225,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
             className="mx-auto"
           />
 
-          <div className="w-full max-w-[360px] sm:max-w-[390px] xl:max-w-[410px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs space-y-3">
+          <div data-tour="teacher-profile-help" className="w-full max-w-[360px] sm:max-w-[390px] xl:max-w-[410px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-4 shadow-xs space-y-3">
             <div className="flex items-start gap-2.5">
               <GraduationCap size={16} className="text-violet-600 dark:text-violet-400 shrink-0 mt-0.5" />
               <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
@@ -252,7 +252,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
 
         {/* Right Column: Faculty Profile Details Form */}
         <div className="lg:col-span-7 xl:col-span-8 space-y-6">
-          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
+          <div data-tour="teacher-profile-info" className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
               <div>
                 <h3 className="font-display font-extrabold text-lg text-slate-900 dark:text-white">

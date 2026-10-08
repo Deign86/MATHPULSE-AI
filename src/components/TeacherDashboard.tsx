@@ -9,7 +9,7 @@ import {
   Video, ClipboardCheck, Info, Bell, Search, LayoutDashboard, Database, BookOpen,
   ChevronLeft, ChevronDown, Download, Send, Edit3, Save, Sparkles, Activity, MoreHorizontal, ArrowLeft, Bot, RefreshCw, PenTool, ListChecks, Award, CalendarPlus, Printer, Play, CheckCircle2, Wand2, Library, Plus, BadgeCheck,
   User as UserIcon, Settings as SettingsIcon, LogOut as LogOutIcon, ArrowUpRight,
-  Trash2, Loader2
+  Trash2, Loader2, CircleHelp,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Skeleton as BoneSkeleton } from 'boneyard-js/react';
@@ -31,6 +31,9 @@ import {
 import UserAvatar from './UserAvatar';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, PieChart, Pie } from 'recharts';
 import { useAuth } from '../contexts/AuthContext';
+import { GuidedTour, type TourStep } from './onboarding/GuidedTour';
+import { teacherPageTour, teacherTourPages, teacherTourSteps } from './onboarding/teacherTourSteps';
+import { useOnboardingTour } from '../hooks/useOnboardingTour';
 import {
   getClassAnalytics,
   refreshClassInsights,
@@ -135,6 +138,8 @@ interface TeacherDashboardProps {
   onExportData?: () => Promise<void>;
   onClearCache?: () => Promise<void>;
 }
+
+const TEACHER_TOUR_VIEWS = ['dashboard', 'analytics', 'calendar', 'topic_mastery', 'competency', 'quiz_maker', 'question_bank', 'import', 'notifications', 'profile', 'settings'] as const;
 
 type View =
   | 'dashboard'
@@ -847,6 +852,45 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   const [openMobileMenu, setOpenMobileMenu] = useState<'teaching' | 'insights' | 'tools' | null>(null);
   const mobileNavRef = useRef<HTMLElement>(null);
 
+  // Teacher onboarding: a general first-use tour plus per-page guides. Modals and drawers block it.
+  const teacherTour = useOnboardingTour(
+    'teacher',
+    currentUser?.uid ?? null,
+    !dataLoading,
+    showLogoutConfirm || showCreateClassModal || showAddStudentsModal || insightModalOpen || showMobileCalendar
+      || pendingRemoveStudent !== null || pendingDeleteClass !== null,
+    activeView === 'dashboard',
+  );
+  const [tourStep, setTourStep] = useState<TourStep | null>(null);
+  const tourOrigin = useRef<View | null>(null);
+  const teacherTourPage = teacherTour.page ? teacherPageTour(teacherTour.page) : undefined;
+  const showTourView = (tab: string) => {
+    const view = TEACHER_TOUR_VIEWS.find(candidate => candidate === tab);
+    if (!view || view === activeView) return;
+    if (view === 'profile') handleNavigateToProfile();
+    else if (view === 'settings') handleNavigateToSettings();
+    else {
+      // Same entry points as the sidebar; the Intervention Center is never opened by the guide.
+      setActiveView(view);
+      if (view !== 'analytics' && view !== 'competency') setSelectedClass(null);
+      setSelectedStudent(null);
+    }
+  };
+  const handleTourNavigate = (tab: string) => {
+    tourOrigin.current ??= activeView;
+    showTourView(tab);
+  };
+  const handleDismissTour = () => {
+    teacherTour.dismiss();
+    setTourStep(null);
+    showTourView(tourOrigin.current ?? 'dashboard');
+    tourOrigin.current = null;
+  };
+  useEffect(() => {
+    if (teacherTour.isOpen) return;
+    tourOrigin.current = null;
+    setTourStep(null);
+  }, [teacherTour.isOpen]);
   // Track mobile viewport (< 1024px = below lg breakpoint)
   useEffect(() => {
     const checkViewport = () => setIsMobileViewport(window.innerWidth < 1024);
@@ -858,6 +902,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
   // Close open popup on outside click
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Clicks inside the guide must not close a submenu it opened to point at a destination.
+      if (event.target instanceof Element && event.target.closest('[data-tour-dialog],[data-tour-overlay]')) return;
       if (mobileNavRef.current && event.target instanceof Node && !mobileNavRef.current.contains(event.target)) {
         setOpenMobileMenu(null);
       }
@@ -1703,6 +1749,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     setOpenMobileMenu(null);
   }, [activeView, isMobileViewport]);
 
+  // Declared after the effect above so a guide-opened submenu survives the view switch it causes.
+  useEffect(() => {
+    if (!teacherTour.isOpen || !isMobileViewport) return;
+    const menu = tourStep?.menu;
+    setOpenMobileMenu(menu === 'teaching' || menu === 'insights' || menu === 'tools' ? menu : null);
+  }, [teacherTour.isOpen, tourStep, activeView, isMobileViewport]);
+
   const availableClasses = useMemo(() => {
     return managedClasses.length > 0 ? managedClasses : classes;
   }, [managedClasses, classes]);
@@ -1800,7 +1853,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <div className="space-y-1">
               <NavItem
                 icon={LayoutDashboard}
-                label="Dashboard"
+                label="Dashboard" tourNav="dashboard"
                 active={activeView === 'dashboard'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={handleBackToDashboard}
@@ -1808,7 +1861,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               />
               <NavItem
                 icon={BookOpen}
-                label="My Classes"
+                label="My Classes" tourNav="analytics"
                 active={activeView === 'analytics' || activeView === 'intervention'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => handleSidebarNav('analytics')}
@@ -1816,7 +1869,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               />
               <NavItem
                 icon={Calendar}
-                label="Schedule & Calendar"
+                label="Schedule & Calendar" tourNav="calendar"
                 active={activeView === 'calendar'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('calendar')}
@@ -1837,7 +1890,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <div className="space-y-1">
               <NavItem
                 icon={Target}
-                label="Topic Mastery"
+                label="Topic Mastery" tourNav="topic_mastery"
                 active={activeView === 'topic_mastery'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => handleSidebarNav('topic_mastery')}
@@ -1845,7 +1898,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               />
               <NavItem
                 icon={Users}
-                label="Competency Matrix"
+                label="Competency Matrix" tourNav="competency"
                 active={activeView === 'competency'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => handleSidebarNav('competency')}
@@ -1866,7 +1919,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <div className="space-y-1">
               <NavItem
                 icon={ClipboardCheck}
-                label="AI Quiz Maker"
+                label="AI Quiz Maker" tourNav="quiz_maker"
                 active={activeView === 'quiz_maker'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('quiz_maker')}
@@ -1874,7 +1927,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               />
               <NavItem
                 icon={Database}
-                label="Question Bank"
+                label="Question Bank" tourNav="question_bank"
                 active={activeView === 'question_bank'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('question_bank')}
@@ -1882,7 +1935,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
               />
               <NavItem
                 icon={FileSpreadsheet}
-                label="Data Import"
+                label="Data Import" tourNav="import"
                 active={activeView === 'import'}
                 collapsed={sidebarCollapsed && !sidebarHovered}
                 onClick={() => setActiveView('import')}
@@ -1931,7 +1984,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   </div>
                   {/* Quick teacher stats */}
                   {activeView === 'dashboard' && (
-                    <div className="hidden xl:flex items-center gap-2 ml-4 mt-1">
+                    <div data-tour="teacher-quick-stats" className="hidden xl:flex items-center gap-2 ml-4 mt-1">
                       <button
                         type="button"
                         onClick={() => setActiveView('competency')}
@@ -1964,6 +2017,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+                  <button
+                    type="button"
+                    data-tour="page-guide"
+                    onClick={() => teacherTour.start(teacherPageTour(activeView) ? activeView : null)}
+                    className="relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center bg-white/70 hover:bg-white dark:bg-slate-900/60 rounded-2xl backdrop-blur-xl shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] border border-white/80 dark:border-white/10 text-slate-700 dark:text-slate-100 hover:text-purple-600 hover:border-purple-200 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Guide for this page"
+                    aria-label="Guide for this page"
+                  >
+                    <CircleHelp size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  </button>
+
                   {/* AI Insights Button */}
                   <div className="relative group">
                     <button
@@ -1992,6 +2056,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   {activeView === 'dashboard' && (
                     <button
                       type="button"
+                      data-tour="teacher-schedule-toggle"
                       onClick={() => setShowMobileCalendar((v) => !v)}
                       className={`relative w-9 h-9 sm:w-11 sm:h-11 flex items-center justify-center rounded-2xl backdrop-blur-xl border transition-all cursor-pointer active:scale-95 sm:hover:scale-[1.02] shrink-0 ${
                         showMobileCalendar
@@ -2009,7 +2074,9 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                   )}
 
                   {/* Notification Bell (Portaled z-[250] with wiggle animation & unread badge) */}
-                  <NotificationBell />
+                  <div data-tour="notifications" className="flex">
+                    <NotificationBell />
+                  </div>
 
                   {/* Profile Dropdown */}
                   <DropdownMenu>
@@ -2017,6 +2084,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       <button
                         type="button"
                         className="w-9 h-9 sm:w-11 sm:h-11 rounded-full overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-purple-400 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-purple-500 shrink-0 p-0"
+                        data-tour-group="Profile"
                         aria-label={`Profile menu: ${teacherName || 'Teacher'}`}
                         title={teacherName || 'Teacher'}
                       >
@@ -2140,7 +2208,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     exit={{ opacity: 0, y: -20 }}
                     className="p-6 pb-32 sm:pb-36 lg:pb-12"
                   >
-                    <div className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
+                    <div data-tour="class-empty" className="bg-card border border-border rounded-2xl p-8 shadow-sm max-w-2xl">
                       <div className="w-12 h-12 rounded-xl bg-[#a855f7]/20 text-[#a855f7] flex items-center justify-center mb-4">
                         <BarChart3 size={24} />
                       </div>
@@ -2351,6 +2419,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     onBack={() => setActiveView(previousView || 'dashboard')}
                     previousTabName="Dashboard"
                     onNavigateToProfile={handleNavigateToProfile}
+                    onReplayTour={teacherTour.start}
+                    tourPages={teacherTourPages}
                   />
                 )}
               </motion.div>
@@ -2364,6 +2434,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
       {isMobileViewport && (
         <nav
           ref={mobileNavRef}
+          data-tour-sticky=""
           aria-label="Bottom Navigation"
           className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.6rem,env(safe-area-inset-bottom))] lg:hidden touch-manipulation"
         >
@@ -2393,6 +2464,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                 <button
                   type="button"
+                  data-tour-nav="analytics"
                   onClick={() => {
                     handleSidebarNav('analytics');
                     setOpenMobileMenu(null);
@@ -2416,6 +2488,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                 <button
                   type="button"
+                  data-tour-nav="calendar"
                   onClick={() => {
                     setActiveView('calendar');
                     setOpenMobileMenu(null);
@@ -2459,6 +2532,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                 <button
                   type="button"
+                  data-tour-nav="quiz_maker"
                   onClick={() => {
                     setActiveView('quiz_maker');
                     setOpenMobileMenu(null);
@@ -2482,6 +2556,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                 <button
                   type="button"
+                  data-tour-nav="question_bank"
                   onClick={() => {
                     setActiveView('question_bank');
                     setOpenMobileMenu(null);
@@ -2505,6 +2580,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                 <button
                   type="button"
+                  data-tour-nav="import"
                   onClick={() => {
                     setActiveView('import');
                     setOpenMobileMenu(null);
@@ -2548,6 +2624,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                 <button
                   type="button"
+                  data-tour-nav="topic_mastery"
                   onClick={() => {
                     handleSidebarNav('topic_mastery');
                     setOpenMobileMenu(null);
@@ -2571,6 +2648,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                 <button
                   type="button"
+                  data-tour-nav="competency"
                   onClick={() => {
                     handleSidebarNav('competency');
                     setOpenMobileMenu(null);
@@ -2607,6 +2685,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 setOpenMobileMenu(null);
                 handleBackToDashboard();
               }}
+              data-tour-nav="dashboard"
               aria-label="Dashboard"
               aria-current={activeView === 'dashboard' ? 'page' : undefined}
               className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all cursor-pointer active:scale-95 ${
@@ -2823,6 +2902,17 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         }
         onCreated={handleAccountCreated}
       />
+
+      {teacherTour.isOpen && (
+        <GuidedTour
+          key={teacherTour.page ?? 'full'}
+          label={teacherTourPage ? `${teacherTourPage.label} guide` : 'Teacher guide'}
+          steps={teacherTourPage?.steps ?? teacherTourSteps}
+          onNavigate={handleTourNavigate}
+          onStepChange={setTourStep}
+          onDismiss={handleDismissTour}
+        />
+      )}
     </div>
   );
 };
@@ -2834,9 +2924,12 @@ const NavItem: React.FC<{
   active: boolean;
   collapsed: boolean;
   forceExpanded?: boolean;
+  /** Guide anchor: the view this item opens. */
+  tourNav: string;
   onClick: () => void;
-}> = ({ icon: Icon, label, active, collapsed, forceExpanded = false, onClick }) => (
+}> = ({ icon: Icon, label, active, collapsed, forceExpanded = false, tourNav, onClick }) => (
   <motion.button
+    data-tour-nav={tourNav}
     onClick={onClick}
     whileHover={{ x: 2 }}
     whileTap={{ scale: 0.98 }}
@@ -2914,6 +3007,7 @@ const DashboardView: React.FC<{
       {/* AI Banner */}
       {!isInsightDismissed && dailyInsight && (
         <div
+          data-tour="teacher-insight"
           onClick={onOpenInsightModal}
           className="bg-white/85 dark:bg-slate-800/90 backdrop-blur-[12px] rounded-2xl sm:rounded-[18px] border border-white/80 dark:border-slate-700/80 p-3 sm:p-4.5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 sm:gap-4 shadow-xs hover:shadow-md transition-all group cursor-pointer"
         >
@@ -2956,7 +3050,7 @@ const DashboardView: React.FC<{
       {/* STAT CARDS (4 Unified Cards in 2x2 Mobile / 4x1 Desktop Bento Grid)*/}
       {/* Styled with student-side vibrant gradients and frosted glass badges*/}
       {/* ------------------------------------------------------------------ */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div data-tour="teacher-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {/* CARD 1: Total Students */}
         <TeacherStatCard
           color="green"
@@ -3017,7 +3111,7 @@ const DashboardView: React.FC<{
       </div>
 
       {/* Classes Container */}
-      <div id="teacher-classes-section" className="relative overflow-hidden bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-white/10 p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+      <div id="teacher-classes-section" data-tour="teacher-classes" className="relative overflow-hidden bg-white/80 dark:bg-slate-900/70 backdrop-blur-xl rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-white/10 p-4 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
         {/* Subtle Top Gradient Accent Strip */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#9956DE] via-[#38BDF8] to-[#75D06A] pointer-events-none" />
 
@@ -3456,7 +3550,7 @@ const SectionManagementPanel: React.FC<{
   }, [students]);
 
   return (
-    <div className="relative rounded-2xl sm:rounded-3xl border border-indigo-200/90 dark:border-indigo-500/30 bg-gradient-to-r from-indigo-50/90 via-purple-50/60 to-white shadow-[0_4px_20px_-4px_rgba(99,102,241,0.18)] hover:shadow-[0_8px_28px_-6px_rgba(99,102,241,0.28)] transition-all duration-300 overflow-hidden">
+    <div data-tour="class-sections" className="relative rounded-2xl sm:rounded-3xl border border-indigo-200/90 dark:border-indigo-500/30 bg-gradient-to-r from-indigo-50/90 via-purple-50/60 to-white shadow-[0_4px_20px_-4px_rgba(99,102,241,0.18)] hover:shadow-[0_8px_28px_-6px_rgba(99,102,241,0.28)] transition-all duration-300 overflow-hidden">
       {/* Ambient top specular border gradient */}
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
       {/* Ambient glow blur bubble */}
@@ -4007,7 +4101,7 @@ const AnalyticsView: React.FC<{
             </button>
 
             {/* Class Switcher Pill on desktop */}
-            <div className="hidden sm:flex items-center min-w-0">
+            <div data-tour="class-switcher" className="hidden sm:flex items-center min-w-0">
               {allClasses.length > 1 ? (
                 <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-1.5 sm:py-2 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 max-w-[260px] sm:max-w-xs min-w-0">
                   <BookOpen size={14} className="text-indigo-600 mr-2 shrink-0" />
@@ -4052,7 +4146,7 @@ const AnalyticsView: React.FC<{
           </div>
 
           {/* Class Switcher Pill on mobile: full width second row without overlapping */}
-          <div className="sm:hidden w-full min-w-0">
+          <div data-tour="class-switcher" className="sm:hidden w-full min-w-0">
             {allClasses.length > 1 ? (
               <div className="relative flex items-center bg-white/90 backdrop-blur-md border border-slate-200/80 hover:border-indigo-300 rounded-xl px-3 py-2 shadow-xs transition-all focus-within:ring-2 focus-within:ring-indigo-500/20 w-full min-w-0">
                 <BookOpen size={14} className="text-indigo-600 mr-2 shrink-0" />
@@ -4100,6 +4194,7 @@ const AnalyticsView: React.FC<{
 
         {/* Header Card */}
         <header
+          data-tour="class-header"
           style={{
             backgroundColor: classColor?.hex || '#6366f1'
           }}
@@ -4133,7 +4228,7 @@ const AnalyticsView: React.FC<{
 
         </header>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 w-full">
+        <div data-tour="class-kpis" className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 w-full">
           {/* Card 1: Class Average */}
           <TeacherStatCard
             color="purple"
@@ -4189,7 +4284,7 @@ const AnalyticsView: React.FC<{
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-3 sm:gap-6 h-auto xl:h-[600px]">
           {/* Left Column - Student List */}
-          <div className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[440px] sm:h-[480px] xl:h-full">
+          <div data-tour="class-students" className="xl:col-span-1 bg-white/80 backdrop-blur-[12px] rounded-[18px] shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col overflow-hidden h-[440px] sm:h-[480px] xl:h-full">
             <div className="p-3.5 sm:p-5 border-b border-[#f1f5f9] shrink-0">
               <div className="flex items-center justify-between mb-3">
                 <div>
@@ -4256,7 +4351,7 @@ const AnalyticsView: React.FC<{
             {/* Top Row Charts */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Visual Chart 1: Risk Distribution */}
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-4 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[290px] sm:h-[340px]">
+              <div data-tour="class-risk-chart" className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-4 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[290px] sm:h-[340px]">
                 <div className="flex items-center justify-between mb-3 sm:mb-4">
                   <div>
                     <h3 className="font-display font-bold text-[15px] text-[#1e293b] text-balance">Risk Distribution</h3>
@@ -4286,7 +4381,7 @@ const AnalyticsView: React.FC<{
               </div>
 
               {/* Visual Chart 2: Topic Performance */}
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-4 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[320px] sm:h-[340px]">
+              <div data-tour="class-topic-chart" className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-4 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white flex flex-col group h-[320px] sm:h-[340px]">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 mb-3 sm:mb-4">
                   <div>
                     <h3 className="font-display font-bold text-[15px] text-[#1e293b] text-balance">Topic Performance</h3>
@@ -4322,7 +4417,7 @@ const AnalyticsView: React.FC<{
             </div>
 
             {/* Bottom Row Lists */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+            <div data-tour="class-highlights" className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
               {/* Top Performers List */}
               <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] p-4 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-white">
                 <div className="flex items-center justify-between mb-3">
@@ -4396,7 +4491,7 @@ const AnalyticsView: React.FC<{
 
         {/* AI Class Insights Panel */}
         <>
-          <div className="bg-gradient-to-br from-indigo-50/80 to-purple-50/60 backdrop-blur-[12px] rounded-[18px] p-5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-indigo-100/50">
+          <div data-tour="class-ai-insights" className="bg-gradient-to-br from-indigo-50/80 to-purple-50/60 backdrop-blur-[12px] rounded-[18px] p-5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.04)] border border-indigo-100/50">
             <div className="flex items-center justify-between mb-4">
               <button
                 onClick={() => setShowInsights(!showInsights)}

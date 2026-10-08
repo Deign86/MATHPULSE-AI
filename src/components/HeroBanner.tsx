@@ -113,6 +113,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
 
   return (
     <motion.div
+      data-tour="hero"
       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0.15 : 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -158,6 +159,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
 
           {/* Continue Learning Action Button — Toned Down Sophisticated Indigo */}
           <motion.button
+            data-tour="continue-learning"
             onClick={onContinueLearning}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
@@ -178,7 +180,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           animate={{ opacity: 1, scale: 1, x: 0 }}
           transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
           onClick={onOpenAssessment}
-          className="absolute right-[68px] min-[360px]:right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-amber-500"
+          className="absolute right-[68px] min-[360px]:right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 max-sm:static max-sm:mt-3 max-sm:w-fit cursor-pointer drop-shadow-lg group text-left focus-visible:outline-2 focus-visible:outline-amber-500"
         >
           <div className="bg-white px-2.5 sm:px-4 py-1.5 sm:py-3 rounded-2xl rounded-br-sm border-2 border-amber-300 relative transition-all group-hover:bg-amber-50 group-hover:border-amber-400 group-hover:-translate-y-0.5">
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -189,7 +191,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
                 Don't forget to take the<br className="hidden sm:inline" /> Initial Assessment!
               </p>
             </div>
-            <div className="absolute -right-1.5 sm:-right-2 bottom-0 w-3 h-3 sm:w-4 sm:h-4 bg-white border-2 border-transparent border-r-amber-300 border-b-amber-300 rotate-45 group-hover:bg-amber-50 group-hover:border-r-amber-400 group-hover:border-b-amber-400 transition-colors" />
+            <div className="max-sm:hidden absolute -right-1.5 sm:-right-2 bottom-0 w-3 h-3 sm:w-4 sm:h-4 bg-white border-2 border-transparent border-r-amber-300 border-b-amber-300 rotate-45 group-hover:bg-amber-50 group-hover:border-r-amber-400 group-hover:border-b-amber-400 transition-colors" />
           </div>
         </motion.button>
       )}
@@ -201,7 +203,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
           animate={{ opacity: 1, scale: 1, x: 0 }}
           exit={{ opacity: 0, scale: 0.9 }}
           transition={{ delay: reduceMotion ? 0 : 0.5, type: 'spring' }}
-          className="absolute right-[68px] min-[360px]:right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 drop-shadow-lg group text-left"
+          className="absolute right-[68px] min-[360px]:right-[85px] sm:right-[120px] md:right-[150px] lg:right-[230px] bottom-10 sm:bottom-14 lg:bottom-16 z-30 max-sm:static max-sm:mt-3 max-sm:w-fit drop-shadow-lg group text-left"
         >
           <div
             onClick={handleOpenResultsModal}
@@ -235,7 +237,7 @@ const HeroBanner: React.FC<HeroBannerProps> = ({
               <X size={13} />
             </button>
 
-            <div className="absolute -right-1.5 sm:-right-2 bottom-0 w-3 h-3 sm:w-4 sm:h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 group-hover:bg-teal-50 group-hover:border-r-teal-400 group-hover:border-b-teal-400 transition-colors" />
+            <div className="max-sm:hidden absolute -right-1.5 sm:-right-2 bottom-0 w-3 h-3 sm:w-4 sm:h-4 bg-white border-2 border-transparent border-r-teal-300 border-b-teal-300 rotate-45 group-hover:bg-teal-50 group-hover:border-r-teal-400 group-hover:border-b-teal-400 transition-colors" />
           </div>
         </motion.div>
       )}

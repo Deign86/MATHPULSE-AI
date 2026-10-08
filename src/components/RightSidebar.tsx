@@ -198,6 +198,7 @@ export const LeaderboardPreviewCard: React.FC<LeaderboardPreviewCardProps> = ({
 
   return (
     <motion.div
+      data-tour="leaderboard-preview"
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.25, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
@@ -263,6 +264,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
     <div className="flex flex-col gap-3.5 sm:gap-4">
       {/* Daily Goals Bento Card */}
       <motion.div
+        data-tour="daily-goals"
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1, duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
@@ -324,7 +326,10 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
       </motion.div>
 
       {/* Balanced 2-Column Twin Slabs (Current XP & Streak) */}
-      <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+      <div
+        data-tour="xp-streak"
+        className="grid grid-cols-2 gap-2.5 sm:gap-3"
+      >
         {/* Current XP Slab — Rewards & Achievements styling */}
         <motion.button
           type="button"

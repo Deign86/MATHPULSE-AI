@@ -51,6 +51,7 @@ import {
 import { validateProfileDraft } from '../utils/profileValidation';
 import { usePushNotificationControls } from './PushNotificationsManager';
 import { useUnsavedChangesWarning } from '../hooks/useUnsavedChangesWarning';
+import { GuideReplayCard } from './onboarding/GuideReplayCard';
 
 export interface ProfileData {
   uid?: string;
@@ -89,6 +90,9 @@ interface SettingsPageProps {
   onLogout?: () => void;
   onNavigateToAvatarShop?: () => void;
   onNavigateToProfile?: () => void;
+  /** Starts the full student guide, or one page's guide when given that page's tab. */
+  onReplayTour?: (pageTab?: string) => void;
+  tourPages?: readonly { tab: string; label: string }[];
   onBack?: () => void;
   previousTabName?: string;
 }
@@ -113,6 +117,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onLogout,
   onNavigateToAvatarShop,
   onNavigateToProfile,
+  onReplayTour,
+  tourPages = [],
   onBack,
   previousTabName,
 }) => {
@@ -198,6 +204,8 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
   // Hook into browser beforeunload
   useUnsavedChangesWarning(isDirty);
+  // Password fields are not part of isDirty; replay navigates away and would discard them.
+  const hasUnsavedEdits = isDirty || Boolean(currentPassword || newPassword || confirmPassword);
 
   // Save all settings modifications
   const handleSaveAll = async () => {
@@ -356,11 +364,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         </div>
       )}
 
+      {onReplayTour && (
+        <GuideReplayCard audience="Student" pages={tourPages} onReplay={onReplayTour} hasUnsavedEdits={hasUnsavedEdits} busy={isSaving} />
+      )}
+
       {/* ── 1. Main Settings Layout ── */}
       <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8 xl:gap-10">
         {/* ── Left/Top Column: Profile Overview Card & Quick Actions ── */}
         <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0 flex flex-col items-center gap-4 lg:sticky lg:top-4">
-          <div className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 flex flex-col items-center text-center relative overflow-hidden">
+          <div data-tour="settings-profile" className="w-full bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm p-5 flex flex-col items-center text-center relative overflow-hidden">
             <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-r from-purple-600 via-indigo-600 to-sky-500 opacity-90" />
             
             {/* Avatar thumbnail */}
@@ -465,7 +477,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         {/* ── Right Column: Colorful File Folder Settings Hub ── */}
         <div className="flex-1 w-full min-w-0 flex flex-col">
           {/* Mobile & Tablet Tab Dropdown Button (< lg) */}
-          <div className="lg:hidden w-full mb-3 relative" ref={tabDropdownRef}>
+          <div data-tour="settings-sections" className="lg:hidden w-full mb-3 relative" ref={tabDropdownRef}>
             <button
               type="button"
               onClick={() => setIsTabDropdownOpen((prev) => !prev)}
@@ -541,7 +553,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
 
           {/* Desktop File Folder Divider Tabs (lg+) */}
-          <div className="hidden lg:flex items-end gap-1.5 sm:gap-2 overflow-x-auto pb-0 pt-1 px-1 scrollbar-hide select-none">
+          <div data-tour="settings-sections" className="hidden lg:flex items-end gap-1.5 sm:gap-2 overflow-x-auto pb-0 pt-1 px-1 scrollbar-hide select-none">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -567,7 +579,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
 
           {/* Folder Jacket Body Container with Notebook Grid & Paperclip */}
-          <div className={`relative rounded-2xl rounded-b-2xl bg-white dark:bg-slate-900 border-2 ${currentTab.folderBorder} shadow-xl p-4 sm:p-6 lg:p-7 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]`}>
+          <div data-tour="settings-panel" className={`relative rounded-2xl rounded-b-2xl bg-white dark:bg-slate-900 border-2 ${currentTab.folderBorder} shadow-xl p-4 sm:p-6 lg:p-7 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]`}>
             {/* Top spine / folder rim highlight with matching tab gradient */}
             <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${currentTab.spineGradient} opacity-90 rounded-t-sm`} />
 
@@ -593,7 +605,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
 
               {/* Folder Action Buttons */}
-              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              <div data-tour="settings-save" className="flex items-center gap-2 w-full sm:w-auto shrink-0">
                 <Button
                   type="button"
                   onClick={handleSaveAll}

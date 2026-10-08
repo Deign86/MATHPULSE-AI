@@ -21,7 +21,7 @@ export const ResourceRankingRow: React.FC<ResourceRankingRowProps> = ({ features
   }, [features, search, sortBy]);
 
   return (
-    <div className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800/90 p-4 sm:p-6 shadow-xs overflow-hidden">
+    <div data-tour="aimon-costs" className="rounded-2xl border border-slate-200/80 dark:border-slate-700/60 bg-white dark:bg-slate-800/90 p-4 sm:p-6 shadow-xs overflow-hidden">
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-100 dark:border-slate-700/60">
         <div className="flex items-center gap-3">

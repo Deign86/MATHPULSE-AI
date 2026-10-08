@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -86,6 +86,10 @@ interface ModulesPageProps {
   setIsInQuizMode?: (value: boolean) => void;
   /** Whether the initial assessment has been completed — REVIEW badge suppressed until true */
   hasCompletedDiagnostic?: boolean;
+  /** Student guide is open: hold back auto-opening modals until it closes. */
+  tourActive?: boolean;
+  /** Tab the student guide is explaining; the page's own tab returns when the guide ends. */
+  tourView?: string | null;
 }
 
 const assignedQuizNavigationDetailSchema = z.object({
@@ -94,6 +98,7 @@ const assignedQuizNavigationDetailSchema = z.object({
 }).passthrough();
 
 type ModulesTab = 'modules' | 'recommended' | 'practice' | 'teacher_uploaded';
+const MODULES_TABS: readonly ModulesTab[] = ['modules', 'recommended', 'practice', 'teacher_uploaded'];
 
 /** Discriminated union for the current rendered view within ModulesPage. */
 type ModulesPageView =
@@ -131,6 +136,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   isInQuizMode = false,
   setIsInQuizMode,
   hasCompletedDiagnostic = false,
+  tourActive = false,
+  tourView = null,
 }) => {
   const { userProfile, currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<ModulesTab>(() => {
@@ -143,6 +150,20 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     }
     return 'modules';
   });
+
+  const tabBeforeTour = useRef<ModulesTab | null>(null);
+  useEffect(() => {
+    const tourTab = MODULES_TABS.find(tab => tab === tourView);
+    if (tourTab) {
+      tabBeforeTour.current ??= activeTab;
+      setActiveTab(tourTab);
+    } else if (tabBeforeTour.current) {
+      setActiveTab(tabBeforeTour.current);
+      tabBeforeTour.current = null;
+    }
+    // activeTab is read only to remember the pre-tour tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourView]);
 
   // SAFETY: trusted internal value already conforms to the asserted type.
   const studentProfile = userProfile as StudentProfile | null;
@@ -1259,7 +1280,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       onScroll={(e) => setIsScrolled(e.currentTarget.scrollTop > 100)}
     >
       <DailyCheckInModal
-        isOpen={showDailyCheckIn}
+        isOpen={showDailyCheckIn && !tourActive}
         onClose={() => setShowDailyCheckIn(false)}
         onClaim={handleClaimDailyReward}
         weekRewards={weekRewards}
@@ -1488,9 +1509,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       </div>
 
       {/* ── Sticky filter + tab bar ── */}
-      <div className={`sticky top-0 z-30 -mx-5 px-5 sm:-mx-8 sm:px-8 xl:-mx-12 xl:px-12 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
+      <div data-tour-sticky="" className={`sticky top-0 z-30 -mx-5 px-5 sm:-mx-8 sm:px-8 xl:-mx-12 xl:px-12 pt-3 pb-3 space-y-3 transition-colors duration-300 ${isScrolled ? 'bg-[#f8faff] border-b border-[#dde3eb] shadow-sm' : 'bg-transparent'}`}>
         {/* Search + filters row */}
-        <div className="flex flex-col lg:flex-row items-center gap-3 w-full">
+        <div data-tour="module-search" className="flex flex-col lg:flex-row items-center gap-3 w-full">
           <div className="relative flex-1 w-full">
             <div className="absolute left-4 top-1/2 -translate-y-1/2 text-[#5f6368]">
               <Search size={16} strokeWidth={2.5} />
@@ -1661,6 +1682,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               return (
                 <button
                   key={tab.id}
+                  data-tour={`module-tab-${tab.id}`}
                   // SAFETY: trusted internal value already conforms to the asserted type.
                   onClick={() => setActiveTab(tab.id as ModulesTab)}
                   className={`relative flex items-center justify-center gap-1.5 rounded-full text-[13px] font-bold transition-all duration-300 flex-shrink-0 ${
@@ -1731,7 +1753,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
       <div className="pt-4">
         {normalizedRiskTopics.length > 0 && (
-          <div className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm">
+          <div data-tour="module-focus" className="mb-4 rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <p className="inline-flex items-center gap-2 text-sm font-black text-amber-900">
@@ -1765,7 +1787,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
         )}
 
       {(activeTab === 'practice' || activeTab === 'recommended') && (
-        <section aria-label="Assigned by your teacher" className="mb-6 space-y-3">
+        <section data-tour="assigned-quizzes" aria-label="Assigned by your teacher" className="mb-6 space-y-3">
           <h2 className="text-lg font-bold text-slate-800">Assigned by your teacher</h2>
           {assignedQuizUnavailable && !pendingQuizzesLoading && !pendingQuizzesError && (
             <div role="status" className="text-sm text-slate-500">
@@ -1871,7 +1893,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             />
             </div>
           ) : activeTab === 'teacher_uploaded' ? (
-            <div className="space-y-6">
+            <div data-tour="teacher-modules" className="space-y-6">
               {/* Teacher Materials Hero Banner */}
               <div className="rounded-3xl bg-gradient-to-r from-[#F08386]/12 via-[#9956DE]/10 to-transparent border border-[#F08386]/25 dark:border-[#F08386]/20 p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5">
@@ -2250,7 +2272,7 @@ const ModulesLibraryView: React.FC<{
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div data-tour="module-grid" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
             {modules.map((module, index) => {
               const isRecommended = matchesWeakTopic(module, weakTopics);
               return (
@@ -2285,7 +2307,7 @@ const RecommendedModulesView: React.FC<{
   const suggested = modules.filter((module) => module.progress === 0).slice(0, 6);
 
   return (
-    <div className="pr-2 space-y-10">
+    <div data-tour="recommended-modules" className="pr-2 space-y-10">
       {learningPath.status === 'loading' && (
         <div className="mb-6 rounded-2xl border border-sky-200 bg-sky-50 px-5 py-4 flex items-center gap-3">
           <div className="w-5 h-5 rounded-full border-2 border-sky-400 border-t-transparent animate-spin flex-shrink-0" />

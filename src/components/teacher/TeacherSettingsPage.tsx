@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '../ui/button';
+import { GuideReplayCard } from '../onboarding/GuideReplayCard';
 import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
 import ConfirmModal from '../ConfirmModal';
@@ -35,6 +36,9 @@ export interface TeacherSettingsPageProps {
   onBack?: () => void;
   previousTabName?: string;
   onNavigateToProfile?: () => void;
+  /** Starts the full teacher guide, or one page's guide when given that page's tab. */
+  onReplayTour?: (pageTab?: string) => void;
+  tourPages?: readonly { tab: string; label: string }[];
 }
 
 export type TeacherSettingsTab = 'appearance' | 'notifications' | 'security' | 'data';
@@ -48,6 +52,8 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
   onBack,
   previousTabName = 'Dashboard',
   onNavigateToProfile,
+  onReplayTour,
+  tourPages = [],
 }) => {
   const [activeTab, setActiveTab] = useState<TeacherSettingsTab>('appearance');
   const [isSaving, setIsSaving] = useState(false);
@@ -77,6 +83,8 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  // Password fields are not part of isDirty; replay navigates away and would discard them.
+  const hasUnsavedEdits = isDirty || Boolean(currentPassword || newPassword || confirmPassword);
 
   useEffect(() => {
     if (settingsData?.appearance?.darkMode !== undefined) {
@@ -182,7 +190,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
   ];
 
   return (
-    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 lg:space-y-6 pb-28 sm:pb-32 lg:pb-8 min-h-[calc(100vh-80px)]">
+    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 lg:space-y-6 pb-28 sm:pb-32 lg:pb-8 min-h-[calc(100vh-80px)] shrink-0">
       {/* Navigation Header */}
       {onBack && (
         <div className="flex items-center justify-between gap-3">
@@ -212,11 +220,15 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
         </div>
       )}
 
+      {onReplayTour && (
+        <GuideReplayCard audience="Teacher" pages={tourPages} onReplay={onReplayTour} hasUnsavedEdits={hasUnsavedEdits} busy={isSaving || isChangingPassword} />
+      )}
+
       {/* Main Settings Grid */}
       <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
         {/* Left Column: Settings Navigation Sidebar (Sticky on mobile & desktop) */}
-        <div className="w-full lg:w-[260px] xl:w-[280px] shrink-0 space-y-2 lg:sticky lg:top-4 z-20">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-1.5 sm:p-2 shadow-xs flex lg:flex-col gap-1 overflow-x-auto scrollbar-none sticky top-0 lg:static z-20">
+        <div data-tour="teacher-settings-sections" className="w-full lg:w-[260px] xl:w-[280px] shrink-0 space-y-2 lg:sticky lg:top-4 z-20">
+          <div data-tour-sticky="" className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-1.5 sm:p-2 shadow-xs flex lg:flex-col gap-1 overflow-x-auto scrollbar-none sticky top-0 lg:static z-20">
             {tabs.map((tabItem) => (
               <button
                 key={tabItem.id}
@@ -252,7 +264,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
 
         {/* Right Column: Settings Content Panels */}
         <div className="flex-1 w-full space-y-6">
-          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
+          <div data-tour="teacher-settings-panel" className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
             {/* Tab 1: Appearance */}
             {activeTab === 'appearance' && (
               <div className="space-y-6">
@@ -599,7 +611,7 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
 
           {/* Bottom Save Bar */}
           {activeTab !== 'security' && (
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+            <div data-tour="teacher-settings-save" className="flex items-center justify-between p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
               <div className="flex items-center gap-2">
                 {isDirty ? (
                   <span className="text-xs font-bold text-amber-600 dark:text-amber-400">

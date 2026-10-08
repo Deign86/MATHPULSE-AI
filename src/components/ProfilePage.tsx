@@ -247,6 +247,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             {onNavigateToAvatarShop && (
               <div
                 className="relative group w-full"
+                data-tour="profile-avatar"
                 onMouseEnter={() => setIsAvatarHovered(true)}
                 onMouseLeave={() => setIsAvatarHovered(false)}
               >
@@ -323,7 +324,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               </div>
 
               {/* Header Action Buttons */}
-              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0">
+              <div className="flex items-center gap-2 w-full sm:w-auto shrink-0" data-tour="profile-edit">
                 {!isEditMode ? (
                   <Button
                     type="button"
@@ -372,7 +373,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             {/* Profile Forms Grid */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* 1. Personal Details Card */}
-              <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
+              <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4" data-tour="profile-basic">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
                   <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/60 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
                     <User size={18} />
@@ -464,7 +465,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               </div>
 
               {/* 2. Academic Information Card */}
-              <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
+              <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4" data-tour="profile-school">
                 <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
                   <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
                     <GraduationCap size={18} />

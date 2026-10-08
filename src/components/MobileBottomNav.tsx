@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface MobileBottomNavProps {
   activeTab: string;
+  tourMenu?: string | null;
   onSelectTab: (tab: string, moduleId?: string) => void;
   onOpenProfile?: () => void;
   onOpenSettings?: () => void;
@@ -16,6 +17,7 @@ type ExpandableMenu = 'modules' | 'ai' | 'battle' | 'profile' | null;
 
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   activeTab,
+  tourMenu,
   onSelectTab,
   onOpenProfile,
   onOpenSettings,
@@ -25,6 +27,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   const [openMenu, setOpenMenu] = useState<ExpandableMenu>(null);
   const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const menu = tourMenu === 'Modules' || tourMenu === 'Grades' ? 'modules'
+      : tourMenu === 'AI Chat' || tourMenu === 'Avatar Studio' ? 'ai'
+      : tourMenu === 'Quiz Battle' || tourMenu === 'Leaderboard' ? 'battle'
+      : tourMenu === 'Profile' ? 'profile' : null;
+    setOpenMenu(menu);
+  }, [tourMenu]);
 
   // Close menus on click outside
   useEffect(() => {
@@ -51,7 +61,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     <nav
       ref={navRef}
       aria-label="Mobile and Tablet navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+      data-tour-sticky="" className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
     >
       {/* ─── MOBILE VIEW (< md): 5 Primary Buttons with Expandable Popups ─── */}
       <div className="md:hidden relative">
@@ -77,6 +87,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             >
               <button
                 type="button"
+                data-tour-nav="Modules"
                 onClick={() => handleSelectTabAndClose('Modules')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
                   activeTab === 'Modules'
@@ -95,6 +106,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
               <button
                 type="button"
+                data-tour-nav="Grades"
                 onClick={() => handleSelectTabAndClose('Grades')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
                   activeTab === 'Grades'
@@ -129,6 +141,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             >
               <button
                 type="button"
+                data-tour-nav="AI Chat"
                 onClick={() => handleSelectTabAndClose('AI Chat')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
                   activeTab === 'AI Chat'
@@ -147,6 +160,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
               <button
                 type="button"
+                data-tour-nav="Avatar Studio"
                 onClick={() => handleSelectTabAndClose('Avatar Studio')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
                   activeTab === 'Avatar Studio'
@@ -181,6 +195,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             >
               <button
                 type="button"
+                data-tour-nav="Quiz Battle"
                 onClick={() => handleSelectTabAndClose('Quiz Battle')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
                   activeTab === 'Quiz Battle'
@@ -199,6 +214,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
               <button
                 type="button"
+                data-tour-nav="Leaderboard"
                 onClick={() => handleSelectTabAndClose('Leaderboard')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
                   activeTab === 'Leaderboard'
@@ -256,6 +272,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
               {/* Option 1: My Profile */}
               <button
+                data-tour-nav="Profile"
                 type="button"
                 onClick={() => {
                   setOpenMenu(null);
@@ -282,6 +299,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 
               {/* Option 2: Settings */}
               <button
+                data-tour-nav="Settings"
                 type="button"
                 onClick={() => {
                   setOpenMenu(null);
@@ -337,7 +355,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* 1. DASHBOARD */}
           <button
             type="button"
-            onClick={() => handleSelectTabAndClose('Dashboard')}
+            data-tour-nav="Dashboard"
+                onClick={() => handleSelectTabAndClose('Dashboard')}
             aria-label="Dashboard"
             aria-current={activeTab === 'Dashboard' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
@@ -404,6 +423,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           <button
             type="button"
             onClick={() => setOpenMenu(prev => prev === 'profile' ? null : 'profile')}
+            data-tour-group="Profile"
             aria-label={`Profile options for ${profileName || 'User'}`}
             aria-expanded={openMenu === 'profile'}
             aria-haspopup="true"
@@ -436,6 +456,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* 1. Dashboard */}
           <button
             type="button"
+            data-tour-nav="Dashboard"
             onClick={() => onSelectTab('Dashboard')}
             aria-current={activeTab === 'Dashboard' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
@@ -451,6 +472,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* 2. Modules */}
           <button
             type="button"
+            data-tour-nav="Modules"
             onClick={() => onSelectTab('Modules')}
             aria-current={activeTab === 'Modules' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
@@ -466,6 +488,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* 3. Assessment */}
           <button
             type="button"
+            data-tour-nav="Grades"
             onClick={() => onSelectTab('Grades')}
             aria-current={activeTab === 'Grades' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
@@ -481,6 +504,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* 4. AI (Center) */}
           <button
             type="button"
+            data-tour-nav="AI Chat"
             onClick={() => onSelectTab('AI Chat')}
             aria-current={isAIActive ? 'page' : undefined}
             aria-label="AI Chat"
@@ -496,6 +520,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* 5. Quiz Battle */}
           <button
             type="button"
+            data-tour-nav="Quiz Battle"
             onClick={() => onSelectTab('Quiz Battle')}
             aria-current={activeTab === 'Quiz Battle' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
@@ -511,6 +536,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* 6. Leaderboard */}
           <button
             type="button"
+            data-tour-nav="Leaderboard"
             onClick={() => onSelectTab('Leaderboard')}
             aria-current={activeTab === 'Leaderboard' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${
@@ -526,6 +552,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           {/* 7. Avatar Studio */}
           <button
             type="button"
+            data-tour-nav="Avatar Studio"
             onClick={() => onSelectTab('Avatar Studio')}
             aria-current={activeTab === 'Avatar Studio' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center py-1 px-3 rounded-xl transition-all active:scale-95 ${

@@ -119,7 +119,7 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
       <div className="max-w-[900px] mx-auto w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 flex-1 overflow-y-auto no-scrollbar pb-28 sm:pb-32 lg:pb-12">
 
         {/* Filters + controls row */}
-        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+        <div data-tour="notif-filters" className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Filter tabs */}
           <button
             onClick={() => setFilter('all')}
@@ -175,7 +175,7 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
         </div>
 
         {/* Notification List */}
-        <div className="space-y-6 sm:space-y-8">
+        <div data-tour="notif-list" className="space-y-6 sm:space-y-8">
           {isLoading ? (
             <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] sm:rounded-[24px] border border-white p-8 sm:p-12 flex flex-col items-center justify-center gap-4">
               <Loader2 className="w-8 h-8 text-[#a855f7] animate-spin" />

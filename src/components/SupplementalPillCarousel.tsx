@@ -167,6 +167,7 @@ const SupplementalPillCarousel: React.FC<SupplementalPillCarouselProps> = ({
   return (
     <>
       <motion.div
+        data-tour="review-topics"
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         className="mb-4"

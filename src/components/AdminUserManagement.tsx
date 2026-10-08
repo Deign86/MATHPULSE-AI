@@ -901,7 +901,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {/* ── Interactive KPI Quick-Filter Strip (Symmetrical Non-Scrolling Bento Grid) ── */}
       <div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
+        <div data-tour="users-kpis" className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-3">
           {loading && users.length === 0
             ? Array.from({ length: 5 }).map((_, idx) => (
                 <div
@@ -987,9 +987,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       </div>
 
       {/* ── Ultra-Compact Sticky Toolbar + Collapsible Filters ── */}
-      <div className="sticky top-0 z-20 px-1 pt-1.5 pb-2 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
+      <div data-tour-sticky="" className="sticky top-0 z-20 px-1 pt-1.5 pb-2 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
         {/* Toolbar card */}
-        <div className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2 sm:p-2.5 lg:px-4 lg:py-3 shadow-sm flex flex-col gap-2 w-full">
+        <div data-tour="users-toolbar" className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2 sm:p-2.5 lg:px-4 lg:py-3 shadow-sm flex flex-col gap-2 w-full">
           {/* ── Line 1: Search, Filter Toggle & Action Buttons ── */}
           <div className="flex items-center gap-1.5 sm:gap-2 w-full">
             {/* Search */}
@@ -1221,7 +1221,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
 
       {/* Floating Bulk Action Bar */}
       {selectedCount > 0 && (
-        <div className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-[1000px] bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md border border-purple-500/30 text-white rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-3 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
+        <div data-tour-sticky="" className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-[60] w-[calc(100%-2rem)] max-w-[1000px] bg-slate-900/95 dark:bg-slate-950/95 backdrop-blur-md border border-purple-500/30 text-white rounded-2xl p-3 flex flex-col xl:flex-row items-center gap-3 animate-in slide-in-from-bottom-2 duration-300 shadow-2xl" style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}>
           <div className="flex items-center gap-2.5 px-3 border-r border-slate-800 pr-5">
             <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#9956DE] to-[#7274ED] flex items-center justify-center text-white font-black text-xs tabular-nums shadow-sm">
               {selectedCount}
@@ -1313,7 +1313,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       ) : null}
 
       {/* ── Users Table ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
+      <div data-tour="users-list" className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
         {loading && users.length > 0 && (
           <div className="absolute inset-0 bg-white/40 dark:bg-slate-900/40 backdrop-blur-[1px] z-20 flex items-center justify-center">
             <Loader2 className="animate-spin text-[#9956DE]" size={32} />

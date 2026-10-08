@@ -161,7 +161,7 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
 
         {/* Right Column: Profile Details Card */}
         <div className="flex-1 w-full min-w-0 flex flex-col">
-          <div className="relative rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md p-5 sm:p-7 lg:p-8 overflow-hidden">
+          <div data-tour="admin-profile-form" className="relative rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md p-5 sm:p-7 lg:p-8 overflow-hidden">
             {/* Top Accent Line */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-indigo-600 pointer-events-none" />
 

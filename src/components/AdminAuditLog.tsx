@@ -273,7 +273,7 @@ const AdminAuditLog: React.FC = () => {
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-8 animate-in fade-in duration-300">
 
       {/* ── Top Utility & Action Toolbar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+      <div data-tour="audit-toolbar" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/80 dark:border-indigo-800/60">
             <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
@@ -307,7 +307,7 @@ const AdminAuditLog: React.FC = () => {
       </div>
 
       {/* ── Top Executive KPI Bento Cards (Compact 2x2 on mobile, 4-col on desktop) ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div data-tour="audit-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
@@ -373,8 +373,8 @@ const AdminAuditLog: React.FC = () => {
       </div>
 
       {/* ── Ultra-Compact Sticky Toolbar + Collapsible Filters ── */}
-      <div className="sticky top-0 z-20 px-1 pt-1.5 pb-2 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
-        <div className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2 sm:p-2.5 lg:px-4 lg:py-3 shadow-sm flex flex-col gap-2 w-full">
+      <div data-tour-sticky="" className="sticky top-0 z-20 px-1 pt-1.5 pb-2 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
+        <div data-tour="audit-filters" className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2 sm:p-2.5 lg:px-4 lg:py-3 shadow-sm flex flex-col gap-2 w-full">
           {/* Line 1: Search, Filter Toggle & Action Buttons */}
           <div className="flex items-center gap-1.5 sm:gap-2 w-full">
             {/* Search Input */}
@@ -569,7 +569,7 @@ const AdminAuditLog: React.FC = () => {
       </div>
 
       {/* ── Main Audit Table Area ── */}
-      <div className="bg-white dark:bg-slate-800/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs overflow-hidden flex flex-col">
+      <div data-tour="audit-events" className="bg-white dark:bg-slate-800/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs overflow-hidden flex flex-col">
         <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0" />
 
         {/* ── Mobile Bento Cards View (< md) ── */}

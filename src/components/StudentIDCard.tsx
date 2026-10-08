@@ -117,7 +117,7 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
   const signatureText = `${firstName} ${lastInitial}`.trim();
 
   return (
-    <div className={`flex flex-col items-center select-none ${className}`}>
+    <div className={`flex flex-col items-center select-none ${className}`} data-tour="profile-id-card">
       {/* ── Cute Lanyard Clip Slot at top center ── */}
       <div className="flex flex-col items-center -mb-2 z-20">
         <div className="w-14 h-4 rounded-full bg-gradient-to-b from-slate-300 to-slate-400 dark:from-slate-700 dark:to-slate-800 border-2 border-white dark:border-slate-600 shadow-md flex items-center justify-center">

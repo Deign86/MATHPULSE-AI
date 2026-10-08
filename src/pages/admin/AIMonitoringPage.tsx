@@ -69,7 +69,7 @@ const AIMonitoringPage: React.FC = () => {
       )}
 
       {/* ── Top Utility & Action Toolbar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+      <div data-tour="aimon-toolbar" className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white dark:bg-slate-900/90 p-3 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
         <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
           <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/60">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -103,7 +103,7 @@ const AIMonitoringPage: React.FC = () => {
       </div>
 
       {/* ── Top Executive KPI Bento Cards (Compact 2x2 on mobile) ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div data-tour="aimon-metrics" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <KPICard
           title="Monthly Cost"
           value={`$${data.monthlyCost.toFixed(2)}`}
@@ -140,7 +140,7 @@ const AIMonitoringPage: React.FC = () => {
         />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div data-tour="aimon-speed" className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <KPICard
           title="Average Generation Time"
           value={data.telemetry.averageLatencyMs === null ? '—' : `${data.telemetry.averageLatencyMs.toLocaleString()} ms`}
@@ -168,7 +168,7 @@ const AIMonitoringPage: React.FC = () => {
       </dl>
 
       {/* ── Secondary Summary Panels ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div data-tour="aimon-summary" className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <FeatureSpendingCard title="Top Spending Feature" feature={topSpending} />
         <FeatureSpendingCard title="Most Active Feature" feature={mostActive} />
 

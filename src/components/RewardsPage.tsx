@@ -281,7 +281,10 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
           </div>
 
           {/* Level Crest & Quick XP Summary Card */}
-          <div className="flex items-center gap-3.5 bg-slate-900/30 backdrop-blur-md border border-white/20 rounded-2xl p-3.5 sm:p-4 shadow-inner shrink-0 lg:self-stretch justify-between sm:justify-start">
+          <div
+            data-tour="rewards-level"
+            className="flex items-center gap-3.5 bg-slate-900/30 backdrop-blur-md border border-white/20 rounded-2xl p-3.5 sm:p-4 shadow-inner shrink-0 lg:self-stretch justify-between sm:justify-start"
+          >
             <div className="relative w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 p-0.5 shadow-lg flex items-center justify-center shrink-0">
               <div className="w-full h-full bg-slate-900/90 rounded-[14px] flex flex-col items-center justify-center text-center">
                 <Crown size={18} className="text-amber-400 drop-shadow-sm" />
@@ -310,7 +313,10 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
         </div>
 
         {/* Quick Metrics Slabs */}
-        <div className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 mt-5 sm:mt-6">
+        <div
+          data-tour="rewards-metrics"
+          className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 mt-5 sm:mt-6"
+        >
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 sm:p-3.5 border border-white/15 flex items-center gap-3">
             <div className="p-2 sm:p-2.5 rounded-xl bg-amber-400/20 border border-amber-300/30 text-amber-300 shrink-0">
               <Trophy size={18} />
@@ -363,8 +369,11 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
       </div>
 
       {/* Sticky Navigation Tabs & Filter Bar */}
-      <div className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 xl:-mx-12 px-4 sm:px-6 lg:px-8 xl:px-12 py-2 sm:py-2.5 bg-gradient-to-b from-[#f8faff]/95 via-[#f8faff]/90 to-[#f8faff]/60 dark:from-slate-950/95 dark:via-slate-950/90 dark:to-slate-950/60 backdrop-blur-md transition-all">
-        <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-md shadow-purple-500/5 border border-slate-200/90 dark:border-slate-800 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2 sm:gap-2.5">
+      <div data-tour-sticky="" className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 xl:-mx-12 px-4 sm:px-6 lg:px-8 xl:px-12 py-2 sm:py-2.5 bg-gradient-to-b from-[#f8faff]/95 via-[#f8faff]/90 to-[#f8faff]/60 dark:from-slate-950/95 dark:via-slate-950/90 dark:to-slate-950/60 backdrop-blur-md transition-all">
+        <div
+          data-tour="rewards-tabs"
+          className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-md shadow-purple-500/5 border border-slate-200/90 dark:border-slate-800 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2 sm:gap-2.5"
+        >
           {/* Main Segmented Tabs */}
           <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar p-0.5">
             <button
@@ -463,7 +472,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
       </div>
 
       {/* Tab Content Section */}
-      <div>
+      <div data-tour="rewards-content">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
             <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />

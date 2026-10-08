@@ -695,6 +695,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
           ? 'h-full flex-1'
           : 'h-[36vh] min-h-[240px] max-h-[300px] border-b border-sky-950/40'
       }`}
+      data-tour="avatar-preview"
     >
       {/* Background Math Grid Texture */}
       <div className="absolute inset-0 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px] opacity-40 pointer-events-none" />
@@ -757,7 +758,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
           </div>
         )}
 
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0" data-tour="avatar-tools">
           <Tooltip>
             <TooltipTrigger asChild>
               <button
@@ -907,7 +908,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0" data-tour="avatar-tools">
                 {isDevMode && (
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -968,7 +969,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
               className="flex flex-col flex-1 min-h-0"
             >
               {/* Closet Hanging Rail & Hanger Tabs */}
-              <div className="px-4 pt-2.5 pb-2 border-b border-[#dfd2be] bg-[#f8f3eb]/95 shrink-0 relative">
+              <div className="px-4 pt-2.5 pb-2 border-b border-[#dfd2be] bg-[#f8f3eb]/95 shrink-0 relative" data-tour="avatar-categories">
                 {/* Polished Brass Hanging Rail with brackets */}
                 <div className="relative mb-2 flex items-center">
                   {/* Left Wall Bracket */}
@@ -1006,7 +1007,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
               </div>
 
               {/* Scrollable Wooden Closet Shelves with textured oak backing */}
-              <div className="flex-1 overflow-y-auto min-h-0 p-4 scrollbar-hide bg-[#f6efe5] bg-[radial-gradient(#dfceb7_1.5px,transparent_1.5px)] [background-size:18px_18px] relative shadow-inner">
+              <div className="flex-1 overflow-y-auto min-h-0 p-4 scrollbar-hide bg-[#f6efe5] bg-[radial-gradient(#dfceb7_1.5px,transparent_1.5px)] [background-size:18px_18px] relative shadow-inner" data-tour="avatar-items">
                 {/* Subtle interior vertical divider/shadow */}
                 <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-amber-950/5 to-transparent pointer-events-none" />
                 <div className="absolute inset-y-0 right-0 w-3 bg-gradient-to-l from-amber-950/5 to-transparent pointer-events-none" />
@@ -1019,7 +1020,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
             </Tabs.Root>
 
             {/* Wooden Closet Bottom Drawer / Action Bar */}
-            <div className="p-4 bg-gradient-to-b from-[#f4ece0] to-[#e8decb] border-t-2 border-[#d9cab4] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] shrink-0 relative">
+            <div className="p-4 bg-gradient-to-b from-[#f4ece0] to-[#e8decb] border-t-2 border-[#d9cab4] shadow-[0_-4px_16px_rgba(0,0,0,0.06)] shrink-0 relative" data-tour="avatar-save">
               {/* Polished Brass Drawer Pull Bar Trim */}
               <div className="w-full flex justify-center mb-2.5">
                 <div className="w-16 h-1.5 rounded-full bg-gradient-to-r from-amber-400 via-amber-200 to-amber-400 shadow-[0_1px_3px_rgba(180,120,50,0.35)]" />
@@ -1065,7 +1066,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
           </div>
 
           {/* Right Column: Full-Stage Cyber-Podium Live Avatar Showcase */}
-          <div className="flex-1 h-full max-h-[820px] relative flex flex-col justify-between rounded-3xl overflow-hidden border border-sky-500/20 bg-[#0a0f1d]/60 backdrop-blur-sm shadow-2xl">
+          <div className="flex-1 h-full max-h-[820px] relative flex flex-col justify-between rounded-3xl overflow-hidden border border-sky-500/20 bg-[#0a0f1d]/60 backdrop-blur-sm shadow-2xl" data-tour="avatar-preview">
             {/* Top Right Live Preview Indicator */}
             <div className="p-5 flex items-center justify-between z-30 shrink-0">
               <div className="flex items-center gap-2">
@@ -1167,7 +1168,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
             className="flex-1 min-h-0 flex flex-col"
           >
             {/* Sticky Category Bar: Brass hanging rail and hanger tabs */}
-            <div className="px-2.5 sm:px-4 pt-1 pb-1.5 shrink-0 border-b border-[#dfd2be] bg-[#f8f3eb]/95 backdrop-blur-md z-10">
+            <div className="px-2.5 sm:px-4 pt-1 pb-1.5 shrink-0 border-b border-[#dfd2be] bg-[#f8f3eb]/95 backdrop-blur-md z-10" data-tour="avatar-categories">
               {/* Mini brass hanging rail */}
               <div className="flex items-center mb-1.5">
                 <div className="w-2 h-2.5 rounded-l bg-amber-600 shrink-0" />
@@ -1202,7 +1203,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
             </div>
 
             {/* Scrollable Wooden Closet Shelves with textured oak backing */}
-            <div className="flex-1 overflow-y-auto min-h-0 px-2.5 sm:px-4 py-2 scrollbar-hide bg-[#f6efe5] bg-[radial-gradient(#dfceb7_1.5px,transparent_1.5px)] [background-size:18px_18px]">
+            <div className="flex-1 overflow-y-auto min-h-0 px-2.5 sm:px-4 py-2 scrollbar-hide bg-[#f6efe5] bg-[radial-gradient(#dfceb7_1.5px,transparent_1.5px)] [background-size:18px_18px]" data-tour="avatar-items">
               {categories.map(cat => (
                 <Tabs.Content key={cat.id} value={cat.id} className="outline-none h-full">
                   {renderItemGrid(cat.id)}
@@ -1212,7 +1213,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
           </Tabs.Root>
 
           {/* Sticky Bottom Wooden Action Bar — Elevated above mobile bottom navigation bar */}
-          <div className="pt-2.5 px-3 pb-20 sm:pb-24 lg:pb-3.5 bg-gradient-to-b from-[#f4ece0] to-[#e8decb] border-t-2 border-[#d9cab4] shrink-0">
+          <div className="pt-2.5 px-3 pb-20 sm:pb-24 lg:pb-3.5 bg-gradient-to-b from-[#f4ece0] to-[#e8decb] border-t-2 border-[#d9cab4] shrink-0" data-tour="avatar-save">
             <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
               <button
                 type="button"

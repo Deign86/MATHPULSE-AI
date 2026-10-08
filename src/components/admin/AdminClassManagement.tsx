@@ -161,7 +161,7 @@ const AdminClassManagement: React.FC = () => {
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {/* ── Teacher-Inspired Stats Bento Grid (Unified Highlight Cards) ── */}
-      <div className="grid grid-cols-3 gap-1.5 sm:gap-4 px-1">
+      <div data-tour="classes-stats" className="grid grid-cols-3 gap-1.5 sm:gap-4 px-1">
         {/* Card 1: Total Sections (Purple Gradient) */}
         <div className="group relative overflow-hidden rounded-xl sm:rounded-3xl p-2.5 sm:p-5 flex flex-col justify-between bg-gradient-to-br from-[#9956DE] via-[#8643C8] to-[#7274ED] shadow-[0_4px_16px_-4px_rgba(153,86,222,0.38)] hover:shadow-[0_12px_28px_-6px_rgba(153,86,222,0.48)] border border-white/20 dark:border-white/15 hover:border-white/35 transition-all duration-300 ease-out min-w-0 min-h-[76px] sm:min-h-[140px] text-white select-none">
           <div className="absolute -bottom-6 -right-6 w-16 sm:w-36 h-16 sm:h-36 bg-white/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-all duration-500 ease-out" />
@@ -228,7 +228,7 @@ const AdminClassManagement: React.FC = () => {
       </div>
 
       {/* ── Class Sections & Faculty Assignments Table Container ── */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col relative">
+      <div data-tour="classes-sections" className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col relative">
         {/* Top Gradient Highlight Bar */}
         <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0" />
 

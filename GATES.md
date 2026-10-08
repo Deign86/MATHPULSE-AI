@@ -165,3 +165,152 @@ ABANDON: line40 authenticated E2E cannot run because `npx e2e list` found 15 stu
   CHECK: git diff --check; node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
   EXPECT: No whitespace errors; this section has no pending evidence or unmet gate.
   EVIDENCE: `git diff --check` exited 0; the final gate checker reported `ALL MET (64 met, 3 abandoned)` across the root and existing lane ledgers.
+
+## Student guided onboarding tour — 2026-10-07
+
+- [x] TOUR1: First-use launch waits for assessment/dialog safety; dismissal is scoped to the student; replay remains available.
+  CHECK: npm test -- src/hooks/useStudentTour.test.tsx
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 `useStudentTour.test.tsx` passed 7/7 (safe-screen wait, per-student dismissal, Settings replay, identity guard, blocker close, external-dialog wait, blocked-storage session fallback, browser-history dismissal).
+
+- [x] TOUR2: Spotlight navigation, Back/Continue/Skip/Finish, keyboard dismissal and missing-target recovery work.
+  CHECK: npm test -- src/components/onboarding/GuidedTour.test.tsx
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 focused run of GuidedTour, MobileBottomNav, QuizBattlePage and hook tour tests passed; full suite includes them (132 files / 566 tests).
+
+- [x] TOUR3: Real browser walkthrough stays usable on phone, tablet, desktop and short landscape screens.
+  CHECK: node tests/browser/student-tour-smoke.mjs
+  EXPECT: PASS: student tour browser checks
+  EVIDENCE: 2026-10-08 Edge run passed all 8 viewports (320x568, 390x844, 768x1024, 1440x900, 1920x1080, 844x390 landscape, dark/reduced-motion 375x667, large-text 320x568): 26 steps each, dialog in viewport, controls >=44px, one non-overlapping spotlight per step, focus trapped, replay + dismissal persistence, zero page errors. Visually inspected `small-phone-step-10.png`.
+
+- [x] TOUR4: Frontend tests, typecheck, lint, anti-slop and production build pass.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0.
+  EVIDENCE: 2026-10-08 Vitest 132 files / 566 tests passed; typecheck, ESLint (zero warnings), anti-slop and `VITE_API_URL=/api` build all exited 0; build host and demo-credential checks passed.
+
+- [x] TOUR5: Reusable engine, student coverage, persistence and teacher/admin adoption are documented with verification evidence.
+  EVIDENCE: `docs/student-onboarding-guide.md` covers engine contract, 26-step coverage, persistence/versioning, browser-history and password-edit protection, verification commands and the teacher/admin checklist; its dangling `student-onboarding-verification.md` reference now points to this ledger.
+
+- [x] TOUR6: Quiz Battle previews cannot resume/start an existing session; ordinary battle use still resumes normally.
+  CHECK: npm test -- src/components/QuizBattlePage.tour.test.tsx --maxWorkers=1
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 `QuizBattlePage.tour.test.tsx` passed in the focused tour run and the full suite.
+
+- [x] TOUR7: Browser Back/Forward ends the guide without rewriting the destination, and Settings replay cannot discard unsubmitted password text.
+  CHECK: npm test -- src/hooks/useStudentTour.test.tsx src/components/SettingsPage.tour.test.tsx
+  EXPECT: passed
+  EVIDENCE: Both tests failed before the fix (tour stayed open after popstate; replay ignored password fields). After `useStudentTour` popstate dismissal, App tour-state reset on close, and `hasUnsavedEdits` in SettingsPage, hook 7/7 and Settings 3/3 passed.
+
+- [ ] TOUR8: Signed-in walkthrough on a real student account (checklist in `docs/student-onboarding-guide.md`).
+  EVIDENCE: pending
+ABANDON: TOUR8 no `E2E_USER_STUDENT_*` credentials are configured locally; the browser fixture covers geometry/navigation but not account-specific content. Needs a manual run by the user.
+
+## Student tour v2: feature spotlights, page guides, scroll control — 2026-10-08
+
+- [x] TOUR9: Auto-opening page modals (Daily Check-In on Modules) never cover an active tour; they open after the tour closes, and the tour layers above every app overlay.
+  CHECK: npm test -- src/components/ModulesPage.tour.test.tsx
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 `ModulesPage.tour.test.tsx` 2/2: check-in absent while `tourActive`, opens after it ends; the test fails with the fix removed. Tour overlay/card raised to z-[100000]/[100001], above the highest app layer (z-[99999]).
+
+- [x] TOUR10: Every page step spotlights the feature region it explains (no step targets a bare page heading), and every step selector exists as an anchor in production source.
+  CHECK: npm test -- src/components/onboarding/studentTourSteps.test.ts
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 `studentTourSteps.test.ts` 92/92: every selector maps to a production anchor, no step targets h1-h6, every page guide stays on its tab, first/last full-guide steps are non-optional. 52 new anchors added across 17 components.
+
+- [x] TOUR11: Every major student-usable feature on each page has an explaining step; coverage table in `docs/student-onboarding-guide.md` matches the step config.
+  EVIDENCE: Feature inventory of all 10 student pages (4 parallel code scans) mapped to 84 steps; coverage table in `docs/student-onboarding-guide.md` lists each anchor; 84 total / 8 optional / 76 for a new student matches the browser run.
+
+- [x] TOUR12: A student can play a single page's guide from a header help button (current page) and from Settings (any page); it stays on that page and Finish/Skip return to it.
+  CHECK: npm test -- src/hooks/useStudentTour.test.tsx src/components/SettingsPage.tour.test.tsx
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 hook 8/8 (page start, full start) and Settings 4/4 (page-guide list calls onReplayTour(tab), full replay calls it with no tab, disabled with unsaved edits). Browser: all 10 page guides from Settings plus the header button on phone and desktop, each returning to Settings.
+
+- [x] TOUR13: The tour scrolls each target into view, re-scrolls when a target drifts off-screen (including scroll that happened before launch), and the page cannot be scrolled or clicked by the student while the tour is open.
+  CHECK: npm test -- src/components/onboarding/GuidedTour.test.tsx
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 `GuidedTour.test.tsx` 6/6 incl. drift re-scroll (fails with scroll-once logic), priority fallbacks, optional skip both directions. Browser: page scrolled to the bottom before launch, spotlight present on every step; wheel over the page under the guide leaves scrollTop unchanged; every new target is aligned to the top (phone screenshots reviewed).
+
+- [x] TOUR14: Browser smoke passes on all 8 viewports for the full guide and every page guide; screenshots reviewed.
+  CHECK: node tests/browser/student-tour-smoke.mjs
+  EXPECT: PASS: student tour browser checks
+  EVIDENCE: 2026-10-08 Edge run passed all 8 viewports: 76 rendered steps each (8 optional skipped), dialog in viewport, controls >=44px, one spotlight per step, no avoidable overlap, focus trapped, replay + dismissal persistence, zero page errors; page guides on phone/desktop (Dashboard 11, Modules 12, Grades 6, AI Chat 3, Quiz Battle 12, Leaderboard 4, Avatar 5, Rewards 4, Profile 5, Settings 5). Reviewed phone/desktop/small-phone screenshots.
+
+- [x] TOUR15: Frontend tests, typecheck, ESLint, anti-slop and production build pass.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0.
+  EVIDENCE: 2026-10-08 Vitest 134 files / 665 tests passed; typecheck, ESLint (0 warnings), anti-slop and `VITE_API_URL=/api` build exited 0; build host and demo-credential checks passed.
+
+- [x] TOUR16: Signed-in walkthrough of the full guide and every page guide in the real app with a student account.
+  EVIDENCE: 2026-10-08 real app (dev server, Drew Hernandez student account signed in by the user in the browser pane), measured per step with a DOM harness (spotlight present, card/spotlight overlap, element under the spotlight, pinned-bar cover, header shift, cut-off text, 44px buttons). Final detailed passes: desktop 1440x900, tablet 768x1024 and phone 390x844 all clean (every highlight on its own feature, header never shifted, guide ends on the starting page). General 12-step guide clean on desktop/tablet/phone. Bugs found and fixed in this round: Daily Check-In timing, card jumping while pages load, oversized regions covered by the card, sticky Modules/Rewards bars and the floating Quiz Battle header covering features, phone Leaderboard pinned strip appearing after scroll, AI Chat list/conversation hidden on phones, early page-guide clicks ignored, scrollIntoView shifting the app shell (header pushed off screen), Rewards bar wrongly trimming the header highlight, hero speech bubble covering Continue Learning on phones, keyboard focus lost while a page loads or when chaining guides.
+
+- [x] TOUR17: The first-use guide is general (one overview per page, 12 steps) and tells students that step-by-step help lives in each page guide; page guides keep the detailed steps.
+  CHECK: npm test -- src/components/onboarding/studentTourSteps.test.ts
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 `studentTourSteps.test.ts` 93/93 incl. general-guide shape test; real app general guide clean at 1440/768/390; browser smoke 12 steps at all 8 viewports.
+
+- [x] TOUR18: Final student-side verification after the real-app fixes.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build; node tests/browser/student-tour-smoke.mjs
+  EXPECT: All commands exit 0.
+  EVIDENCE: 2026-10-08 Vitest 134 files / 671 tests; typecheck, ESLint (0 warnings), anti-slop, build all exit 0; browser smoke PASS on 8 viewports (general guide 12 steps; page guides Dashboard 11, Modules 12, Grades 6, AI Chat 3, Quiz Battle 12, Leaderboard 4, Avatar 5, Rewards 4, Profile 5, Settings 5 on phone and desktop; optional features omitted in fixture). New smoke assertion: no pinned bar covers a highlight.# Acceptance Gates
+
+## Teacher onboarding — 2026-10-08
+
+- [x] TEACH1: Teacher guide shares the engine and a role-scoped hook (separate first-use key per role); the student key is unchanged.
+  CHECK: npm test -- src/hooks/useOnboardingTour.test.tsx
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 `useOnboardingTour('student' | 'teacher' | 'admin', ...)`, key `mathpulse:<role>-tour:v1:<uid>`; hook tests 9/9 under the new name.
+
+- [x] TEACH2: Teacher first-use guide is general (welcome + one overview per teacher page + page-guide pointer); detailed page guides cover every teacher view; every selector is anchored in production source; the Intervention Center is never opened by the guide.
+  CHECK: npm test -- src/components/onboarding/teacherTourSteps.test.ts
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 teacher config tests passed (all selectors anchored, no headings, pages stay on their view, no 'intervention' tab, 12-step general guide). 11 teacher pages, anchors added across TeacherDashboard, calendar, quiz maker, question bank, data import, notifications, competency, topic mastery, profile, ID card and settings.
+
+- [x] TEACH3: Teacher can replay the full guide or any page guide from Teacher Settings (disabled with unsaved edits) and play the current page's guide from the header ? button.
+  CHECK: npm test -- src/components/teacher/TeacherSettingsPage.tour.test.tsx
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 TeacherSettingsPage tour tests 3/3; header page-guide button and settings props wired in TeacherDashboard.
+
+- [x] TEACH4: Signed-in teacher walkthrough in the real app (desktop, tablet, phone): every highlight on its own feature, no overlap or covering bars, phone menus open for nav steps, guide ends on the starting view, and nothing is saved, sent, generated or assigned.
+  EVIDENCE: 2026-10-08 real app, seeded teacher account signed in by the user: general guide (12 steps) and all 11 page guides measured per step on desktop 1440x900, tablet 768x1024 and phone 390x844; every highlight on its own feature, phone Teaching/Insights/AI Tools menus opened for nav steps, Skip/Finish returned to the starting page, only Continue/Finish/Skip were pressed. Fixed during the run: Profile/Settings overview targets (no header on those views), Competency ~10 s load (card waits up to 12 s with a "Loading this page..." indicator), Teacher Settings shrinking below its content (`shrink-0`) which hid the Save bar behind the tablet/phone bottom nav. Full suite re-run afterwards: 136 files / 738 tests, typecheck, ESLint, anti-slop, build, student smoke on 8 viewports all pass.
+
+- [x] TEACH5: Full frontend checks pass after the teacher work.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0.
+  EVIDENCE: 2026-10-08 Vitest 136 files / 738 tests; typecheck, ESLint (0 warnings), anti-slop, build exit 0; student browser smoke still PASS on all 8 viewports.
+
+## Admin onboarding — 2026-10-08
+
+- [x] ADMIN1: Admin general guide (welcome + one overview per admin page + page-guide pointer) and detailed page guides for all 11 admin tabs; every selector anchored in production source; every page guide on a real ADMIN_TABS id.
+  CHECK: npm test -- src/components/onboarding/adminTourSteps.test.ts
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 admin config tests passed; anchors added across AdminDashboard (Overview, header), Sidebar (data-tour-nav for all roles), AdminMobileBottomNav, User/Class Management, Curriculum Control, Content, RAG Manager, Analytics, AI Monitoring, Audit Log, Profile, Settings.
+
+- [x] ADMIN2: Admin can play the current page's guide from the header ? button and replay the full guide or any page guide from Admin Settings (disabled with unsaved edits, password text, saving or maintenance saving); phone submenus open for nav steps; Overview rows and Content tabs are revealed read-only while explained.
+  CHECK: npm test -- src/components/admin/AdminSettingsPage.tour.test.tsx
+  EXPECT: passed
+  EVIDENCE: 2026-10-08 AdminSettingsPage tour tests passed; total guide-related suite 249/249; typecheck, ESLint, anti-slop clean.
+
+- [x] ADMIN3: Signed-in admin walkthrough in the real app (desktop, tablet, phone): every highlight on its own feature, no overlap or covering bars, guides return to the starting page, and nothing is created, edited, deleted, assigned, uploaded, rebuilt, toggled or exported.
+  EVIDENCE: 2026-10-08 real app, seeded admin account signed in by the user: first-use launch verified (admin "seen" flag cleared, guide opened ~3 s after load); general guide (13 steps) and all 11 page guides measured per step on desktop 1440x900, tablet 768x1024 and phone 390x844. Every highlight landed on its own feature; Manage/AI/Curriculum/Insights phone menus opened for nav steps; Overview rows and Content Upload/Inventory were revealed while explained; every guide returned to Admin Settings; only Continue/Finish/Skip were pressed. Admin pages reordered to follow the sidebar groups. Note: below lg the RAG subject picker sits inside the details column, so the "Subject details" highlight includes it (page layout, not a guide defect).
+
+- [x] ADMIN4: Full frontend checks pass after the admin work.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0.
+  EVIDENCE: 2026-10-08 Vitest 138 files / 802 tests; typecheck, ESLint (0 warnings), anti-slop, build (host + demo-credential checks) exit 0; student browser smoke PASS on all 8 viewports.
+
+## Main integration (origin/main a1e5e7d + onboarding e5263a1) — 2026-10-08
+
+- [x] INT1: Onboarding commit applied on top of `origin/main` `a1e5e7d` (PR #209); the two expected conflicts are resolved by keeping main's behaviour: the "Assigned by your teacher" section stays where main moved it (above the tab content for Practice and Recommended) and carries `data-tour="assigned-quizzes"`; GATES.md keeps both sides.
+  CHECK: git grep -c "data-tour" -- src/components/ModulesPage.tsx
+  EXPECT: ModulesPage.tsx:8
+  EVIDENCE: `git cherry-pick --no-commit e5263a1` conflicted only in `src/components/ModulesPage.tsx` and `GATES.md`; `PracticeCenter.tsx` auto-merged with its `practice-*` anchors intact. ModulesPage keeps all 8 anchor lines (same count as the branch: module-search, module-tab-*, module-focus, assigned-quizzes, teacher-modules, module-grid, recommended-modules, data-tour-sticky) plus `tourActive`/`tourView`, `MODULES_TABS`, `tabBeforeTour` and `isOpen={showDailyCheckIn && !tourActive}`.
+
+- [x] INT2: The student Modules guide describes main's layout: assigned quizzes appear at the top of both Practice and Recommended.
+  CHECK: npm test -- --run src/components/onboarding/studentTourSteps.test.ts src/components/ModulesPage.tour.test.tsx --maxWorkers=2
+  EXPECT: passed
+  EVIDENCE: `studentTourSteps.ts` "Assigned by your teacher" now reads "Quizzes your teacher assigned appear at the top of Practice and Recommended…"; the step keeps `view: 'practice'`, where the section renders. Covered by the full run below (studentTourSteps + ModulesPage tour/regression/unit tests all pass).
+
+- [x] INT3: Full frontend checks pass on the integrated tree.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0.
+  EVIDENCE: 2026-10-08 Vitest 140 files / 832 tests passed (354 s); typecheck, ESLint `--max-warnings=0` and anti-slop exit 0; `VITE_API_URL=/api npm run build` exit 0 with check-api-url, check-prod-host and check-no-demo-creds PASS; `node tests/browser/student-tour-smoke.mjs` PASS on all 8 viewports. Worktree installed with `npm ci --legacy-peer-deps` (same as CI; plain `npm ci` fails on the @capacitor-firebase/firebase peer range). The real-app Modules guide re-run is tracked in the responsiveness section (needs a student sign-in).
