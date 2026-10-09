@@ -84,6 +84,37 @@ describe('ConfirmModal', () => {
     expect(dialog.getAttribute('aria-describedby')).toBe(screen.getByText('This cannot be undone.').id);
   });
 
+  it('keeps confirm disabled until the exact confirmPhrase is typed', () => {
+    const handleConfirm = vi.fn();
+    render(
+      <ConfirmModal isOpen onClose={vi.fn()} onConfirm={handleConfirm} title="Delete users" message="Gone for good." confirmText="Delete Users" confirmPhrase="DELETE 24" />
+    );
+    const confirmButton = screen.getByRole('button', { name: 'Delete Users' });
+    const input = screen.getByLabelText(/type DELETE 24 to confirm/i);
+
+    expect(confirmButton).toBeDisabled();
+    fireEvent.click(confirmButton);
+    expect(handleConfirm).not.toHaveBeenCalled();
+
+    fireEvent.change(input, { target: { value: 'delete 24' } });
+    expect(confirmButton).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: 'DELETE 24' } });
+    expect(confirmButton).toBeEnabled();
+    fireEvent.click(confirmButton);
+    expect(handleConfirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('clears the typed phrase when reopened', () => {
+    const props = { onClose: vi.fn(), onConfirm: vi.fn(), title: 'Delete users', message: 'Gone.', confirmText: 'Delete Users', confirmPhrase: 'DELETE 2' };
+    const { rerender } = render(<ConfirmModal isOpen {...props} />);
+    fireEvent.change(screen.getByLabelText(/type DELETE 2 to confirm/i), { target: { value: 'DELETE 2' } });
+    rerender(<ConfirmModal isOpen={false} {...props} />);
+    rerender(<ConfirmModal isOpen {...props} />);
+    // AnimatePresence keeps a frozen snapshot of the exiting dialog in jsdom; the live one is last.
+    expect(screen.getAllByRole('button', { name: 'Delete Users' }).at(-1)).toBeDisabled();
+  });
+
   it('closes on Escape while open and stops listening once closed', () => {
     const handleClose = vi.fn();
     const { rerender } = render(<ConfirmModal isOpen onClose={handleClose} onConfirm={vi.fn()} title="Escape me" message="Sure?" />);

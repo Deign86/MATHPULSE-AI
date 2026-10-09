@@ -1,4 +1,4 @@
-import React, { useEffect, useId } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, LogOut, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -15,6 +15,8 @@ interface ConfirmModalProps {
   type?: 'danger' | 'warning' | 'info';
   icon?: 'logout' | 'delete' | 'warning';
   zIndexClass?: string;
+  /** When set, confirm stays disabled until this exact text is typed. */
+  confirmPhrase?: string;
 }
 
 const ConfirmModal: React.FC<ConfirmModalProps> = ({
@@ -28,6 +30,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   type = 'warning',
   icon = 'warning',
   zIndexClass = 'z-[100]',
+  confirmPhrase,
 }) => {
   const getIcon = () => {
     switch (icon) {
@@ -71,6 +74,13 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   const colors = getColorClasses();
   const titleId = useId();
   const messageId = useId();
+  const phraseInputId = useId();
+  const [typedPhrase, setTypedPhrase] = useState('');
+  const isPhraseMatched = !confirmPhrase || typedPhrase === confirmPhrase;
+
+  useEffect(() => {
+    if (isOpen) setTypedPhrase('');
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -82,6 +92,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   }, [isOpen, onClose]);
 
   const handleConfirm = async () => {
+    if (!isPhraseMatched) return;
     try {
       await onConfirm();
       onClose();
@@ -146,6 +157,22 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   {message}
                 </p>
 
+                {confirmPhrase && (
+                  <div className="mb-5 sm:mb-6 text-left">
+                    <label htmlFor={phraseInputId} className="block text-xs font-bold text-slate-700 dark:text-slate-200 mb-1.5">
+                      Type <span className="font-mono text-rose-600 dark:text-rose-400">{confirmPhrase}</span> to confirm
+                    </label>
+                    <input
+                      id={phraseInputId}
+                      value={typedPhrase}
+                      onChange={(event) => setTypedPhrase(event.target.value)}
+                      autoComplete="off"
+                      spellCheck={false}
+                      className="w-full h-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 font-mono text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-rose-500"
+                    />
+                  </div>
+                )}
+
                 {/* Buttons */}
                 <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                   <Button
@@ -157,6 +184,7 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                   </Button>
                   <Button
                     onClick={handleConfirm}
+                    disabled={!isPhraseMatched}
                     className={`flex-1 h-10 sm:h-11 rounded-xl font-black text-xs sm:text-sm ${colors.buttonBg} ${colors.buttonText} shadow-md active:scale-95 transition-all cursor-pointer`}
                   >
                     {confirmText}
