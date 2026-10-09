@@ -72,6 +72,7 @@ interface PendingConfirmState {
   title: string;
   message: string;
   confirmText: string;
+  confirmPhrase?: string;
   action: AdminBulkActionType;
   params?: {
     userIds?: string[];
@@ -806,6 +807,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       title: 'Delete Selected Users?',
       message: `Delete ${selectedCount} selected user(s)? This action cannot be undone.`,
       confirmText: 'Delete Users',
+      confirmPhrase: `DELETE ${selectedCount}`,
       action: 'delete',
       auditAction: 'Bulk User Deletion',
       auditDetail: `Deleted ${selectedCount} selected users`,
@@ -1979,6 +1981,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
         title={pendingConfirmAction?.title || 'Confirm Action'}
         message={pendingConfirmAction?.message || 'Proceed with this action?'}
         confirmText={isConfirmingAction ? 'Processing...' : (pendingConfirmAction?.confirmText || 'Confirm')}
+        confirmPhrase={pendingConfirmAction?.confirmPhrase}
         cancelText="Cancel"
         type="danger"
         icon="delete"
