@@ -1287,7 +1287,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     <div className="w-full h-full flex flex-col overflow-y-auto bg-gradient-to-br from-[#eef2ff] via-[#f5f3ff] to-[#fff7ed]">
       <div className="w-full px-3.5 sm:px-6 xl:px-8 pt-2.5 sm:pt-3 pb-2 sm:pb-4">
         {/* ─── TAB TOGGLES ─── */}
-        <div className="flex items-center gap-1 bg-white/50 backdrop-blur-md p-1 sm:p-1.5 rounded-full border border-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-full sm:w-max">
+        <div data-tour="quiz-tabs" className="flex items-center gap-1 bg-white/50 backdrop-blur-md p-1 sm:p-1.5 rounded-full border border-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] w-full sm:w-max">
           <button
             onClick={() => setActiveTab('create')}
             className={`flex-1 sm:flex-initial justify-center px-3.5 sm:px-6 py-1.5 sm:py-2 rounded-full text-xs sm:text-[13px] font-bold flex items-center gap-1.5 sm:gap-2 transition-all duration-300 ease-out ${
@@ -1491,7 +1491,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
 
           {/* WIZARD STEPPER */}
           {!generating && step !== 'results' && (
-            <div className="w-full mb-3 sm:mb-6">
+            <div data-tour="quiz-stepper" className="w-full mb-3 sm:mb-6">
               <div className="flex items-center justify-between bg-white/80 backdrop-blur-[12px] rounded-xl sm:rounded-2xl border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] p-1 sm:p-1.5 overflow-x-auto no-scrollbar gap-1">
                 {[
                   { id: 'setup', label: 'Setup' },
@@ -1548,7 +1548,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
             <div className="w-full flex-1 space-y-3 sm:space-y-5 pb-16 sm:pb-8">
 
               {/* Collapsible Info Banner */}
-              <div className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 backdrop-blur-sm border border-purple-100/60 rounded-[14px] overflow-hidden shadow-xs transition-all duration-200">
+              <div data-tour="quiz-guidelines" className="bg-gradient-to-r from-purple-50/80 to-indigo-50/80 backdrop-blur-sm border border-purple-100/60 rounded-[14px] overflow-hidden shadow-xs transition-all duration-200">
                 <button
                   type="button"
                   onClick={() => setShowInfoBanner((prev) => !prev)}
@@ -1589,7 +1589,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
               </div>
 
               {/* Basic Settings Card */}
-              <div className="bg-white/80 backdrop-blur-[12px] rounded-[16px] border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300">
+              <div data-tour="quiz-setup" className="bg-white/80 backdrop-blur-[12px] rounded-[16px] border border-white shadow-[0_4px_16px_rgba(0,0,0,0.03)] overflow-hidden hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] transition-all duration-300">
                 <div className="px-3.5 py-2.5 sm:px-5 sm:py-3 border-b border-[#f1f5f9] bg-white/50">
                   <h3 className="text-[10.5px] sm:text-[11px] font-bold text-[#64748b] uppercase tracking-wider">Basic Settings</h3>
                 </div>

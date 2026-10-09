@@ -24,20 +24,30 @@ interface AdminMobileBottomNavProps {
   profilePhoto?: string;
   profileName?: string;
   profileEmail?: string;
+  /** Admin guide hint: the submenu holding the destination it is pointing at. */
+  tourMenu?: string | null;
 }
 
-type ExpandableMenu = 'management' | 'ai' | 'curriculum' | 'insights' | null;
+const MENUS = ['management', 'ai', 'curriculum', 'insights'] as const;
+type ExpandableMenu = (typeof MENUS)[number] | null;
 
 export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
   activeTab,
   onSelectTab,
+  tourMenu = null,
 }) => {
   const [openMenu, setOpenMenu] = useState<ExpandableMenu>(null);
   const navRef = useRef<HTMLElement>(null);
 
+  useEffect(() => {
+    setOpenMenu(MENUS.find(menu => menu === tourMenu) ?? null);
+  }, [tourMenu]);
+
   // Close popup menus on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Clicks inside the guide must not close a submenu it opened to point at a destination.
+      if (event.target instanceof Element && event.target.closest('[data-tour-dialog],[data-tour-overlay]')) return;
       if (navRef.current && event.target instanceof Node && !navRef.current.contains(event.target)) {
         setOpenMenu(null);
       }
@@ -65,6 +75,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
   return (
     <nav
       ref={navRef}
+      data-tour-sticky=""
       aria-label="Admin mobile and tablet navigation"
       className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
     >
@@ -96,6 +107,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
               {/* User Management */}
               <button
                 type="button"
+                data-tour-nav="User Management"
                 onClick={() => handleSelectTabAndClose('User Management')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 cursor-pointer ${
                   activeTab === 'User Management'
@@ -118,6 +130,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
               {/* Class Management */}
               <button
                 type="button"
+                data-tour-nav="Class Management"
                 onClick={() => handleSelectTabAndClose('Class Management')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 cursor-pointer ${
                   activeTab === 'Class Management'
@@ -160,6 +173,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
               {/* RAG Manager */}
               <button
                 type="button"
+                data-tour-nav="RAG Manager"
                 onClick={() => handleSelectTabAndClose('RAG Manager')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 cursor-pointer ${
                   activeTab === 'RAG Manager'
@@ -202,6 +216,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
               {/* Curriculum Control */}
               <button
                 type="button"
+                data-tour-nav="Curriculum Control"
                 onClick={() => handleSelectTabAndClose('Curriculum Control')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 cursor-pointer ${
                   activeTab === 'Curriculum Control' || activeTab === 'Subjects'
@@ -224,6 +239,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
               {/* Content PDFs */}
               <button
                 type="button"
+                data-tour-nav="Content"
                 onClick={() => handleSelectTabAndClose('Content')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 cursor-pointer ${
                   activeTab === 'Content'
@@ -266,6 +282,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
               {/* Analytics */}
               <button
                 type="button"
+                data-tour-nav="Analytics"
                 onClick={() => handleSelectTabAndClose('Analytics')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 cursor-pointer ${
                   activeTab === 'Analytics'
@@ -288,6 +305,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
               {/* Audit Log */}
               <button
                 type="button"
+                data-tour-nav="Audit Log"
                 onClick={() => handleSelectTabAndClose('Audit Log')}
                 className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 cursor-pointer ${
                   activeTab === 'Audit Log'
@@ -318,6 +336,7 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
           {/* 1. OVERVIEW */}
           <button
             type="button"
+            data-tour-nav="Overview"
             onClick={() => handleSelectTabAndClose('Overview')}
             aria-label="Dashboard Overview"
             aria-current={isOverviewActive ? 'page' : undefined}

@@ -44,12 +44,32 @@ interface RagHealthSubject {
   status: 'active' | 'locked' | 'missing';
 }
 
+type ContentTab = 'upload' | 'inventory';
+const CONTENT_TABS: readonly ContentTab[] = ['upload', 'inventory'];
+
 interface AdminPdfUploadProps {
   onUploadSuccess?: (subjectId: string, chunkCount: number) => void;
+  /** Admin guide: shows the Upload or Inventory tab while it is explained; the admin's own tab returns afterwards. */
+  tourView?: string | null;
 }
 
-const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'inventory'>('upload');
+const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess, tourView = null }) => {
+  const [activeTab, setActiveTab] = useState<ContentTab>('upload');
+
+  const tabBeforeTour = useRef<ContentTab | null>(null);
+  React.useEffect(() => {
+    const tourTab = CONTENT_TABS.find(tab => tab === tourView);
+    if (tourTab) {
+      tabBeforeTour.current ??= activeTab;
+      setActiveTab(tourTab);
+    } else if (tabBeforeTour.current) {
+      setActiveTab(tabBeforeTour.current);
+      tabBeforeTour.current = null;
+    }
+    // activeTab is read only to remember the pre-tour tab.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourView]);
+
   const [uploading, setUploading] = useState(false);
   const [reingesting, setReingesting] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
@@ -240,7 +260,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {/* ── Top Stats Bento Grid ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 px-1">
+      <div data-tour="content-stats" className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-4 px-1">
         {[
           {
             label: 'Total Files in Inventory',
@@ -298,9 +318,9 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
       </div>
 
       {/* ── Tab Switcher Bar (Sticky Header) ── */}
-      <div className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+      <div data-tour-sticky="" className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-slate-800/90 p-1 sm:p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs">
+          <div data-tour="content-tabs" className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-slate-800/90 p-1 sm:p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs">
             <button
               onClick={() => setActiveTab('upload')}
               className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
@@ -342,7 +362,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
             className="space-y-6"
           >
             {/* Main Upload Card */}
-            <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden relative">
+            <div data-tour="content-upload" className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden relative">
               {/* Brand accent strip */}
               <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
 
@@ -628,7 +648,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
             </div>
 
             {/* Mobile Bento Cards (< md) */}
-            <div className="md:hidden space-y-3">
+            <div data-tour="content-inventory" className="md:hidden space-y-3">
               {loadingFiles ? (
                 Array.from({ length: 3 }).map((_, idx) => (
                   <div key={idx} className="p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/80 dark:border-slate-800 animate-pulse space-y-3">
@@ -705,7 +725,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess }) => {
             </div>
 
             {/* Desktop Table View (≥ md) */}
-            <div className="hidden md:flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden relative">
+            <div data-tour="content-inventory" className="hidden md:flex flex-col bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden relative">
               {/* Brand accent strip */}
               <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
 

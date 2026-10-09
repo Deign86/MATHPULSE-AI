@@ -293,7 +293,7 @@ const AdminRagManager: React.FC = () => {
   return (
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {/* ── Top Bento Stats Header ── */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
+      <div data-tour="rag-stats" className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4">
         {[
           {
             label: 'Indexed Sections',
@@ -368,6 +368,7 @@ const AdminRagManager: React.FC = () => {
       {/* ── Active Reingest Cloud Progress Banner ── */}
       {isReingestRunning && (
         <motion.div
+          data-tour="rag-progress"
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center justify-between gap-3 p-4 bg-amber-500/10 dark:bg-amber-950/40 border border-amber-300 dark:border-amber-800/60 rounded-2xl text-amber-900 dark:text-amber-200 shadow-sm backdrop-blur-xs"
@@ -392,8 +393,8 @@ const AdminRagManager: React.FC = () => {
       )}
 
       {/* ── Control & Search Bar (Sticky Toolbar) ── */}
-      <div className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
-        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2.5 p-2.5 sm:p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+      <div data-tour-sticky="" className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+        <div data-tour="rag-toolbar" className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2.5 p-2.5 sm:p-4 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
           {/* Search Box */}
           <div className="relative flex-1 min-w-0">
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none" />
@@ -534,7 +535,7 @@ const AdminRagManager: React.FC = () => {
            ════════════════════════════════════════════════════════════════════════ */
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
           {/* ── Left Column: Subject Directory (Desktop Only: 4 Cols) ── */}
-          <div className="hidden lg:block lg:col-span-4 space-y-3">
+          <div data-tour="rag-subjects" className="hidden lg:block lg:col-span-4 space-y-3">
             <div className="flex items-center justify-between px-1">
               <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                 Subjects Directory ({filteredGroups.length})
@@ -616,9 +617,9 @@ const AdminRagManager: React.FC = () => {
           </div>
 
           {/* ── Right Column: Selected Subject Source Files (8 Cols on Desktop, Full on Mobile) ── */}
-          <div className="col-span-1 lg:col-span-8 w-full">
+          <div data-tour="rag-detail" className="col-span-1 lg:col-span-8 w-full">
             {/* Mobile Subject Dropdown Selector (< lg screens) */}
-            <div className="lg:hidden space-y-1.5 mb-4">
+            <div data-tour="rag-subjects" className="lg:hidden space-y-1.5 mb-4">
               <div className="flex items-center justify-between px-1">
                 <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                   Subject Directory ({filteredGroups.length})

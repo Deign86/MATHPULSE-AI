@@ -100,6 +100,7 @@ export const TeacherIDCard: React.FC<TeacherIDCardProps> = ({
   return (
     <div
       ref={cardRef}
+      data-tour="teacher-id-card"
       className={`relative w-full max-w-[360px] sm:max-w-[390px] xl:max-w-[410px] [perspective:1200px] select-none ${className}`}
     >
       <motion.div

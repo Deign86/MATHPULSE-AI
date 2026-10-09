@@ -167,7 +167,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
     <div className="w-full h-full flex flex-col overflow-y-auto bg-gradient-to-br from-[#f8fafc] to-[#f1f5f9]">
       <div className="w-full px-3.5 sm:px-6 xl:px-8 pt-3 sm:pt-4 pb-28 sm:pb-32 lg:pb-12 space-y-4 sm:space-y-6 md:space-y-8">
         {/* Top Stats Cards - Sleek 3-column metric layout */}
-        <div className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6">
+        <div data-tour="qbank-stats" className="grid grid-cols-3 gap-2 sm:gap-4 md:gap-6">
           {/* Stat Card 1 */}
           <div className="relative overflow-hidden bg-gradient-to-br from-[#3b82f6] to-[#2563eb] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-5 shadow-[0_2px_8px_rgba(59,130,246,0.18)] sm:shadow-[0_4px_12px_rgba(59,130,246,0.2)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.28)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
             <div className="absolute -right-6 -bottom-6 sm:-right-12 sm:-bottom-12 w-20 h-20 sm:w-36 sm:h-36 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.6]"></div>
@@ -209,7 +209,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
         </div>
 
         {/* Ingest New PDF Card */}
-        <div className="bg-white/80 backdrop-blur-[12px] rounded-2xl sm:rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden">
+        <div data-tour="qbank-ingest" className="bg-white/80 backdrop-blur-[12px] rounded-2xl sm:rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden">
           <div className="p-4 sm:p-6 md:p-8">
             <h2 className="font-display text-base sm:text-lg md:text-[20px] font-bold text-[#1e293b] mb-4 sm:mb-6 flex items-center gap-2.5 sm:gap-3">
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-[10px] bg-gradient-to-br from-[#a855f7] to-[#9333ea] flex items-center justify-center shadow-md shadow-purple-500/20 shrink-0">
@@ -296,7 +296,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
         </div>
 
         {/* Processing Status Table Section */}
-        <div className="bg-white/80 backdrop-blur-[12px] rounded-xl sm:rounded-2xl border border-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-3.5 sm:p-5">
+        <div data-tour="qbank-status" className="bg-white/80 backdrop-blur-[12px] rounded-xl sm:rounded-2xl border border-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-3.5 sm:p-5">
           <div className="flex justify-between items-center mb-3 sm:mb-4">
             <h2 className="font-display text-sm sm:text-base font-bold text-[#1e293b]">Processing Status</h2>
             <button
@@ -312,7 +312,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           </div>
 
           {loading && pdfs.length === 0 ? (
-            <div className="flex items-center justify-center py-10 bg-white rounded-xl border border-slate-200/80">
+            <div data-tour-loading="" className="flex items-center justify-center py-10 bg-white rounded-xl border border-slate-200/80">
               <Loader2 className="w-5 h-5 animate-spin text-purple-600 mr-2" />
               <span className="text-xs sm:text-sm text-slate-500 font-medium">Checking processing status...</span>
             </div>
@@ -438,7 +438,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
         </div>
 
         {/* Browse Questions Section */}
-        <div className="bg-white/80 backdrop-blur-[12px] rounded-xl sm:rounded-2xl border border-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-3.5 sm:p-5">
+        <div data-tour="qbank-questions" className="bg-white/80 backdrop-blur-[12px] rounded-xl sm:rounded-2xl border border-white shadow-[0_4px_20px_rgba(0,0,0,0.03)] p-3.5 sm:p-5">
           <div className="flex justify-between items-center mb-3 sm:mb-4">
             <h2 className="text-sm sm:text-base font-bold text-[#1e293b] flex items-center gap-2 sm:gap-2.5">
               <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-br from-[#3b82f6] to-[#2563eb] flex items-center justify-center shadow-sm shrink-0">

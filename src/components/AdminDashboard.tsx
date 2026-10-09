@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Users,
@@ -31,6 +31,7 @@ import {
   Plus,
   FileUp,
   Filter,
+  CircleHelp,
 } from 'lucide-react';
 import Sidebar from './Sidebar';
 import ConfirmModal from './ConfirmModal';
@@ -55,6 +56,10 @@ import MasteryHeatmap from './MasteryHeatmap';
 import AdminPriorityModules from './AdminPriorityModules';
 import { NotificationBell } from '@/features/notifications';
 import AdminMobileBottomNav from './admin/AdminMobileBottomNav';
+import { GuidedTour, type TourStep } from './onboarding/GuidedTour';
+import { adminPageTour, adminTourPages, adminTourSteps } from './onboarding/adminTourSteps';
+import { PageGuideConfirm } from './onboarding/PageGuideConfirm';
+import { useOnboardingTour } from '../hooks/useOnboardingTour';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, 
   ResponsiveContainer, Cell, AreaChart, Area, PieChart, Pie 
@@ -261,6 +266,38 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
     handleTabChange('User Management');
   };
 
+  // Admin onboarding: a general first-use tour plus per-page guides. Modals and pending create intents block it.
+  const adminTour = useOnboardingTour(
+    'admin',
+    userProfile?.uid ?? null,
+    Boolean(userProfile),
+    showLogoutConfirm || isSubjectsHelpModalOpen || createIntentRole !== null,
+    activeTab === 'Overview',
+  );
+  const [tourStep, setTourStep] = useState<TourStep | null>(null);
+  const tourOrigin = useRef<AdminTab | null>(null);
+  const adminTourPage = adminTour.page ? adminPageTour(adminTour.page) : undefined;
+  const handleTourNavigate = (tab: string) => {
+    tourOrigin.current ??= activeTab;
+    handleTabChange(tab);
+  };
+  const handleDismissTour = () => {
+    adminTour.dismiss();
+    setTourStep(null);
+    handleTabChange(tourOrigin.current ?? 'Overview');
+    tourOrigin.current = null;
+  };
+  useEffect(() => {
+    if (adminTour.isOpen) return;
+    tourOrigin.current = null;
+    setTourStep(null);
+  }, [adminTour.isOpen]);
+  // Smaller screens show one Overview row at a time; reveal the row the guide is explaining.
+  useEffect(() => {
+    if (!adminTour.isOpen) return;
+    if (tourStep?.view === 'insights' || tourStep?.view === 'curriculum') setMobileOverviewTab(tourStep.view);
+  }, [adminTour.isOpen, tourStep]);
+
   useEffect(() => {
     if (activeTab !== 'Overview') return;
     if (!userProfile) return;
@@ -432,7 +469,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               
               {/* Quick Admin Stats */}
               {activeTab === 'Overview' && (
-                <div className="hidden lg:flex items-center gap-2 ml-4 shrink-0">
+                <div data-tour="admin-quick-stats" className="hidden lg:flex items-center gap-2 ml-4 shrink-0">
                   <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-b from-indigo-50 to-indigo-100/90 dark:from-indigo-950/60 dark:to-indigo-900/40 border border-indigo-200/80 dark:border-indigo-800/60 shadow-[0_2px_0_#c7d2fe,0_3px_8px_rgba(99,102,241,0.08)] rounded-xl text-indigo-700 dark:text-indigo-300 shrink-0 whitespace-nowrap">
                     <Users size={13} className="text-indigo-600 dark:text-indigo-400 shrink-0 drop-shadow-xs" />
                     <span className="text-xs font-black font-display tabular-nums whitespace-nowrap">
@@ -456,6 +493,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <PageGuideConfirm
+                guide={adminPageTour(activeTab)?.label ?? null}
+                audience="admin"
+                onPlay={() => adminTour.start(adminPageTour(activeTab) ? activeTab : null)}
+              >
+                <button
+                  type="button"
+                  data-tour="page-guide"
+                  className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] text-slate-700 dark:text-slate-100 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 shrink-0"
+                  title="Guide for this page"
+                  aria-label="Guide for this page"
+                >
+                  <CircleHelp size={18} />
+                </button>
+              </PageGuideConfirm>
+
               {/* Help Toggle (Curriculum Control / Subjects) */}
               {(activeTab === 'Curriculum Control' || activeTab === 'Subjects') && (
                 <div className="relative">
@@ -478,13 +531,16 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               )}
 
               {/* Notification Bell (Portaled z-[250] with wiggle animation & unread badge) */}
-              <NotificationBell />
+              <div data-tour="notifications" className="flex">
+                <NotificationBell />
+              </div>
 
               {/* Profile Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
+                    data-tour-group="Profile"
                     className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-indigo-500 shrink-0 p-0"
                     aria-label={`Profile menu: ${effectiveProfileData.name?.replace(/System Administrator/gi, 'Administrator') || 'Administrator'}`}
                   >
@@ -554,7 +610,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           {activeTab === 'Overview' && (
             <div className="max-w-[1600px] mx-auto space-y-5 lg:space-y-6 pt-4 sm:pt-6 w-full min-w-0">
               {/* Executive Branded Hero Banner */}
-              <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900 dark:bg-slate-900/95 text-white p-5 sm:p-7 border border-slate-800 shadow-xl shadow-slate-950/40 group">
+              <div data-tour="admin-hero" className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-slate-900 dark:bg-slate-900/95 text-white p-5 sm:p-7 border border-slate-800 shadow-xl shadow-slate-950/40 group">
                 {/* Signature Brand Accent Stripe */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED]" />
 
@@ -593,7 +649,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   {/* High-Frequency Administrative Shortcuts */}
-                  <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 mt-5 pt-4 border-t border-white/10">
+                  <div data-tour="admin-shortcuts" className="flex flex-wrap items-center gap-2.5 sm:gap-3 mt-5 pt-4 border-t border-white/10">
                     <button
                       type="button"
                       onClick={() => handleQuickAddUser('Teacher')}
@@ -634,7 +690,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               {/* Bento KPI Grid (Full Color Gradients with Glassmorphism) */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 min-w-0">
+              <div data-tour="admin-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 min-w-0">
                 {systemStats.map((statItem, index) => (
                   <motion.div
                     key={index}
@@ -671,7 +727,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               {/* Creative Mobile Segmented View Switcher (Sticky Header) */}
-              <div className="xl:hidden sticky top-0 z-20 py-1.5 -mx-1 px-1 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+              <div data-tour="admin-overview-switch" data-tour-sticky="" className="xl:hidden sticky top-0 z-20 py-1.5 -mx-1 px-1 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
                 <div className="flex items-center p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs">
                   <button
                     type="button"
@@ -703,7 +759,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Row 2: Performance Analytics & Top Performers */}
               <div className={`grid grid-cols-12 gap-4 lg:gap-6 min-w-0 ${mobileOverviewTab === 'insights' ? 'block' : 'hidden xl:grid'}`}>
                 {/* System Performance & AI Activity Chart */}
-                <div className="col-span-12 xl:col-span-7 relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] min-w-0 min-h-[360px]">
+                <div data-tour="admin-engagement" className="col-span-12 xl:col-span-7 relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] min-w-0 min-h-[360px]">
                   {/* Subtle Top Accent Line */}
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 pointer-events-none" />
 
@@ -787,7 +843,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 </div>
 
                 {/* Academic Honor Roll (Top Performers with Clean Medals) */}
-                <div className="col-span-12 xl:col-span-5 relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] min-w-0">
+                <div data-tour="admin-honor-roll" className="col-span-12 xl:col-span-5 relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] min-w-0">
                   {/* Subtle Top Accent Line */}
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 via-amber-300 to-yellow-400 pointer-events-none" />
 
@@ -813,7 +869,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div className="flex flex-col gap-2.5 flex-1 justify-center">
                     {loadingOverview ? (
-                      <div className="py-12 flex items-center justify-center">
+                      <div data-tour-loading="" className="py-12 flex items-center justify-center">
                         <Loader2 size={24} className="animate-spin text-slate-400" />
                       </div>
                     ) : topPerformers.length === 0 ? (
@@ -882,6 +938,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="col-span-12 xl:col-span-4 flex flex-col gap-4 lg:gap-6">
                   {/* Priority Attention Card (Highlighting Action Needed) */}
                   <div
+                    data-tour="admin-priority"
                     className={`relative overflow-hidden rounded-2xl sm:rounded-3xl p-5 sm:p-6 border shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col justify-between transition-all ${
                       (priorityAttention?.atRiskCount ?? 0) > 0
                         ? 'border-amber-300 dark:border-amber-700/80 bg-amber-50/40 dark:bg-amber-950/20 ring-1 ring-amber-400/20'
@@ -956,7 +1013,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   {/* Global Mastery Donut */}
-                  <div className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col items-center justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex-1">
+                  <div data-tour="admin-mastery" className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col items-center justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex-1">
                     {/* Subtle Top Accent Line */}
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 to-violet-500 pointer-events-none" />
 
@@ -1019,7 +1076,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 {/* Right Column: Subject Breakdown & Live Campus Stream */}
                 <div className="col-span-12 xl:col-span-8 flex flex-col gap-4 lg:gap-6">
                   {/* Subject Breakdown Table with Filter Tabs */}
-                  <div className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col">
+                  <div data-tour="admin-subject-matrix" className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col">
                     {/* Top Accent Line */}
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 pointer-events-none" />
 
@@ -1192,7 +1249,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   </div>
 
                   {/* Live Campus Stream (Clean, Uncluttered Activity & Security Feed) */}
-                  <div className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col">
+                  <div data-tour="admin-live-stream" className="relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex flex-col">
                     {/* Subtle Top Accent Line */}
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-sky-400 via-indigo-500 to-violet-500 pointer-events-none" />
 
@@ -1282,7 +1339,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
             </div>
           )}
-          {activeTab === 'Content' && <AdminPdfUpload />}
+          {activeTab === 'Content' && <AdminPdfUpload tourView={adminTour.isOpen ? tourStep?.view ?? null : null} />}
           {activeTab === 'RAG Manager' && <AdminRagManager />}
           {activeTab === 'Audit Log' && <AdminAuditLog />}
           {activeTab === 'User Management' && (
@@ -1315,6 +1372,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               onBack={() => setActiveTab('Overview')}
               previousTabName="Overview"
               onNavigateToProfile={() => setActiveTab('Profile')}
+              onReplayTour={adminTour.start}
+              tourPages={adminTourPages}
             />
           )}
         </main>
@@ -1353,7 +1412,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         profilePhoto={effectiveProfileData.photo}
         profileName={effectiveProfileData.name}
         profileEmail={effectiveProfileData.email}
+        tourMenu={adminTour.isOpen ? tourStep?.menu ?? null : null}
       />
+
+      {adminTour.isOpen && (
+        <GuidedTour
+          key={adminTour.page ?? 'full'}
+          label={adminTourPage ? `${adminTourPage.label} guide` : 'Admin guide'}
+          steps={adminTourPage?.steps ?? adminTourSteps}
+          onNavigate={handleTourNavigate}
+          onStepChange={setTourStep}
+          onDismiss={handleDismissTour}
+        />
+      )}
     </div>
   );
 };

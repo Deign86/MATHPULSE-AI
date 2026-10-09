@@ -460,7 +460,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
           <div className="bg-white/90 backdrop-blur-[12px] rounded-[18px] sm:rounded-[24px] border border-white shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden flex flex-col h-full">
             
             {/* Solid Calendar Header */}
-            <div className="p-3 sm:p-5 lg:p-6 border-b border-purple-500/30 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 shrink-0 flex items-center justify-between gap-2 sm:gap-3 rounded-t-[18px] sm:rounded-t-[24px] relative overflow-hidden group text-white">
+            <div data-tour="calendar-month" className="p-3 sm:p-5 lg:p-6 border-b border-purple-500/30 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 shrink-0 flex items-center justify-between gap-2 sm:gap-3 rounded-t-[18px] sm:rounded-t-[24px] relative overflow-hidden group text-white">
               {/* Subtle background decoration */}
               <div className="absolute -bottom-24 -right-12 w-64 h-64 bg-white/10 rounded-full pointer-events-none" />
               <div className="absolute -top-20 left-1/4 w-40 h-40 bg-white/5 rounded-full pointer-events-none" />
@@ -516,7 +516,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
               </div>
 
               {/* Days Grid - fits in one glance on mobile */}
-              <div className="grid grid-cols-7 w-full gap-1 sm:gap-2 p-1.5 sm:p-4">
+              <div data-tour="calendar-grid" className="grid grid-cols-7 w-full gap-1 sm:gap-2 p-1.5 sm:p-4">
                 {gridDays.map((day) => {
                   const key = toDateKey(day);
                   const dayEvs = eventsByDay.get(key) || [];
@@ -590,7 +590,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
               </div>
 
               {/* Selected Day Agenda on Mobile (Below Calendar) */}
-              <div className="lg:hidden border-t border-slate-200/80 bg-slate-50/70 p-3 sm:p-4 rounded-b-[18px] sm:rounded-b-[24px]">
+              <div data-tour="calendar-agenda" className="lg:hidden border-t border-slate-200/80 bg-slate-50/70 p-3 sm:p-4 rounded-b-[18px] sm:rounded-b-[24px]">
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="min-w-0">
                     <h3 className="text-xs sm:text-sm font-bold text-slate-800 truncate">
@@ -649,6 +649,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
         <AnimatePresence>
           {showSidebar && (
             <motion.div
+              data-tour="calendar-agenda"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}

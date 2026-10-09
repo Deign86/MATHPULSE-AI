@@ -735,7 +735,7 @@ export default function DataImportView({
         {currentImportView === 'main' && (
           <div className="block space-y-[24px]">
             {/* Context Selector Banner */}
-            <div className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xs border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div data-tour="import-class" className="bg-white/90 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-5 shadow-2xs border border-slate-200/80 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
               <div className="flex items-center gap-3.5">
                 <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white shadow-xs shrink-0">
                   <Layers className="w-5 h-5" />
@@ -766,7 +766,7 @@ export default function DataImportView({
             </div>
 
             {/* Upload Zones (Side by Side) with Prominent Colored Dotted Border */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+            <div data-tour="import-uploads" className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
               {/* Zone 1: Class Records (Vibrant Sky Blue Dotted) */}
               <div 
                 role="button"
@@ -877,7 +877,7 @@ export default function DataImportView({
               </div>
             </div>
 
-            <section className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3" aria-labelledby="student-account-import-title">
+            <section data-tour="import-roster" className="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 space-y-3" aria-labelledby="student-account-import-title">
               <div>
                 <h3 id="student-account-import-title" className="text-sm font-bold text-slate-800">Student Account Import</h3>
                 <p className="text-xs text-slate-500">Preview a roster and review any requested section moves before committing.</p>
@@ -973,7 +973,7 @@ export default function DataImportView({
 
             {/* Quick Link to Module Availability Control in Topic Mastery */}
             {onNavigateToModuleAvailability && (
-              <div className="bg-white rounded-2xl p-4 sm:p-5 border border-purple-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div data-tour="import-availability" className="bg-white rounded-2xl p-4 sm:p-5 border border-purple-200/80 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <div className="w-9 h-9 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0 border border-purple-100 shadow-2xs">
                     <Sparkles className="w-4 h-4" />
@@ -1041,7 +1041,7 @@ export default function DataImportView({
 
             {/* Bottom Section: Data Management */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-              <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xs border border-slate-200/90 flex flex-col justify-between h-full">
+              <div data-tour="import-health" className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xs border border-slate-200/90 flex flex-col justify-between h-full">
                 <div className="flex items-center justify-between mb-3.5">
                   <h2 className="text-[15px] font-bold text-slate-800 font-display">Data Health</h2>
                   <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${dataHealth.styles.badge}`}>
@@ -1073,7 +1073,7 @@ export default function DataImportView({
                 </div>
               </div>
 
-              <div className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xs border border-slate-200/90 flex flex-col justify-between h-full">
+              <div data-tour="import-recent" className="bg-white rounded-2xl sm:rounded-3xl p-5 sm:p-6 shadow-2xs border border-slate-200/90 flex flex-col justify-between h-full">
                 <div className="flex justify-between items-center mb-3.5">
                   <h2 className="text-[15px] font-bold text-slate-800 font-display">Recent Uploads</h2>
                   <button 

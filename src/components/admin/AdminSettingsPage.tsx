@@ -24,6 +24,7 @@ import { Input } from '../ui/input';
 import { Switch } from '../ui/switch';
 import { db } from '../../lib/firebase';
 import ConfirmModal from '../ConfirmModal';
+import { GuideReplayCard } from '../onboarding/GuideReplayCard';
 import { changePasswordWithReauth } from '../../services/settingsService';
 import { getAuditLogs } from '../../services/adminService';
 import { downloadAuditLogCsv } from '../../utils/auditLogCsv';
@@ -38,6 +39,9 @@ export interface AdminSettingsPageProps {
   onBack?: () => void;
   previousTabName?: string;
   onNavigateToProfile?: () => void;
+  /** Starts the full admin guide, or one page's guide when given that page's tab. */
+  onReplayTour?: (pageTab?: string) => void;
+  tourPages?: readonly { tab: string; label: string }[];
 }
 
 export type AdminSettingsTab = 'appearance' | 'notifications' | 'security' | 'data';
@@ -50,6 +54,8 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   onBack,
   previousTabName = 'Overview',
   onNavigateToProfile,
+  onReplayTour,
+  tourPages = [],
 }) => {
   const [activeTab, setActiveTab] = useState<AdminSettingsTab>('appearance');
   const [isSaving, setIsSaving] = useState(false);
@@ -92,6 +98,8 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+  // Password fields are not part of isDirty; replay navigates away and would discard them.
+  const hasUnsavedEdits = isDirty || Boolean(currentPassword || newPassword || confirmPassword);
 
   const syncFromSettings = useCallback((saved: UserSettings) => {
     setDarkMode(saved.appearance?.darkMode ?? false);
@@ -298,11 +306,15 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
         </div>
       )}
 
+      {onReplayTour && (
+        <GuideReplayCard audience="Admin" pages={tourPages} onReplay={onReplayTour} hasUnsavedEdits={hasUnsavedEdits} busy={isSaving || isChangingPassword || isMaintenanceSaving} />
+      )}
+
       {/* Main Settings Grid */}
       <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
         {/* Left Column: Settings Navigation Sidebar (Sticky on mobile & desktop) */}
-        <div className="w-full lg:w-[260px] xl:w-[280px] shrink-0 space-y-2 lg:sticky lg:top-4 z-20">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-1.5 sm:p-2 shadow-xs flex lg:flex-col gap-1 overflow-x-auto scrollbar-none sticky top-0 lg:static z-20">
+        <div data-tour="admin-settings-sections" className="w-full lg:w-[260px] xl:w-[280px] shrink-0 space-y-2 lg:sticky lg:top-4 z-20">
+          <div data-tour-sticky="" className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-1.5 sm:p-2 shadow-xs flex lg:flex-col gap-1 overflow-x-auto scrollbar-none sticky top-0 lg:static z-20">
             {tabs.map((tabItem) => (
               <button
                 key={tabItem.id}
@@ -334,7 +346,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
 
         {/* Right Column: Settings Content */}
         <div className="flex-1 w-full min-w-0">
-          <div className="relative rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md p-5 sm:p-7 lg:p-8 overflow-hidden">
+          <div data-tour="admin-settings-panel" className="relative rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-md p-5 sm:p-7 lg:p-8 overflow-hidden">
             {/* Top Accent Line */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-indigo-600 pointer-events-none" />
 

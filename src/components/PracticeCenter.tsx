@@ -233,7 +233,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
     <div className="px-4 sm:px-6 xl:px-10 py-4 sm:py-6">
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-6" data-tour="practice-stats">
         <motion.div
           whileHover={{ scale: 1.02 }}
           className="bg-gradient-to-br from-sky-700 to-sky-500 rounded-xl sm:rounded-2xl p-3 sm:p-5 text-white shadow-lg"
@@ -278,7 +278,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-6" data-tour="practice-filters">
         {/* Subject select */}
         <select
           value={selectedSubject}
@@ -355,6 +355,7 @@ const PracticeCenter: React.FC<PracticeCenterProps> = ({ userId, onStartQuiz, se
       {/* Topics Grid */}
       <div
         className="pr-2 pb-4 rounded-[2rem] border border-slate-200 shadow-inner relative"
+        data-tour="practice-topics"
         style={{
           backgroundImage: 'radial-gradient(#CBD5E1 1px, transparent 1px)',
           backgroundSize: '24px 24px',

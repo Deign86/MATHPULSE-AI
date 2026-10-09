@@ -418,7 +418,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div data-tour-loading="" className="flex items-center justify-center py-20">
         <Loader2 size={24} className="animate-spin text-indigo-500" />
         <span className="ml-2 text-[#64748b]">Loading topic mastery data...</span>
       </div>
@@ -433,7 +433,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
       className="w-full p-3.5 sm:p-6 xl:p-8 space-y-4 sm:space-y-6 pb-28 sm:pb-32 lg:pb-8"
     >
       {/* Tab Switcher: Student Mastery Matrix vs Module Availability & Materials (Unified Segmented Control Pill) */}
-      <div className="inline-flex items-center p-1 sm:p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200/90 dark:border-slate-800 rounded-full shadow-2xs gap-1 max-w-full overflow-x-auto no-scrollbar">
+      <div data-tour="mastery-tabs" className="inline-flex items-center p-1 sm:p-1.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200/90 dark:border-slate-800 rounded-full shadow-2xs gap-1 max-w-full overflow-x-auto no-scrollbar">
         <button
           type="button"
           onClick={() => handleTabSwitch('mastery')}
@@ -468,7 +468,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
       ) : (
         <>
           {/* Search & Filters Row */}
-          <div className="flex flex-col md:flex-row gap-2.5 sm:gap-4">
+          <div data-tour="mastery-filters" className="flex flex-col md:flex-row gap-2.5 sm:gap-4">
             {classOptions.length > 0 && (
               <label className="sr-only" htmlFor="topic-mastery-class">Class section</label>
             )}
@@ -527,7 +527,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
           </div>
 
           {/* 4 Stats Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div data-tour="mastery-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
             <TeacherStatCard
               color="purple"
               title="Total Topics"
@@ -574,7 +574,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
           </div>
 
       {/* Topic Data Container */}
-      <div className="bg-white/80 backdrop-blur-[12px] rounded-[16px] sm:rounded-[24px] p-2.5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white">
+      <div data-tour="mastery-topics" className="bg-white/80 backdrop-blur-[12px] rounded-[16px] sm:rounded-[24px] p-2.5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-white">
 
         {/* Bulk Actions Bar */}
         <AnimatePresence>

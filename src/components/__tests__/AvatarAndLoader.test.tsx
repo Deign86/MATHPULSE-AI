@@ -70,6 +70,8 @@ describe('MathPulseLoader and AppLoadingScreen', () => {
     expect(getByText('Preparing your MathPulse AI experience...')).toBeInTheDocument();
     expect(getByAltText('MathPulse mascot')).toBeInTheDocument();
     expect(getByRole('status')).toBeInTheDocument();
+    // Guided tours wait while this screen covers the page.
+    expect(getByRole('status')).toHaveAttribute('data-tour-loading');
   });
 });
 

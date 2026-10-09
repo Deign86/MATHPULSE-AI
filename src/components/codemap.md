@@ -15,3 +15,8 @@
 ## Integration
 - App/router pages compose these components; `AuthContext`, `NotificationContext`, and chat context supply shared identity/notifications/chat where applicable.
 - Learning/admin/teacher components consume typed API services, Firebase-backed services, and curriculum/domain data; `RequireRole` gates pages by role; UI primitives come from `components/ui/`.
+
+## Student guided tour
+
+- `onboarding/GuidedTour.tsx` and `studentTourSteps.ts` implement the interactive feature guide; see [onboarding map](onboarding/codemap.md).
+- Student Settings exposes replay through an optional callback and disables it during unsaved edits. App owns role eligibility, assessment safety, navigation, original-screen restoration and hardware Back.

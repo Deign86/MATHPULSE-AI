@@ -175,7 +175,7 @@ const AdminSubjects: React.FC = () => {
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {loading && (
         <div className="flex items-center justify-end px-2">
-          <div className="flex items-center gap-3 px-4 py-2 bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 rounded-2xl border border-purple-100 dark:border-purple-900/40 animate-pulse shadow-xs">
+          <div data-tour-loading="" className="flex items-center gap-3 px-4 py-2 bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 rounded-2xl border border-purple-100 dark:border-purple-900/40 animate-pulse shadow-xs">
             <Loader2 size={16} className="animate-spin" />
             <span className="text-[10px] font-black uppercase tracking-widest">Loading subjects...</span>
           </div>
@@ -183,7 +183,7 @@ const AdminSubjects: React.FC = () => {
       )}
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+      <div data-tour="subjects-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
         {[
           {
             label: 'Total Subjects',
@@ -255,7 +255,7 @@ const AdminSubjects: React.FC = () => {
       )}
 
       {/* ── Search & Filter Toolbar ── */}
-      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2 sm:p-3 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+      <div data-tour="subjects-filters" className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border border-slate-200/80 dark:border-slate-800 rounded-2xl p-2 sm:p-3 shadow-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
         <div className="relative flex-1 min-w-0 group">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-purple-400 group-focus-within:text-[#9956DE] transition-colors" size={15} />
           <Input
@@ -322,7 +322,7 @@ const AdminSubjects: React.FC = () => {
       </div>
 
       {/* ── Mobile Bento Cards View (< md) ── */}
-      <div className="md:hidden space-y-3">
+      <div data-tour="subjects-list" className="md:hidden space-y-3">
         <div className="flex items-center justify-between px-1 text-xs font-bold text-slate-500 dark:text-slate-400">
           <span>{filteredSubjects.length} of {SUBJECT_ROWS.length} Subjects</span>
           {hasActiveFilters && (
@@ -422,7 +422,7 @@ const AdminSubjects: React.FC = () => {
       </div>
 
       {/* ── Desktop Table View (≥ md) ── */}
-      <div className="hidden md:flex flex-col rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 relative overflow-hidden">
+      <div data-tour="subjects-list" className="hidden md:flex flex-col rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-xs bg-white dark:bg-slate-900 relative overflow-hidden">
         {/* Top Brand Accent Line */}
         <div className="h-1 w-full bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] shrink-0" />
 

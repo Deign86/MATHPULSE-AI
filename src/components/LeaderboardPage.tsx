@@ -206,7 +206,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
 
   if (leaderboardLoading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[450px] gap-3">
+      <div data-tour-loading="" className="flex flex-col justify-center items-center h-[450px] gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
         <p className="text-sm text-slate-500 font-medium">Loading leaderboard...</p>
       </div>
@@ -236,7 +236,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
 
   if (featureAccessLoading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[450px] gap-3">
+      <div data-tour-loading="" className="flex flex-col justify-center items-center h-[450px] gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
         <p className="text-sm text-slate-500 font-medium">Loading...</p>
       </div>
@@ -311,7 +311,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: -30, opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-            className="fixed top-[50px] sm:top-[58px] inset-x-0 z-30 lg:hidden w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-purple-200/80 dark:border-slate-800 shadow-md py-2 px-3 flex items-center justify-center gap-1.5 sm:gap-3 pointer-events-auto"
+            data-tour-sticky="" className="fixed top-[50px] sm:top-[58px] inset-x-0 z-30 lg:hidden w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-b border-purple-200/80 dark:border-slate-800 shadow-md py-2 px-3 flex items-center justify-center gap-1.5 sm:gap-3 pointer-events-auto"
           >
             {/* Pill 2: 2nd Place Silver */}
             {topThree[1] && (
@@ -425,6 +425,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
           {/* ======================================================================= */}
           <div
             ref={podiumRef}
+            data-tour="leaderboard-podium"
             className="w-full max-w-[620px] flex items-end justify-center gap-3 sm:gap-6 my-auto pt-6 pb-2 relative"
           >
             {/* --------------------------------------------------------------------- */}
@@ -626,7 +627,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
           </div>
 
           {/* Bottom Motivator Bar on Desktop */}
-          <div className="w-full max-w-[540px] bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-2xl p-2.5 px-4 border border-white/70 dark:border-slate-800 flex items-center justify-between gap-3 text-slate-900 dark:text-white shadow-xs">
+          <div className="w-full max-w-[540px] bg-white/60 dark:bg-slate-900/60 backdrop-blur-md rounded-2xl p-2.5 px-4 border border-white/70 dark:border-slate-800 flex items-center justify-between gap-3 text-slate-900 dark:text-white shadow-xs" data-tour="leaderboard-rank">
             <div className="flex items-center gap-2 min-w-0">
               <span className="w-7 h-7 rounded-xl bg-purple-600 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
                 #{yourRank}
@@ -656,7 +657,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
         {/* - Mobile: Fixed card height (h-[calc(100dvh-140px)]), no endless scroll */}
         {/* ======================================================================= */}
         <div className="w-full lg:w-[390px] xl:w-[430px] shrink-0 mt-6 lg:mt-0 flex flex-col h-[calc(100dvh-140px)] sm:h-[calc(100dvh-150px)] lg:h-full min-h-0">
-          <div className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl p-4 sm:p-5 border border-white/80 dark:border-slate-800 shadow-[0_18px_45px_rgba(0,0,0,0.12)] flex flex-col h-full min-h-0 relative overflow-hidden">
+          <div className="w-full bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl rounded-3xl p-4 sm:p-5 border border-white/80 dark:border-slate-800 shadow-[0_18px_45px_rgba(0,0,0,0.12)] flex flex-col h-full min-h-0 relative overflow-hidden" data-tour="leaderboard-standings">
             {/* Elegant Accent Gradient Border Line */}
             <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-purple-500 via-fuchsia-500 to-amber-400" />
 

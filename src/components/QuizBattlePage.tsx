@@ -427,14 +427,21 @@ const getAudioContext = () => {
 };
 
 interface QuizBattlePageProps {
+  tourPreview?: boolean;
+  /** Screen the student guide is explaining while previewing; never starts a match. */
+  tourView?: string | null;
   setIsInQuizMode?: (value: boolean) => void;
 }
 
-const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
+const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode, tourPreview = false, tourView = null }) => {
   const { userProfile, userRole, refreshProfile } = useAuth();
   // SAFETY: trusted internal value already conforms to the asserted type.
   const studentProfile = userProfile as StudentProfile | null;
   const [activeTab, setActiveTab] = useState<BattlePageTab>('hub');
+  // The guide only switches between read-only screens; the overlay blocks Start Battle.
+  useEffect(() => {
+    setActiveTab(tourPreview && tourView === 'setup' ? 'setup' : 'hub');
+  }, [tourPreview, tourView]);
   const [setupConfig, setSetupConfig] = useState<QuizBattleSetupConfig>(createDefaultQuizBattleSetup);
   const [setupErrors, setSetupErrors] = useState<QuizBattleSetupError[]>([]);
   const [launchState, setLaunchState] = useState<LaunchState>({ status: 'idle' });
@@ -953,7 +960,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
   }, [activeTab, leaderboardAttempt, drainWidgetErrors]);
 
   const syncQuizBattleSession = useCallback(async () => {
-    if (!studentProfile?.uid) {
+    if (tourPreview || !studentProfile?.uid) {
       return;
     }
 
@@ -1023,7 +1030,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
       console.warn('Quiz Battle session resume failed:', error);
       setConnectionState('reconnecting');
     }
-  }, [studentProfile?.uid]);
+  }, [studentProfile?.uid, tourPreview]);
 
   useEffect(() => {
     if (!studentProfile?.uid) {
@@ -2606,7 +2613,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                   </div>
 
                   {/* 2. Battle Modes */}
-                  <div>
+                  <div data-tour="battle-modes">
                     <h2 className="flex items-center gap-2 pb-3 text-lg sm:text-xl lg:text-2xl font-black tracking-wide uppercase text-white drop-shadow-[0_0_12px_rgba(255,255,255,0.3)]">
                       <Swords className="h-5 w-5 sm:h-6 sm:w-6 lg:h-7 lg:w-7 text-amber-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.8)]" /> BATTLE MODES
                     </h2>
@@ -2739,7 +2746,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
 
                       {/* 1. Hall of Fame Widget — Ornate Trophy Showcase */}
                       {widgetErrorCard(['leaderboard'])}
-                      <div
+                      <div data-tour="hall-of-fame"
                         onClick={() => setActiveTab('leaderboard')}
                         className="relative w-full bg-gradient-to-br from-[#7C3AED]/35 via-[#6366F1]/25 to-[#3b3a82]/50 backdrop-blur-xl border border-white/20 hover:border-purple-300/60 rounded-3xl overflow-hidden p-5 shadow-[0_10px_30px_rgba(124,58,237,0.25)] hover:shadow-[0_14px_40px_rgba(124,58,237,0.4)] cursor-pointer group transition-all duration-300 flex flex-col justify-between active:scale-[0.99]"
                       >
@@ -2858,7 +2865,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
 
                       {/* 2. My Stats Bento HUD Widget with Staggered Floating Motion */}
                       {widgetErrorCard(['stats'])}
-                      <div className="relative w-full bg-slate-900/60 backdrop-blur-xl border border-white/15 rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl">
+                      <div data-tour="battle-stats" className="relative w-full bg-slate-900/60 backdrop-blur-xl border border-white/15 rounded-3xl overflow-hidden flex flex-col justify-between shadow-xl">
                         {/* Header */}
                         <div className="flex flex-row items-center justify-between px-5 pt-4 pb-2 relative z-10">
                           <div>
@@ -2966,7 +2973,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                       </div>
 
                       {/* 3. Match History Widget (Compact 3 recent matches) */}
-                      <div className="relative w-full bg-slate-900/60 backdrop-blur-xl border border-white/15 rounded-3xl overflow-hidden flex flex-col shadow-xl">
+                      <div data-tour="battle-history" className="relative w-full bg-slate-900/60 backdrop-blur-xl border border-white/15 rounded-3xl overflow-hidden flex flex-col shadow-xl">
                         <div className="px-5 pt-4 pb-2.5 flex flex-row items-center justify-between border-b border-white/10">
                           <div>
                             <h4 className="text-base font-black flex items-center gap-2 text-white font-display">
@@ -2991,7 +2998,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                           </p>
                           {widgetErrorCard(['stats', 'history'])}
                           {statsLoading ? (
-                            <div className="space-y-2">
+                            <div data-tour-loading="" className="space-y-2">
                               <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
                               <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
                               <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
@@ -3093,7 +3100,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                     </button>
 
                     {/* Interactive Mode Switcher Pill */}
-                    <div className="flex items-center bg-slate-900/80 backdrop-blur-md p-1 rounded-full border border-white/15 shadow-md">
+                    <div data-tour="battle-mode-switch" className="flex items-center bg-slate-900/80 backdrop-blur-md p-1 rounded-full border border-white/15 shadow-md">
                       <button
                         type="button"
                         onClick={() => setMode('online')}
@@ -3266,7 +3273,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                       <div className="space-y-4 sm:space-y-5">
                         
                         {/* Subject Domain Selection */}
-                        <div className="space-y-1.5">
+                        <div data-tour="battle-subject" className="space-y-1.5">
                           <label className={cn(
                             "text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ml-0.5",
                             setupConfig.mode === 'online' ? "text-purple-400" : "text-sky-400"
@@ -3295,7 +3302,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                         </div>
 
                         {/* Strand / Topic Selection */}
-                        <div className="space-y-1.5">
+                        <div data-tour="battle-topic" className="space-y-1.5">
                           <label className={cn(
                             "text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ml-0.5",
                             setupConfig.mode === 'online' ? "text-purple-400" : "text-sky-400"
@@ -3324,7 +3331,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                         </div>
 
                         {/* Gamified Difficulty Selector with XP Multipliers */}
-                        <div className="space-y-2">
+                        <div data-tour="battle-difficulty" className="space-y-2">
                           <label className={cn(
                             "text-xs font-black uppercase tracking-wider flex items-center gap-1.5 ml-0.5",
                             setupConfig.mode === 'online' ? "text-purple-400" : "text-sky-400"
@@ -3378,7 +3385,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                         </div>
 
                         {/* Duel Question Rounds (Mobile Friendly Grid) */}
-                        <div className="space-y-1.5">
+                        <div data-tour="battle-rounds" className="space-y-1.5">
                           <label className={cn(
                             "text-xs font-black uppercase tracking-wider flex items-center justify-between ml-0.5",
                             setupConfig.mode === 'online' ? "text-purple-400" : "text-sky-400"
@@ -3408,7 +3415,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                         </div>
 
                         {/* Time Per Question Limit */}
-                        <div className="space-y-1.5">
+                        <div data-tour="battle-timer" className="space-y-1.5">
                           <label className={cn(
                             "text-xs font-black uppercase tracking-wider flex items-center justify-between ml-0.5",
                             setupConfig.mode === 'online' ? "text-purple-400" : "text-sky-400"
@@ -3450,7 +3457,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                         <div className="space-y-4">
                           {/* Online Matchmaking Selection (VS Player Mode Only) */}
                           {setupConfig.mode === 'online' && (
-                            <div className="space-y-3 rounded-2xl border border-purple-500/30 bg-purple-950/20 p-4 shadow-sm">
+                            <div data-tour="battle-room" className="space-y-3 rounded-2xl border border-purple-500/30 bg-purple-950/20 p-4 shadow-sm">
                               <label className="text-xs font-black uppercase tracking-wider text-purple-300 ml-0.5 flex items-center gap-1.5">
                                 <Users size={13} /> Matchmaking Mode
                               </label>
@@ -3510,7 +3517,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                           )}
 
                           {/* Sound FX Toggle & Volume */}
-                          <div className="rounded-2xl border border-white/10 bg-slate-950/60 p-3.5 space-y-2.5">
+                          <div data-tour="battle-sound" className="rounded-2xl border border-white/10 bg-slate-950/60 p-3.5 space-y-2.5">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2.5">
                                 <div className={cn("h-8 w-8 rounded-lg flex items-center justify-center",
@@ -3553,7 +3560,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                         </div>
 
                         {/* Action Bar & Launch Button */}
-                        <div className="flex flex-col gap-2.5 pt-2">
+                        <div data-tour="battle-start" className="flex flex-col gap-2.5 pt-2">
                           <div aria-live="polite" className="min-h-[20px] text-sm font-medium">
                             {launchState.status === 'queued' && (
                               <div className="flex flex-wrap items-center gap-2">
@@ -4645,7 +4652,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode }) => {
                           animate={{ y: 0, opacity: 1 }}
                           exit={{ y: -30, opacity: 0 }}
                           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                          className="fixed top-[50px] sm:top-[58px] inset-x-0 z-40 w-full bg-slate-900/95 backdrop-blur-xl border-b border-purple-500/30 shadow-xl py-2 px-3 flex items-center justify-center gap-1.5 sm:gap-3 pointer-events-auto"
+                          data-tour-sticky="" className="fixed top-[50px] sm:top-[58px] inset-x-0 z-40 w-full bg-slate-900/95 backdrop-blur-xl border-b border-purple-500/30 shadow-xl py-2 px-3 flex items-center justify-center gap-1.5 sm:gap-3 pointer-events-auto"
                         >
                           {/* Pill 2: 2nd Place Silver */}
                           {leaderboardRows[1] && (

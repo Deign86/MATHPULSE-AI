@@ -1,3 +1,7 @@
+import { useOnboardingTour } from './hooks/useOnboardingTour';
+import { GuidedTour, type TourStep } from './components/onboarding/GuidedTour';
+import { studentPageTour, studentTourPages, studentTourSteps } from './components/onboarding/studentTourSteps';
+import { PageGuideConfirm } from './components/onboarding/PageGuideConfirm';
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -18,7 +22,7 @@ import { deactivateCurrentSessionToken } from './services/pushNotificationServic
 import PushNotificationsManager from './components/PushNotificationsManager';
 import InstallPwaButton from './components/InstallPwaButton.tsx';
 import OnlineOfflineBanner from './components/OnlineOfflineBanner.tsx';
-import { AlertTriangle, ArrowRight, Bot, Calculator, Crown, Flame, LogOut as LogOutIcon, Menu, Settings as SettingsIcon, Swords, Target, Trophy, User as UserIcon, Zap } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Bot, Calculator, CircleHelp, Crown, Flame, LogOut as LogOutIcon, Menu, Settings as SettingsIcon, Swords, Target, Trophy, User as UserIcon, Zap } from 'lucide-react';
 import UserAvatar from './components/UserAvatar.tsx';
 import {
   DropdownMenu,
@@ -103,7 +107,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     <AppLoadingScreen message="Loading content..." />
   );
   const dashboardWidgetFallback = (
-    <div className="pb-4 text-sm font-semibold text-slate-500">Loading dashboard content...</div>
+    <div data-tour-loading="" className="pb-4 text-sm font-semibold text-slate-500">Loading dashboard content...</div>
   );
   const compactControlFallback = (
     <div className="h-11 w-11 shrink-0 rounded-xl bg-[#edf1f7]" aria-hidden="true" />
@@ -113,7 +117,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     <div className="h-dvh w-72 border-r border-[#dde3eb] bg-white/70" aria-hidden="true" />
   );
   const dashboardPanelFallback = (
-    <div className="min-h-[240px] rounded-3xl border border-[#dde3eb] bg-white/70" aria-hidden="true" />
+    <div data-tour-loading="" className="min-h-[240px] rounded-3xl border border-[#dde3eb] bg-white/70" aria-hidden="true" />
   );
 
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -271,7 +275,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  const handleStudentNavigation = (tab: string, moduleId?: string, navigationTarget?: { section?: string; quizId?: string }) => {
+  const handleStudentNavigation = (tab: string, moduleId?: string, navigationTarget?: { section?: string; quizId?: string; replaceHistory?: boolean }) => {
     // Guard: check if Avatar Studio or Profile has unsaved changes
     if (activeTab === 'Avatar Studio' && avatarUnsavedRef.current && tab !== 'Avatar Studio') { setPendingAvatarNav(tab); return; }
     if (activeTab === 'Profile' && profileUnsavedRef.current && tab !== 'Profile') { setPendingProfileNav(tab); return; }
@@ -304,7 +308,8 @@ const App = ({ authOverride }: AppProps = {}) => {
       const query = params.toString();
       const target = `${path}${query ? `?${query}` : ''}`;
       if (`${window.location.pathname}${window.location.search}` !== target) {
-        window.history.pushState({}, '', target);
+        if (navigationTarget?.replaceHistory) window.history.replaceState({}, '', target);
+        else window.history.pushState({}, '', target);
       }
     }
     setIsMobileSidebarOpen(false);
@@ -324,6 +329,9 @@ const App = ({ authOverride }: AppProps = {}) => {
 
   // Diagnostic / Assessment State
   const [showDiagnosticModal, setShowDiagnosticModal] = useState(false);
+  const [profileReady, setProfileReady] = useState(false);
+  const [tourDiagnosticPending, setTourDiagnosticPending] = useState(true);
+  const [tourStep, setTourStep] = useState<TourStep | null>(null);
   const [hasCompletedDiagnostic, setHasCompletedDiagnostic] = useState<boolean | null>(null);
   const [assessmentDismissed, setAssessmentDismissed] = useState(false);
   const [initialAssessmentCompleted, setInitialAssessmentCompleted] = useState(false);
@@ -338,9 +346,37 @@ const App = ({ authOverride }: AppProps = {}) => {
   );
   const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0');
 
+  const studentTour = useOnboardingTour(
+    'student',
+    userRole === 'student' && isLoggedIn ? userProfile?.uid || null : null,
+    profileReady && !tourDiagnosticPending,
+    showDiagnosticModal || showAssessmentPage || showAssessmentResults || isInQuizMode ||
+      activeModal !== null || isMobileSidebarOpen || avatarUnsavedRef.current || profileUnsavedRef.current,
+    activeTab === 'Dashboard',
+  );
+  const tourOrigin = useRef<string | null>(null);
+  const handleTourNavigate = (tab: string) => {
+    if (!tourOrigin.current) tourOrigin.current = activeTab;
+    handleStudentNavigation(tab, undefined, { replaceHistory: true });
+  };
+  // Covers account switches, blockers and browser-history dismissal, which skip handleDismissTour.
+  useEffect(() => {
+    if (studentTour.isOpen) return;
+    tourOrigin.current = null;
+    setTourStep(null);
+  }, [studentTour.isOpen]);
+  const tourPage = studentTour.page ? studentPageTour(studentTour.page) : undefined;
+  const handleDismissTour = () => {
+    studentTour.dismiss();
+    setTourStep(null);
+    handleStudentNavigation(tourOrigin.current || 'Dashboard', undefined, { replaceHistory: true });
+    tourOrigin.current = null;
+  };
+
   // Capacitor Android hardware / gesture back button handling
   useCapacitorBackButton({
     activeModals: [
+      () => { if (studentTour.isOpen) { handleDismissTour(); return true; } return false; },
       () => {
         if (isMobileSidebarOpen) {
           setIsMobileSidebarOpen(false);
@@ -405,7 +441,6 @@ const App = ({ authOverride }: AppProps = {}) => {
   }, [isLoggedIn, userRole, userProfile]);
 
   // Update local state when userProfile changes
-  const [profileReady, setProfileReady] = useState(false);
   useEffect(() => {
     if (studentProfile && userRole === 'student') {
       setUserLevel(studentProfile.level || 1);
@@ -520,6 +555,7 @@ const App = ({ authOverride }: AppProps = {}) => {
 
     let cancelled = false;
     const checkDiagnostic = async () => {
+      setTourDiagnosticPending(true);
       try {
         setAssessmentDismissed(!!studentProfile?.assessmentDismissed);
         setInitialAssessmentCompleted(!!studentProfile?.initialAssessmentCompleted);
@@ -569,6 +605,8 @@ const App = ({ authOverride }: AppProps = {}) => {
         }
       } catch (err) {
         console.error('[diagnostic] Firestore check failed:', err);
+      } finally {
+        if (!cancelled) setTourDiagnosticPending(false);
       }
     };
     void checkDiagnostic();
@@ -1029,6 +1067,7 @@ const App = ({ authOverride }: AppProps = {}) => {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.querySelector('[data-tour-dialog]')) return;
       // Only trigger if not typing in input/textarea
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
@@ -1260,10 +1299,10 @@ const App = ({ authOverride }: AppProps = {}) => {
 
           {/* Invisible Universal Student Header Bar — Clean & Floating */}
           {!isInQuizMode && (
-            <header className={`w-full px-3 sm:px-6 lg:px-8 xl:px-12 pt-2.5 sm:pt-3.5 lg:pt-4 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
+            <header data-tour-sticky="" className={`w-full px-3 sm:px-6 lg:px-8 xl:px-12 pt-2.5 sm:pt-3.5 lg:pt-4 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
               <div className="max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full flex items-center justify-between gap-2">
                 {/* Upper Left: Level Badge & XP Counter */}
-                <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+                <div data-tour="level" className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                   <button
                     type="button"
                     onClick={() => setActiveModal('rewards')}
@@ -1294,6 +1333,24 @@ const App = ({ authOverride }: AppProps = {}) => {
               <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <InstallPwaButton />
 
+                {userRole === 'student' && (
+                  <PageGuideConfirm
+                    guide={studentPageTour(activeTab)?.label ?? null}
+                    audience="student"
+                    onPlay={() => studentTour.start(studentPageTour(activeTab) ? activeTab : null)}
+                  >
+                    <button
+                      type="button"
+                      data-tour="page-guide"
+                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/80 border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:border-purple-200/80 text-slate-700 dark:text-slate-100 hover:text-purple-600 transition-all flex items-center justify-center cursor-pointer active:scale-95"
+                      title="Guide for this page"
+                      aria-label="Guide for this page"
+                    >
+                      <CircleHelp size={16} className="stroke-[2.2]" />
+                    </button>
+                  </PageGuideConfirm>
+                )}
+
                 <button
                   type="button"
                   onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
@@ -1305,7 +1362,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                 </button>
 
                 <Suspense fallback={compactControlFallback}>
-                  <div className="scale-90 origin-center">
+                  <div data-tour="notifications" className="scale-90 origin-center">
                     <NotificationBell />
                   </div>
                 </Suspense>
@@ -1317,6 +1374,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                       <button
                         type="button"
                         className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-purple-400 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-purple-500"
+                        data-tour-group="Profile"
                         aria-label={`Profile menu: ${profileData.name}`}
                       >
                         <UserAvatar
@@ -1379,6 +1437,7 @@ const App = ({ authOverride }: AppProps = {}) => {
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeTab}
+                data-tour-page={activeTab}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -1465,6 +1524,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                         <div className="xl:hidden grid grid-cols-2 md:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
                           {/* Daily Goals / Assessment Slab (Complete Emerald Green Bento Card) */}
                           <div
+                            data-tour="daily-goals"
                             onClick={() => {
                               if (!hasCompletedDiagnostic && hasCompletedDiagnostic !== null) {
                                 handleOpenInitialAssessment();
@@ -1519,6 +1579,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                           {/* Current XP Slab — Rewards & Achievements styling (Vibrant violet-to-cyan gradient with frosted glass keycap) */}
                           <button
                             type="button"
+                            data-tour="xp-card"
                             onClick={() => setActiveModal('rewards')}
                             className="col-span-1 md:col-span-3 flex items-center gap-3 p-4 sm:p-4.5 rounded-2xl relative overflow-hidden bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] border border-white/25 shadow-[0_8px_20px_-4px_rgba(114,116,237,0.35)] text-left hover:shadow-[0_12px_28px_-4px_rgba(114,116,237,0.45)] hover:-translate-y-0.5 transition-all active:scale-[0.98] cursor-pointer group"
                           >
@@ -1557,7 +1618,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                         </div>
 
                         {dashboardShellDeferredReady && hasCompletedDiagnostic && normalizedAtRiskTopics.length > 0 && (
-                          <div className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm dark:border-amber-400/40 dark:bg-amber-400/10">
+                          <div data-tour="review-topics" className="rounded-2xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm dark:border-amber-400/40 dark:bg-amber-400/10">
                             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div>
                                 <p className="inline-flex items-center gap-2 text-sm font-black text-amber-900 dark:text-amber-200">
@@ -1610,7 +1671,7 @@ const App = ({ authOverride }: AppProps = {}) => {
 
                         {profileReady && dashboardShellDeferredReady && (
                           <Suspense fallback={dashboardWidgetFallback}>
-                            <div className="mt-2 sm:mt-3.5 md:mt-5 pb-4">
+                            <div data-tour="learning-path" className="mt-2 sm:mt-3.5 md:mt-5 pb-4">
                               <LearningPath
                                 modules={curriculumRuntimeModules}
                                 onNavigateToModules={(moduleId) => handleStudentNavigation('Modules', moduleId)}
@@ -1677,6 +1738,8 @@ const App = ({ authOverride }: AppProps = {}) => {
                       isInQuizMode={isInQuizMode}
                       setIsInQuizMode={setIsInQuizMode}
                       hasCompletedDiagnostic={hasCompletedDiagnostic ?? false}
+                      tourActive={studentTour.isOpen}
+                      tourView={studentTour.isOpen ? tourStep?.view ?? null : null}
                       onStreakChange={setCurrentStreak}
                     />
                   </Suspense>
@@ -1689,11 +1752,11 @@ const App = ({ authOverride }: AppProps = {}) => {
                   </Suspense>
                 ) : activeTab === 'Quiz Battle' ? (
                   <Suspense fallback={tabLoadingFallback}>
-                    <QuizBattlePage setIsInQuizMode={setIsInQuizMode} />
+                    <QuizBattlePage setIsInQuizMode={setIsInQuizMode} tourPreview={studentTour.isOpen} tourView={tourStep?.view ?? null} />
                   </Suspense>
                 ) : activeTab === 'AI Chat' ? (
                   <Suspense fallback={tabLoadingFallback}>
-                    <AIChatPage />
+                    <AIChatPage tourView={studentTour.isOpen ? tourStep?.view ?? null : null} />
                   </Suspense>
                 ) : activeTab === 'Grades' ? (
                   <Suspense fallback={tabLoadingFallback}>
@@ -1746,6 +1809,8 @@ const App = ({ authOverride }: AppProps = {}) => {
                       userXP={currentXP}
                       onSaveProfile={handleSaveProfile}
                       onSaveSettings={handleSaveSettings}
+                      onReplayTour={studentTour.start}
+                      tourPages={studentTourPages}
                       onApplySettingsPreview={setUserSettings}
                       onExportData={handleExportData}
                       onClearCache={handleClearCache}
@@ -1791,7 +1856,7 @@ const App = ({ authOverride }: AppProps = {}) => {
           {/* Floating AI Tutor - persistent across tabs except dedicated AI Chat page and quiz mode */}
           {(activeTab !== 'AI Chat' && !isInQuizMode) && (
             <Suspense fallback={null}>
-              <div className="hidden lg:block fixed bottom-8 right-8 z-30">
+              <div data-tour="floating-tutor" className="hidden lg:block fixed bottom-8 right-8 z-30">
                 <FloatingAITutor constraintsRef={constraintsRef} onFullScreen={handleFullScreen} />
               </div>
             </Suspense>
@@ -1813,6 +1878,7 @@ const App = ({ authOverride }: AppProps = {}) => {
           {(!showAssessmentPage && !isInQuizMode) && (
             <MobileBottomNav
               activeTab={activeTab}
+              tourMenu={studentTour.isOpen ? tourStep?.menu ?? null : null}
               onSelectTab={handleStudentNavigation}
               onOpenProfile={() => handleStudentNavigation('Profile')}
               onOpenSettings={() => handleStudentNavigation('Settings')}
@@ -1823,6 +1889,17 @@ const App = ({ authOverride }: AppProps = {}) => {
           )}
         </div>
       </div>
+
+      {studentTour.isOpen && (
+        <GuidedTour
+          key={studentTour.page ?? 'full'}
+          label={tourPage ? `${tourPage.label} guide` : 'Student guide'}
+          steps={tourPage?.steps ?? studentTourSteps}
+          onNavigate={handleTourNavigate}
+          onStepChange={setTourStep}
+          onDismiss={handleDismissTour}
+        />
+      )}
 
       {/* Global Modals rendered at root level outside stacking contexts */}
       {/* Rewards Modal */}

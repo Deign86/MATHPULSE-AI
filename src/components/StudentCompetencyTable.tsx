@@ -667,7 +667,7 @@ const StudentCompetencyTable: React.FC<{
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 p-6">
+      <div data-tour-loading="" className="flex items-center justify-center py-20 p-6">
         <Loader2 size={32} className="animate-spin text-[var(--primary)]" />
         <span className="ml-3 text-muted-foreground">Loading student data...</span>
       </div>
@@ -695,7 +695,7 @@ const StudentCompetencyTable: React.FC<{
       )}
 
       {/* Sticky Filter Row Wrapper — Positioned at TOP before summary cards */}
-      <div className="sticky top-0 z-30 py-2 sm:py-3 bg-[#f8fafc]/90 backdrop-blur-[16px] border-b border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] px-2 sm:px-4 mb-3 sm:mb-4 rounded-b-[18px]">
+      <div data-tour="competency-filters" data-tour-sticky="" className="sticky top-0 z-30 py-2 sm:py-3bg-[#f8fafc]/90 backdrop-blur-[16px] border-b border-slate-200/50 shadow-[0_4px_20px_rgba(0,0,0,0.02)] px-2 sm:px-4 mb-3 sm:mb-4 rounded-b-[18px]">
         <div className="flex flex-col md:flex-row gap-2.5 sm:gap-4 items-center justify-between">
           <div className="flex flex-col sm:flex-row gap-2.5 sm:gap-4 w-full md:w-auto items-center">
             {/* Search */}
@@ -740,7 +740,7 @@ const StudentCompetencyTable: React.FC<{
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-4 sm:mb-6">
+      <div data-tour="competency-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-4 sm:mb-6">
         <TeacherStatCard
           color="green"
           title="Total Students"
@@ -790,7 +790,7 @@ const StudentCompetencyTable: React.FC<{
       </div>
 
       {/* Imported Topic Context Banner (Compact) */}
-      <div className="bg-[#f5f3ff]/60 border border-[#e0e7ff] rounded-[14px] px-4 sm:px-5 py-3 mb-4 sm:mb-6 flex items-start sm:items-center gap-3">
+      <div data-tour="competency-topics" className="bg-[#f5f3ff]/60 border border-[#e0e7ff] rounded-[14px] px-4 sm:px-5 py-3 mb-4 sm:mb-6 flex items-start sm:items-center gap-3">
         <div className="mt-0.5 sm:mt-0 shrink-0">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-[#9956DE]"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>
         </div>
@@ -827,7 +827,7 @@ const StudentCompetencyTable: React.FC<{
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-[14px] sm:rounded-[18px] border border-slate-200 overflow-hidden shadow-sm overflow-x-auto table-scrollbar relative">
+      <div data-tour="competency-table" className="bg-white rounded-[14px] sm:rounded-[18px] border border-slate-200 overflow-hidden shadow-sm overflow-x-auto table-scrollbar relative">
         <div className="min-w-[1320px] flex flex-col">
           {/* Header */}
           <div className="flex items-center bg-[#9956DE] border-b border-[#8b5cf6] text-[10px] sm:text-[11px] font-bold text-white tracking-wider uppercase h-11 sm:h-12 sticky top-0 z-20 shadow-md">

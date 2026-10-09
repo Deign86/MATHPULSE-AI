@@ -237,6 +237,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                           setHoveredTooltip((previous) => (previous === item.label ? null : previous));
                         }}
                         onFocus={() => setHoveredTooltip(null)}
+                        data-tour-nav={item.label}
                         onClick={() => setActiveTab(item.label)}
                         className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl cursor-pointer transition-all duration-200 border whitespace-nowrap ${
                           isCollapsed ? 'justify-center' : ''

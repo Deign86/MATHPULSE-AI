@@ -615,7 +615,7 @@ const GradesPage = () => {
 
   if (loading) {
     return (
-      <div className="p-12 flex flex-col justify-center items-center h-full min-h-[400px]">
+      <div data-tour-loading="" className="p-12 flex flex-col justify-center items-center h-full min-h-[400px]">
         <div className="w-12 h-12 border-4 border-[#7C3AED] border-t-transparent rounded-full animate-spin"></div>
         <p className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Analytics...</p>
       </div>
@@ -644,7 +644,10 @@ const GradesPage = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full md:w-auto">
+        <div
+          data-tour="grades-export"
+          className="flex items-center gap-2 w-full md:w-auto"
+        >
           <div className="relative flex-1 md:flex-none">
             <select
               value={filterQuarter}
@@ -694,7 +697,10 @@ const GradesPage = () => {
       {/* ------------------------------------------------------------------ */}
       {/* 2. TOP KPI METRIC TILES (Responsive: 3 Compact Tiles in 1 Row)     */}
       {/* ------------------------------------------------------------------ */}
-      <div className="grid grid-cols-3 gap-2 xs:gap-2.5 sm:gap-4 md:gap-5 items-stretch pt-1 sm:pt-2">
+      <div
+        data-tour="grades-kpis"
+        className="grid grid-cols-3 gap-2 xs:gap-2.5 sm:gap-4 md:gap-5 items-stretch pt-1 sm:pt-2"
+      >
         
         {/* CARD 1: General Average (System Amethyst #9956DE & Slate Blue #7274ED) */}
         <div 
@@ -955,7 +961,10 @@ const GradesPage = () => {
 
       {/* 3. AI Diagnostic Results Banner */}
       {diagnosticSummary && (
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#FAF8FF] via-white to-[#F3EFFF] dark:from-slate-900 dark:via-purple-950/20 dark:to-slate-900 border-2 border-purple-200/90 dark:border-purple-800/60 rounded-[2.25rem] p-4 sm:p-7 shadow-[0_8px_25px_-10px_rgba(124,58,237,0.06)]">
+        <div
+          data-tour="grades-diagnostic"
+          className="relative overflow-hidden bg-gradient-to-br from-[#FAF8FF] via-white to-[#F3EFFF] dark:from-slate-900 dark:via-purple-950/20 dark:to-slate-900 border-2 border-purple-200/90 dark:border-purple-800/60 rounded-[2.25rem] p-4 sm:p-7 shadow-[0_8px_25px_-10px_rgba(124,58,237,0.06)]"
+        >
           <div className="absolute top-0 right-0 w-80 h-80 bg-purple-200/25 dark:bg-purple-600/10 rounded-full blur-3xl -mt-24 -mr-24 pointer-events-none" />
 
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5">
@@ -1128,7 +1137,9 @@ const GradesPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-stretch">
         
         {/* Left Column: Subject Grades & Passing Line with Modal Trigger */}
-        <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] flex flex-col justify-between h-full">
+        <div
+          data-tour="grades-subjects"
+          className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] flex flex-col justify-between h-full">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
               <div>
@@ -1256,7 +1267,9 @@ const GradesPage = () => {
         </div>
 
         {/* Right Column: Subject Standings */}
-        <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] flex flex-col justify-between h-full">
+        <div
+          data-tour="grades-standings"
+          className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] flex flex-col justify-between h-full">
           <div>
             <div className="flex items-center justify-between mb-3.5">
               <div>
@@ -1340,7 +1353,10 @@ const GradesPage = () => {
       {/* ------------------------------------------------------------------ */}
       {/* 5. RECENT QUIZZES & PRACTICE (FULL WIDTH)                          */}
       {/* ------------------------------------------------------------------ */}
-      <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] w-full">
+      <div
+        id="recent-quizzes-section"
+        data-tour="grades-history"
+        className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] w-full">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h3 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white tracking-tight">
@@ -1512,7 +1528,9 @@ const GradesPage = () => {
       {/* ------------------------------------------------------------------ */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 sm:gap-6 items-stretch w-full">
         {/* Left: Exam Readiness & Milestones */}
-        <div className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] w-full flex flex-col justify-between">
+        <div
+          data-tour="grades-readiness"
+          className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] w-full flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-2.5">

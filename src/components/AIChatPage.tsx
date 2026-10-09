@@ -41,7 +41,12 @@ function safeTimestamp(ts: string | number | Date | { toDate(): Date } | null | 
   return String(ts);
 }
 
-const AIChatPage = () => {
+interface AIChatPageProps {
+  /** Student guide view: 'list' shows the conversation list, 'conversation' opens an existing chat (read-only). */
+  tourView?: string | null;
+}
+
+const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
   const {
     sessions,
     activeSessionId,
@@ -104,6 +109,23 @@ const AIChatPage = () => {
       });
   }, []);
 
+  // Phones show either the conversation list or one chat, so the guide switches between them to explain
+  // each, then restores the student's own selection. Selecting a session is local state; nothing is written.
+  const sessionBeforeTour = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    if (!tourView) {
+      if (sessionBeforeTour.current !== undefined) setActiveSessionId(sessionBeforeTour.current);
+      sessionBeforeTour.current = undefined;
+      return;
+    }
+    if (sessionBeforeTour.current === undefined) sessionBeforeTour.current = activeSessionId;
+    if (tourView === 'list') setActiveSessionId(null);
+    else if (tourView === 'conversation' && !activeSessionId && sessions.length > 0) {
+      setActiveSessionId(sessionBeforeTour.current ?? sessions[0].id);
+    }
+    // Reacts to the guide's view; the open session is read only to avoid replacing the student's choice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tourView, sessions.length]);
   // Auto-create a session with welcome message when no sessions exist
   useEffect(() => {
     if (sessionsLoaded && sessions.length === 0) {
@@ -199,13 +221,14 @@ const AIChatPage = () => {
             <button
               onClick={handleNewChat}
               aria-label="New chat"
+              data-tour="chat-new"
               className="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 backdrop-blur-sm border border-white/30 text-white text-xs font-bold rounded-xl transition-all"
             >
               <Plus size={13} />
               New
             </button>
           </div>
-          <div className="relative">
+          <div className="relative" data-tour="chat-search">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-white/60" size={13} />
             <input
               type="text"
@@ -226,7 +249,7 @@ const AIChatPage = () => {
         </div>
 
         {/* Sessions list */}
-        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+        <div className="flex-1 overflow-y-auto p-3 space-y-1.5" data-tour="chat-history">
           <AnimatePresence>
             {filteredSessions.map((session) => (
               <motion.div
@@ -348,6 +371,7 @@ const AIChatPage = () => {
             <div
               ref={messagesContainerRef}
               onScroll={handleMessagesScroll}
+              data-tour="chat-messages"
               className="flex-1 overflow-y-auto overscroll-contain p-4 md:p-6 space-y-5 min-h-0"
               style={{ background: '#fafafa' }}
             >
@@ -430,7 +454,7 @@ const AIChatPage = () => {
             </div>
 
             {/* Quick prompt pills */}
-            <div className="flex-shrink-0 px-4 pt-2.5 pb-1 bg-white border-t border-[#f4f4f5] overflow-x-auto">
+            <div className="flex-shrink-0 px-4 pt-2.5 pb-1 bg-white border-t border-[#f4f4f5] overflow-x-auto" data-tour="chat-prompts">
               <div className="flex gap-2">
                 {QUICK_PROMPTS.map(({ label, icon: Icon, prompt }) => (
                   <button
@@ -450,6 +474,7 @@ const AIChatPage = () => {
             {/* Input — safe-area aware for mobile bottom nav */}
             <div
               className="flex-shrink-0 px-3 md:px-4 pt-2 bg-white"
+              data-tour="chat-input"
               style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
             >
               <div className="flex gap-2 items-center bg-[#fafafa] border border-[#e4e4e7] rounded-2xl px-3 py-1.5 transition-all focus-within:border-[#9956DE]/40">
@@ -501,7 +526,7 @@ const AIChatPage = () => {
             <div className="px-4 md:px-8 py-6 space-y-6">
 
               {/* CTA Card */}
-              <div className="max-w-xl mx-auto">
+              <div className="max-w-xl mx-auto" data-tour="chat-start">
                 <div className="bg-white rounded-2xl border border-[#e4e4e7] shadow-lg p-5 text-center">
                   <p className="text-[#71717a] text-sm mb-4">Select an existing conversation or start a new one</p>
                   <button
@@ -516,7 +541,7 @@ const AIChatPage = () => {
               </div>
 
               {/* Topic cards */}
-              <div className="max-w-2xl mx-auto">
+              <div className="max-w-2xl mx-auto" data-tour="chat-topics">
                 <p className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-3">Explore Topics</p>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {TOPIC_CARDS.map(({ label, icon: Icon, color, desc }) => (
@@ -537,7 +562,7 @@ const AIChatPage = () => {
 
               {/* Recent sessions */}
               {sessions.length > 0 && (
-                <div className="max-w-2xl mx-auto pb-4">
+                <div className="max-w-2xl mx-auto pb-4" data-tour="chat-recent">
                   <p className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-3">Recent Conversations</p>
                   <div className="space-y-2">
                     {sessions.slice(0, 3).map(session => (
