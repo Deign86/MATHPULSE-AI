@@ -547,6 +547,23 @@ def test_config_guard_lesson_primary_model_is_reasoner_without_env(bare_model_en
     )
 
 
+def test_config_guard_prod_profile_routes_lessons_to_the_rag_model(
+    bare_model_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The HF Space runs MODEL_PROFILE=prod, which exports INFERENCE_MODEL_ID=deepseek-chat (overriding every
+    task in the inference client's map) and HF_RAG_MODEL_ID=deepseek-reasoner. Lessons must follow the RAG model."""
+    monkeypatch.setenv("INFERENCE_MODEL_ID", rag_routes.CHAT_MODEL)
+    monkeypatch.setenv("HF_RAG_MODEL_ID", REASONER)
+    assert rag_routes._lesson_primary_model() == REASONER
+
+
+def test_config_guard_admin_rag_override_is_honored(bare_model_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    from services import inference_client as inference_module
+
+    monkeypatch.setattr(inference_module, "_RUNTIME_OVERRIDES", {"HF_RAG_MODEL_ID": rag_routes.CHAT_MODEL})
+    assert rag_routes._lesson_primary_model() == rag_routes.CHAT_MODEL
+
+
 def test_config_guard_lesson_generation_streams_from_the_resolved_reasoner(
     bare_model_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
