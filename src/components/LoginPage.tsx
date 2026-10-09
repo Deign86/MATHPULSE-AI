@@ -10,6 +10,9 @@ import {
   BookOpen,
   ShieldCheck,
   AlertCircle,
+  Sparkles,
+  Swords,
+  Trophy,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
@@ -25,7 +28,7 @@ import { recordGet } from '../utils/memberOf';
 import { z } from 'zod';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { InteractiveRobotBackground } from './login/InteractiveRobotBackground';
+import { InteractiveRobotBackground, ROBOT_SCALE, ROBOT_SHIFT } from './login/InteractiveRobotBackground';
 
 export function isObjectVal<T>(value: T): value is T & object {
   return typeof value === 'object';
@@ -163,6 +166,106 @@ const getFriendlyResetErrorMessage = (cause: unknown): string => {
   return message || 'Failed to send reset email. Please try again.';
 };
 
+const HERO_HEADLINE = 'Math gets easier with a buddy.';
+const HERO_SUBTEXT = 'Learn with your AI tutor, battle classmates, and keep your streak alive every day.';
+
+// Rendered width of the object-cover background video (16:9 source). The video layer is scaled
+// by ROBOT_SCALE from the bottom-left and shifted by ROBOT_SHIFT; these map a point in the source
+// frame (fractions of width/height) to viewport coordinates so desktop text tracks the robot.
+const VIDEO_WIDTH = 'max(100vw, 177.78dvh)';
+const frameX = (fx: number) =>
+  `calc(${ROBOT_SHIFT} + ${ROBOT_SCALE} * ((100vw - ${VIDEO_WIDTH}) * 0.28 + ${VIDEO_WIDTH} * ${fx}))`;
+const frameY = (fy: number) =>
+  `calc(100dvh - ${ROBOT_SCALE} * (100dvh - ((100dvh - ${VIDEO_WIDTH} * 0.5625) / 2 + ${VIDEO_WIDTH} * 0.5625 * ${fy})))`;
+
+// Bubble's bottom-center sits just above the pulse line over the robot's head.
+const DESKTOP_BUBBLE_POSITION = { left: frameX(0.26), top: frameY(0.08) };
+// Headline column ends 2rem before the robot's left headphone (~14% of the frame).
+const DESKTOP_HEADLINE_WIDTH = { width: `min(36rem, calc(${frameX(0.14)} - 4.5rem))` };
+
+const MATH_GLYPHS = [
+  { glyph: 'π', className: 'left-[5%] top-[28%] text-4xl -rotate-12', delay: 0 },
+  { glyph: '√x', className: 'right-[5%] top-[30%] text-3xl rotate-6', delay: 0.6 },
+  { glyph: '∑', className: 'left-[4%] top-[48%] text-5xl rotate-6', delay: 1.2 },
+  { glyph: 'x²', className: 'right-[5%] top-[52%] text-3xl -rotate-6', delay: 0.3 },
+  { glyph: '÷', className: 'left-[20%] top-[36%] text-2xl', delay: 0.9 },
+  { glyph: '∞', className: 'right-[20%] top-[40%] text-2xl', delay: 1.5 },
+  { glyph: '%', className: 'left-[5%] top-[3%] text-2xl rotate-12', delay: 1.8 },
+  { glyph: '+', className: 'right-[6%] top-[4%] text-3xl', delay: 2.1 },
+];
+
+const SPARKLES = [
+  { className: 'left-[3%] top-[20%] w-3', delay: 0 },
+  { className: 'right-[3%] top-[21%] w-3.5', delay: 0.8 },
+  { className: 'left-[10%] top-[32%] w-2.5', delay: 1.6 },
+  { className: 'right-[9%] top-[40%] w-3', delay: 2.4 },
+];
+
+// Desktop (xl+) positions keep to the free space: left edge, the gap between robot and card, and the far right.
+// Desktop (xl+) positions keep to the free space: above/below the headline, between robot and card, far right.
+const DESKTOP_MATH_GLYPHS = [
+  { glyph: 'π', className: 'left-[5%] top-[10%] text-6xl -rotate-12', delay: 0 },
+  { glyph: '∞', className: 'left-[24%] top-[7%] text-4xl', delay: 1.5 },
+  { glyph: '∑', className: 'left-[4%] top-[78%] text-7xl rotate-6', delay: 1.2 },
+  { glyph: '÷', className: 'left-[22%] top-[86%] text-3xl', delay: 0.9 },
+  { glyph: '+', className: 'left-[56%] top-[38%] text-3xl', delay: 2.1 },
+  { glyph: '√x', className: 'left-[55%] top-[58%] text-5xl rotate-6', delay: 0.6 },
+  { glyph: 'x²', className: 'left-[57%] top-[78%] text-4xl -rotate-6', delay: 0.3 },
+  { glyph: '%', className: 'right-[2%] top-[48%] text-3xl rotate-12', delay: 1.8 },
+];
+
+const DESKTOP_SPARKLES = [
+  { className: 'left-[30%] top-[18%] w-4', delay: 0 },
+  { className: 'left-[58%] top-[22%] w-3', delay: 0.8 },
+  { className: 'left-[14%] top-[72%] w-3', delay: 1.6 },
+  { className: 'left-[31%] top-[90%] w-3.5', delay: 2.4 },
+  { className: 'right-[3%] top-[16%] w-4', delay: 1.2 },
+];
+
+interface FloatingMathProps {
+  glyphs: { glyph: string; className: string; delay: number }[];
+  sparkles: { className: string; delay: number }[];
+}
+
+const FloatingMath: React.FC<FloatingMathProps> = ({ glyphs, sparkles }) => {
+  const reduceMotion = useReducedMotion();
+  return (
+    <>
+      {glyphs.map(({ glyph, className, delay }) => (
+        <motion.span
+          key={glyph}
+          className={`absolute font-display font-black text-white/20 select-none ${className}`}
+          animate={reduceMotion ? undefined : { y: [0, -8, 0] }}
+          transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut', delay }}
+        >
+          {glyph}
+        </motion.span>
+      ))}
+      {sparkles.map(({ className, delay }) => (
+        <motion.svg
+          key={className}
+          viewBox="0 0 24 24"
+          className={`absolute aspect-square text-amber-300 ${className}`}
+          animate={reduceMotion ? undefined : { opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
+          transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', delay }}
+        >
+          <path d="M12 0 C13 8 16 11 24 12 C16 13 13 16 12 24 C11 16 8 13 0 12 C8 11 11 8 12 0Z" fill="currentColor" />
+        </motion.svg>
+      ))}
+    </>
+  );
+};
+
+const FEATURE_HIGHLIGHTS = [
+  { icon: Sparkles, label: 'AI Tutor', detail: 'Step-by-step help' },
+  { icon: Swords, label: 'Quiz Battle', detail: 'Face your classmates' },
+  { icon: Trophy, label: 'Earn XP', detail: 'Unlock avatar gear' },
+];
+
+// Matches Tailwind `lg`: the cursor-tracking video only mounts here so phones skip the download.
+const DESKTOP_QUERY = '(min-width: 1024px)';
+const matchesDesktop = () => window.matchMedia?.(DESKTOP_QUERY).matches ?? false;
+
 export const LoginPage: React.FC = () => {
   const GRADE_OPTIONS = ['Grade 11'];
 
@@ -219,6 +322,20 @@ export const LoginPage: React.FC = () => {
   const [resetSuccess, setResetSuccess] = useState(false);
   const resetEmailRef = useRef<HTMLInputElement | null>(null);
   const reduceMotion = useReducedMotion();
+  const mascotGreeting = isResettingPassword
+    ? "No worries! Let's get you back in."
+    : isSignUp
+      ? "Hi! I'm your math buddy. Let's level up together!"
+      : 'Welcome back! Your streak is waiting.';
+  const [isDesktop, setIsDesktop] = useState(matchesDesktop);
+
+  useEffect(() => {
+    const desktopQuery = window.matchMedia?.(DESKTOP_QUERY);
+    if (!desktopQuery) return;
+    const onChange = () => setIsDesktop(desktopQuery.matches);
+    desktopQuery.addEventListener('change', onChange);
+    return () => desktopQuery.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -478,19 +595,98 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-dvh w-full overflow-x-hidden bg-[#3a236a] text-slate-900 flex items-center justify-center p-2.5 sm:p-6 lg:p-10 selection:bg-purple-500 selection:text-white">
-      {/* ─── Full-Bleed Mascot Video Background with 3D Cursor Tracking ─── */}
-      <InteractiveRobotBackground />
+    <div className="relative min-h-dvh w-full overflow-x-hidden bg-[#3a236a] text-slate-900 flex flex-col sm:justify-center sm:py-8 lg:flex-row lg:items-center lg:p-10 lg:[@media(max-height:799px)]:py-4 selection:bg-purple-500 selection:text-white">
+      {/* ─── Desktop: Full-Bleed Mascot Video Background with Cursor Tracking ─── */}
+      {isDesktop && <InteractiveRobotBackground />}
+
+      {/* ─── Mobile/Tablet: mascot peeks over the top edge of the sheet ─── */}
+      <div
+        className="lg:hidden relative flex-1 sm:flex-none flex flex-col items-center justify-end pt-[max(0.75rem,env(safe-area-inset-top))] -mb-20 sm:-mb-24"
+      >
+        {/* Decorative backdrop: graph-paper grid, glow, orbit ring, floating math symbols, sparkles */}
+        <div aria-hidden="true" className="absolute inset-0 -bottom-24 overflow-hidden pointer-events-none">
+          <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.07)_1px,transparent_1px)] bg-[size:28px_28px] [mask-image:radial-gradient(ellipse_at_50%_55%,black_30%,transparent_75%)]" />
+          <div className="absolute left-1/2 bottom-[8%] -translate-x-1/2 w-[min(26rem,60dvh)] aspect-square rounded-full bg-[radial-gradient(circle,rgba(192,132,252,0.45),transparent_65%)]" />
+          <motion.div
+            className="absolute left-1/2 bottom-[2%] -ml-[min(11rem,24dvh)] w-[min(22rem,48dvh)] aspect-square rounded-full border-2 border-dashed border-white/15"
+            animate={reduceMotion ? undefined : { rotate: 360 }}
+            transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
+          >
+            <span className="absolute -top-1.5 left-1/2 -ml-1.5 h-3 w-3 rounded-full bg-pink-400 shadow-[0_0_12px_rgba(244,114,182,0.9)]" />
+            <span className="absolute top-1/2 -right-1 h-2 w-2 rounded-full bg-sky-300 shadow-[0_0_10px_rgba(125,211,252,0.9)]" />
+          </motion.div>
+          <FloatingMath glyphs={MATH_GLYPHS} sparkles={SPARKLES} />
+        </div>
+
+        {!isSignUp && (
+          <div className="relative px-6 pt-4 pb-3 text-center max-w-sm">
+            <h2 className="text-2xl sm:text-3xl font-display font-black leading-tight text-white">{HERO_HEADLINE}</h2>
+            <p className="mt-1.5 text-[13px] sm:text-sm font-body text-white/75">{HERO_SUBTEXT}</p>
+          </div>
+        )}
+        <motion.p
+          key={mascotGreeting}
+          aria-hidden="true"
+          initial={reduceMotion ? false : { opacity: 0, y: 6, scale: 0.96 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+          className="relative mt-auto mx-6 max-w-[17rem] rounded-2xl bg-white px-4 py-2 text-center text-[13px] sm:text-sm font-display font-bold leading-snug text-[#3a236a] shadow-[0_8px_24px_-8px_rgba(20,10,50,0.6)]"
+        >
+          {mascotGreeting}
+          <span className="absolute left-1/2 -bottom-1.5 h-3 w-3 -translate-x-1/2 rotate-45 bg-white" />
+        </motion.p>
+        <motion.img
+          src="/avatar/avatar_icon.png"
+          alt=""
+          width={512}
+          height={512}
+          className="relative w-[min(17rem,36dvh)] sm:w-72 aspect-square -mt-3 object-contain drop-shadow-[0_12px_24px_rgba(20,10,50,0.45)]"
+          animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
+          transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+
+      {/* ─── Desktop decor (xl+): graph-paper grid + floating math symbols over the video's empty areas ─── */}
+      <div aria-hidden="true" className="hidden xl:block fixed inset-0 z-[1] overflow-hidden pointer-events-none">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.05)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[size:40px_40px] [mask-image:radial-gradient(ellipse_at_55%_50%,black_20%,transparent_70%)]" />
+        <FloatingMath glyphs={DESKTOP_MATH_GLYPHS} sparkles={DESKTOP_SPARKLES} />
+      </div>
+
+      {/* ─── Desktop: headline on the left, vertically centered, beside the shifted robot ─── */}
+      <div
+        style={DESKTOP_HEADLINE_WIDTH}
+        className="hidden lg:block @container absolute z-10 left-10 top-1/2 -translate-y-1/2 pointer-events-none"
+      >
+        {/* Sized to the column (cqw) so the headline fills the space left of the robot at any width */}
+        <h2 className="text-[clamp(2.25rem,17.5cqw,7.5rem)] font-display font-black leading-[1.08] text-white drop-shadow-[0_2px_12px_rgba(20,10,50,0.5)]">{HERO_HEADLINE}</h2>
+        <p className="mt-4 text-[clamp(1rem,4cqw,1.75rem)] font-body leading-relaxed text-white/80">{HERO_SUBTEXT}</p>
+      </div>
+
+      {/* ─── Desktop: speech bubble pinned beside the robot's head (xl+; the wider sign-up card would cover it) ─── */}
+      {!isSignUp && (
+        <motion.p
+          key={mascotGreeting}
+          aria-hidden="true"
+          style={DESKTOP_BUBBLE_POSITION}
+          initial={reduceMotion ? false : { opacity: 0, x: -8, scale: 0.96 }}
+          animate={{ opacity: 1, x: 0, scale: 1 }}
+          transition={{ duration: 0.3, ease: 'easeOut', delay: 0.2 }}
+          className="hidden xl:block absolute z-10 -translate-x-1/2 -translate-y-full w-max max-w-[16rem] 2xl:max-w-[18rem] text-center rounded-2xl bg-white px-5 py-3 text-base 2xl:text-lg font-display font-bold leading-snug text-[#3a236a] shadow-[0_12px_32px_-10px_rgba(20,10,50,0.6)] pointer-events-none"
+        >
+          {mascotGreeting}
+          <span className="absolute left-1/2 -bottom-1.5 h-3 w-3 -translate-x-1/2 rotate-45 bg-white" />
+        </motion.p>
+      )}
 
       {/* ─── Main Content Layout ─── */}
-      <div className={`relative z-10 w-full max-w-7xl mx-auto flex items-center ${isSignUp ? 'justify-center lg:justify-end' : 'justify-center lg:justify-end'} pointer-events-auto`}>
+      <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col lg:items-end lg:justify-center pointer-events-auto">
         <motion.div
-          initial={reduceMotion ? false : { opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={reduceMotion ? false : { opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.25, ease: 'easeOut' }}
-          className={`bg-white/95 backdrop-blur-2xl border border-white/80 rounded-2xl sm:rounded-3xl p-3.5 sm:p-6 lg:p-7 w-full ${
-            isSignUp ? 'max-w-xl lg:max-w-2xl' : 'max-w-sm sm:max-w-md'
-          } relative overflow-hidden shadow-[0_25px_70px_-15px_rgba(58,35,106,0.35)] transition-all duration-300 max-h-[96dvh] overflow-y-auto`}
+          className={`bg-white/95 backdrop-blur-2xl border border-white/80 rounded-t-[28px] sm:rounded-3xl px-4 pt-5 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 lg:p-7 w-full mx-auto lg:mx-0 ${
+            isSignUp ? 'sm:max-w-xl lg:max-w-2xl' : 'sm:max-w-md'
+          } relative overflow-hidden shadow-[0_-12px_40px_-12px_rgba(20,10,50,0.45)] lg:shadow-[0_25px_70px_-15px_rgba(58,35,106,0.35)] transition-[max-width] duration-300 lg:max-h-[96dvh] lg:overflow-y-auto`}
         >
           {/* Top accent glow line */}
           <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-purple-500 via-pink-500 to-sky-500" />
@@ -523,7 +719,7 @@ export const LoginPage: React.FC = () => {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
             >
-              {isResettingPassword ? 'We will email you a link to set a new password.' : isSignUp ? 'Begin your personalized mathematics journey' : 'Sign in to continue learning'}
+              {isResettingPassword ? 'We will email you a link to set a new password.' : isSignUp ? 'Join your class and start leveling up in math.' : 'Pick up right where you left off.'}
             </motion.p>
           </div>
 
@@ -1034,6 +1230,17 @@ export const LoginPage: React.FC = () => {
               </div>
             </div>
           )}
+
+          {/* Feature highlights */}
+          <ul className="grid grid-cols-3 gap-1.5 sm:gap-2 mt-2.5 sm:mt-3">
+            {FEATURE_HIGHLIGHTS.map(({ icon: Icon, label, detail }) => (
+              <li key={label} className="flex flex-col items-center text-center rounded-lg sm:rounded-xl bg-purple-50/80 border border-purple-100 px-1 py-1.5 sm:py-2">
+                <Icon size={14} className="text-purple-600 mb-0.5" aria-hidden="true" />
+                <span className="text-[10px] sm:text-[11px] font-body font-bold text-slate-700 leading-tight">{label}</span>
+                <span className="text-[9px] sm:text-[10px] font-body text-slate-500 leading-tight">{detail}</span>
+              </li>
+            ))}
+          </ul>
 
           {/* Security Footer */}
           <p className="text-[9px] sm:text-[10px] text-slate-400 text-center mt-1.5 font-body flex items-center justify-center gap-1">

@@ -10,6 +10,15 @@ const SCRUB_START = 0.0;
 const SCRUB_END = 2.3; // Calibrated monotonic head-turn from Left (0.0s) -> Center (1.15s) -> Right (2.3s)
 const SPEED = 4.5; // Natural turn velocity (timeline seconds per real second; full 2.3s sweep across viewport in ~0.5s)
 
+// Shared with LoginPage, which positions the headline and speech bubble against the moved frame.
+export const ROBOT_SCALE = 0.8;
+export const ROBOT_SHIFT = '22vw';
+const EDGE_FADE_MASK = [
+  'linear-gradient(to bottom, transparent, #000 14%)',
+  'linear-gradient(to left, transparent, #000 14%)',
+  'linear-gradient(to right, transparent, #000 14%)',
+].join(', ');
+
 export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProps> = ({
   onLoaded,
 }) => {
@@ -121,8 +130,20 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
   return (
     <div
       aria-hidden="true"
-      className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0 bg-[#3a236a]"
+      className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none select-none z-0 bg-[linear-gradient(180deg,#2d2267,#3a2e78_55%,#4a3d8f)]"
     >
+      {/* Video is scaled down from the bottom-left (ROBOT_SCALE) and shifted right (ROBOT_SHIFT) to
+          free the left side for the headline; its exposed edges fade into the matching background. */}
+      <div
+        className="absolute inset-0 origin-bottom-left"
+        style={{
+          transform: `translateX(${ROBOT_SHIFT}) scale(${ROBOT_SCALE})`,
+          maskImage: EDGE_FADE_MASK,
+          WebkitMaskImage: EDGE_FADE_MASK,
+          maskComposite: 'intersect',
+          WebkitMaskComposite: 'source-in',
+        }}
+      >
       {/* ─── Video with Pure Consistent Cursor-Controlled Scrubbing ─── */}
       <video
         ref={videoRef}
@@ -156,6 +177,7 @@ export const InteractiveRobotBackground: React.FC<InteractiveRobotBackgroundProp
           className="absolute inset-0 w-full h-full object-cover object-[24%_center] sm:object-[28%_center] lg:object-[25%_center] xl:object-[28%_center]"
         />
       )}
+      </div>
 
       {/* Subtle edge lighting */}
       <div className="absolute inset-0 bg-gradient-to-r from-black/10 via-transparent to-black/35 pointer-events-none" />
