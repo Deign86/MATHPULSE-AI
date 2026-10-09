@@ -28,6 +28,7 @@ from services.inference_client import (
     InferenceConnectionError,
     create_default_client,
     is_sequential_model,
+    get_current_runtime_config,
     get_model_for_task,
 )
 from rag.curriculum_rag import (
@@ -64,11 +65,15 @@ def _get_inference_client():
 
 
 def _lesson_primary_model() -> str:
-    """Model the inference client routes rag_lesson to (config/models.yaml task map, env/lock overrides).
+    """Model for rag_lesson generation.
 
-    Matches the model the non-streaming path actually called before streaming existed; the
-    env-profile resolver get_model_for_task() falls back to deepseek-chat when no MODEL_PROFILE is set.
+    An explicit RAG model (HF_RAG_MODEL_ID via admin override, MODEL_PROFILE or env) wins: the prod profile
+    also exports INFERENCE_MODEL_ID=deepseek-chat, which overrides every task in the inference client's map.
+    With no RAG model configured, fall back to the client's task map (config/models.yaml → deepseek-reasoner),
+    since get_model_for_task() would otherwise resolve to deepseek-chat.
     """
+    if get_current_runtime_config()["resolved"].get("HF_RAG_MODEL_ID"):
+        return get_model_for_task("rag_lesson")
     model, _ = _get_inference_client()._resolve_primary_model(InferenceRequest(messages=[], task_type="rag_lesson"))
     return model
 
