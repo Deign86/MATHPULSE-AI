@@ -164,6 +164,27 @@ describe('DailyCheckInModal', () => {
     expect(handleClose).toHaveBeenCalledTimes(1);
   });
 
+  it('marks today as claimed once it is, even when the saved days lack it, and past unclaimed days as missed', () => {
+    render(
+      <DailyCheckInModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onClaim={vi.fn()}
+        weekRewards={mockWeekRewards}
+        todayReward={mockWeekRewards[2]}
+        canClaim={false}
+        isClaiming={false}
+        claimedDays={[0]}
+        currentDayIndex={2}
+        timeUntilReset="12:34:56"
+      />
+    );
+
+    expect(screen.getAllByText('Claimed')).toHaveLength(2);
+    expect(screen.getByText('Missed')).toBeInTheDocument();
+    expect(screen.queryByText('Available')).not.toBeInTheDocument();
+  });
+
   it('renders completed state when canClaim is false', () => {
     render(
       <DailyCheckInModal

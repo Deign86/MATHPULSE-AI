@@ -118,6 +118,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
 
   const days1to6 = weekRewards.slice(0, 6);
   const day7 = weekRewards[6];
+  const day7Claimed = claimedDays.includes(6) || (currentDayIndex === 6 && !canClaim);
 
   const modalElement = (
     <div
@@ -170,8 +171,9 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
         <div className="grid grid-cols-3 gap-2 w-full mb-3 relative z-10">
           {days1to6.map((reward, idx) => {
             const dayNum = idx + 1;
-            const isClaimed = claimedDays.includes(idx);
             const isToday = idx === currentDayIndex;
+            // Today counts once claimed: records written before the claim saved its day lack it.
+            const isClaimed = claimedDays.includes(idx) || (isToday && !canClaim);
             const isLocked = idx > currentDayIndex;
             const canClaimToday = isToday && canClaim;
 
@@ -244,7 +246,8 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                         Locked
                       </span>
                     ) : (
-                      <span className="text-[9px] font-medium text-slate-400">Available</span>
+                      // Only today's reward can be claimed; an earlier unclaimed day has passed.
+                      <span className="text-[9px] font-medium text-slate-400">Missed</span>
                     )}
                   </div>
                 </div>
@@ -258,7 +261,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
               className={`col-span-3 rounded-2xl flex flex-col overflow-hidden border transition-all mt-0.5 ${
                 currentDayIndex === 6 && canClaim
                   ? 'border-amber-400 dark:border-amber-500 ring-2 ring-amber-400/30 shadow-lg shadow-amber-500/15 scale-[1.01] bg-amber-50/90 dark:bg-amber-950/40'
-                  : claimedDays.includes(6)
+                  : day7Claimed
                   ? 'border-emerald-200/80 dark:border-emerald-800/60 bg-emerald-50/60 dark:bg-emerald-950/20'
                   : 'border-purple-200/70 dark:border-purple-900/40 bg-gradient-to-r from-purple-50/70 via-indigo-50/40 to-sky-50/40 dark:from-purple-950/25 dark:via-slate-800/50 dark:to-slate-800/50'
               }`}
@@ -268,7 +271,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                 className={`py-1 text-center font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-1.5 ${
                   currentDayIndex === 6 && canClaim
                     ? 'bg-gradient-to-r from-[#FFB356] to-[#FF8C00] text-white shadow-xs'
-                    : claimedDays.includes(6)
+                    : day7Claimed
                     ? 'bg-emerald-500 text-white'
                     : 'bg-gradient-to-r from-[#9956DE] via-[#7274ED] to-[#1FA7E1] text-white'
                 }`}
@@ -283,12 +286,12 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                 <div className="flex items-center gap-2.5 min-w-0">
                   <div
                     className={`w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-                      claimedDays.includes(6)
+                      day7Claimed
                         ? 'bg-emerald-500 text-white'
                         : 'bg-gradient-to-br from-[#9956DE] via-[#7274ED] to-[#1FA7E1] text-white'
                     }`}
                   >
-                    {claimedDays.includes(6) ? (
+                    {day7Claimed ? (
                       <CheckCircle2 size={20} className="stroke-[2.5]" />
                     ) : (
                       <Gift size={20} className="text-amber-200" />
@@ -306,7 +309,7 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
                 </div>
 
                 <div className="shrink-0">
-                  {claimedDays.includes(6) ? (
+                  {day7Claimed ? (
                     <span className="inline-flex items-center gap-1 text-[9.5px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60 px-2.5 py-1 rounded-xl">
                       <CheckCircle2 size={11} className="stroke-[3]" />
                       Claimed

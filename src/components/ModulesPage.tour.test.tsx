@@ -38,7 +38,7 @@ vi.spyOn(DailyCheckInModalNs, 'default').mockImplementation(({ isOpen, onClose }
     React.createElement('button', { type: 'button', onClick: onClose }, 'Close check-in'))
   : null));
 const unclaimedToday: ReturnType<typeof dailyRewardNs.useDailyReward> = {
-  weekRewards: [], todayReward: null, canClaim: true, isClaiming: false, claimedDays: [], currentStreak: 0,
+  loaded: true, weekRewards: [], todayReward: null, canClaim: true, isClaiming: false, claimedDays: [], currentStreak: 0,
   longestStreak: 0, totalClaimed: 0, hintTokens: 0, streakShields: 0, activeMultiplier: null, timeUntilReset: '',
   showModal: false, lastClaimResult: null, error: null, claim: async () => null, dismissModal: () => {}, refresh: async () => {},
 };
@@ -74,21 +74,33 @@ describe('ModulesPage during the student guide', () => {
 });
 
 describe('ModulesPage daily check-in', () => {
-  it('reopens the check-in from Claim daily reward after it was closed', async () => {
+  it('reopens the check-in from Claim Daily Reward after it was closed', async () => {
     render(page(false, null));
     expect(await screen.findByText('Daily check-in open')).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Claim daily reward' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Claim Daily Reward' })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Close check-in' }));
     expect(screen.queryByText('Daily check-in open')).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Claim daily reward' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Claim Daily Reward' }));
     expect(screen.getByText('Daily check-in open')).toBeInTheDocument();
   });
 
-  it('offers no reopen button once today\'s reward is claimed', async () => {
+  it('offers Check Daily Rewards once today\'s reward is claimed, and it opens the check-in', async () => {
     dailyReward.mockReturnValue({ ...unclaimedToday, canClaim: false });
     render(page(false, null));
     await new Promise(resolve => setTimeout(resolve, 700));
-    expect(screen.queryByRole('button', { name: 'Claim daily reward' })).not.toBeInTheDocument();
+    expect(screen.queryByText('Daily check-in open')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Claim Daily Reward' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Check Daily Rewards' }));
+    expect(screen.getByText('Daily check-in open')).toBeInTheDocument();
+    dailyReward.mockReturnValue(unclaimedToday);
+  });
+
+  it('shows no daily rewards button until the reward state has loaded', async () => {
+    dailyReward.mockReturnValue({ ...unclaimedToday, canClaim: false, loaded: false });
+    render(page(false, null));
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(screen.queryByRole('button', { name: 'Check Daily Rewards' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Claim Daily Reward' })).not.toBeInTheDocument();
     dailyReward.mockReturnValue(unclaimedToday);
   });
 

@@ -425,6 +425,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
   const [showDailyCheckIn, setShowDailyCheckIn] = useState(false);
 
   const {
+    loaded: dailyRewardLoaded,
     weekRewards,
     todayReward,
     canClaim,
@@ -1497,15 +1498,17 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
             <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-bold text-sky-900">
               {curriculumContextLabel}
             </div>
-            {/* The check-in opens once per visit; this brings it back if the student closed it before claiming. */}
-            {userProfile?.role === 'student' && canClaim && !showDailyCheckIn && (
+            {/* The check-in opens by itself once per visit; this reopens it to claim, or to see the week's rewards. */}
+            {userProfile?.role === 'student' && dailyRewardLoaded && !showDailyCheckIn && (
               <button
                 type="button"
                 onClick={() => setShowDailyCheckIn(true)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 md:px-4 md:py-2 pointer-coarse:min-h-11 text-xs md:text-sm font-bold text-amber-900 hover:bg-amber-100 transition-colors shadow-sm cursor-pointer"
+                className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 md:px-4 md:py-2 pointer-coarse:min-h-11 text-xs md:text-sm font-bold transition-colors shadow-sm cursor-pointer ${canClaim
+                  ? 'border-amber-300 bg-amber-50 text-amber-900 hover:bg-amber-100'
+                  : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
               >
-                <Gift size={14} className="shrink-0 text-amber-600" aria-hidden="true" />
-                Claim daily reward
+                <Gift size={14} className={`shrink-0 ${canClaim ? 'text-amber-600' : 'text-slate-500'}`} aria-hidden="true" />
+                {canClaim ? 'Claim Daily Reward' : 'Check Daily Rewards'}
               </button>
             )}
           </div>

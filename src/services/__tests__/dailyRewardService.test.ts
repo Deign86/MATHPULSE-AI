@@ -17,7 +17,9 @@ import {
   getNextResetTime,
   REWARD_CATALOG,
 } from '../../data/rewardCatalog';
-import { canClaimToday, formatCountdown } from '../../services/dailyRewardService';
+import * as firestore from 'firebase/firestore';
+import { canClaimToday, claimDailyReward, formatCountdown } from '../../services/dailyRewardService';
+import * as gamificationNs from '../../services/gamificationService';
 import { DailyRewardState } from '../../types/rewards';
 
 describe('mulberry32 PRNG', () => {
@@ -229,6 +231,31 @@ describe('canClaimToday', () => {
   it('returns false when already claimed today', () => {
     const state: DailyRewardState = { ...createEmptyState(), lastClaimedDate: getPHTDateString() };
     expect(canClaimToday(state)).toBe(false);
+  });
+});
+
+describe('claimDailyReward', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  it('saves the claimed day, so the weekly track can show it as claimed', async () => {
+    const stored: DailyRewardState = { ...createEmptyState(), claimedDays: [], lastClaimedWeekSeed: getWeekSeed() };
+    const snapshot = (value: DailyRewardState | null) => ({ exists: () => value !== null, data: () => value });
+    const writes: DailyRewardState[] = [];
+    // The claim only calls get/set/update on the transaction it is handed.
+    const transaction: firestore.Transaction = Object.assign(Object.create(firestore.Transaction.prototype), {
+      get: vi.fn().mockResolvedValueOnce(snapshot(stored)).mockResolvedValueOnce(snapshot(null)),
+      set: vi.fn((_ref: firestore.DocumentReference, value: DailyRewardState) => { writes.push(value); }),
+      update: vi.fn(),
+    });
+    vi.spyOn(firestore, 'runTransaction').mockImplementation(async (_db, update) => update(transaction));
+    vi.spyOn(gamificationNs, 'awardXP').mockResolvedValue({ newLevel: 1, leveledUp: false, xp: 0 });
+    vi.spyOn(gamificationNs, 'unlockAvatarItem').mockResolvedValue({ success: true, message: '' });
+
+    const result = await claimDailyReward('learner-1');
+
+    expect(result.success).toBe(true);
+    expect(writes).toHaveLength(1);
+    expect(writes[0]).toMatchObject({ claimedDays: [getDayOfWeek()], lastClaimedDate: getPHTDateString() });
   });
 });
 
