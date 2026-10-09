@@ -361,3 +361,34 @@ Found in the teacher layout check: when Topic Mastery was left on its Module Ava
   CHECK: git grep -c "Mastery Matrix tab" -- docs/teacher-onboarding-guide.md
   EXPECT: docs/teacher-onboarding-guide.md:1
   EVIDENCE: CHECK printed `docs/teacher-onboarding-guide.md:1`. The coverage row explains the `view: 'mastery'` steps and the switch back; the Files row lists the Topic Mastery tab handling in `TeacherDashboard.tsx`.
+
+## Guide waits for loading pages — 2026-10-09
+
+User report with screenshots: the student guide's Quiz Battle step highlighted its navigation entry while the full-screen "Loading content..." screen still covered the app, so the highlight showed only white space. Requested: every step waits until its page has loaded, on every page.
+
+- [x] GLW1: While a loading screen (`data-tour-loading`) is on screen, a step waits: no card, no highlight, a "Loading this page…" note with a Skip guide button. The step's wait (12 s required, 1.5 s optional) starts again once loading ends, so a loading page is neither skipped nor shown half-loaded; a loading screen holds a step for at most 20 s.
+  CHECK: npm test -- --run src/components/onboarding/GuidedTour.test.tsx --maxWorkers=2
+  EXPECT: passed
+  EVIDENCE: Five new tests failed first, then pass: waits behind a loading screen and then shows the step with its highlight; does not skip an optional step while its page is loading (2.2 s > 1.5 s); keeps a shown step when a loader appears elsewhere but hides it when one covers the feature; waits for its own page (`data-tour-page`) while the previous page is on screen; Skip guide in the loading note dismisses. Two older scroll tests now `waitFor` the scroll, because a first step waits 250 ms for its page to settle. Onboarding tests plus the six host tour suites: 12 files, 257 tests. The note sits inside the dialog (visible over the hidden card), so it stays in the focus trap and accessibility tree. Real-app traces found that the "Loading content…" screen mounts 250–1650 ms after a page change (`AnimatePresence mode="wait"` fades the old page out first), so the step also waits for `data-tour-page` to match its tab; added to the teacher page container (the student one already had it; admin tabs swap without animation).
+
+- [x] GLW2: The full-screen loader (`MathPulseLoader`, used for lazy pages and dashboard loading) and the page and section loaders on guided pages carry `data-tour-loading`.
+  CHECK: npm test -- --run src/components/__tests__/AvatarAndLoader.test.tsx --maxWorkers=2
+  EXPECT: passed
+  EVIDENCE: The loader test asserts the attribute on the status element (failed first, then passes). Marked: `MathPulseLoader`, the student dashboard Suspense placeholders (`App.tsx`), Grades, Leaderboard (2), Avatar Studio, Rewards content, Quiz Battle history skeleton, Topic Mastery, Competency, teacher Notifications, Question Bank status, admin Overview honor roll, Users (3: first load, table row, refresh overlay), Classes and Subjects. Not marked on purpose: the RAG "Rebuild in progress" banner (a backend job, not page loading) and the Modules "Building your learning path" note (an AI job).
+
+- [x] GLW3: Real app after a fresh load (student account): the first-use guide and every page guide never show a card while a loading screen is visible, and no highlight lands on a loader (phone with touch and desktop).
+  EVIDENCE: Onboarding-only build, dev server 5174, seeded student account. The pane document was hidden (paused animation frames), so frames and sleeps were driven from a message loop (`.tmp/guide-walker.js`, gitignored), like the layout-audit frame. First-use guide after a fresh load at 1440x900 and at 390x844 with touch: 12 of 12 steps highlighted their own feature (hero, learning path, Modules … page guide); 8–9 steps waited for their page; a step tracer that keeps each card for 1.5 s saw no card hidden again after it showed and none shown while a loader covered its feature (cards appeared 0.5–2.2 s after each page change on a cold load). All 10 student page guides at 1440x900: no step shown with a loader on screen, none on a loader, none without a highlight; optional steps skipped as before (Dashboard step 6, Modules step 2). An intermediate version that checked only for loaders already on screen showed the Modules, Grades, AI Chat, Quiz Battle, Avatar Studio, Rewards and Profile overview cards first, then "Loading content…" covering the page 70–1650 ms later: the timing behind the reported screenshot.
+
+- [ ] GLW3b: The same check for the teacher and admin guides.
+  EVIDENCE: Partial. Engine and markers are shared (GLW1, GLW2); the teacher page container now has `data-tour-page`. Not run in the real app.
+ABANDON: GLW3b The Browser pane session was reset on 2026-10-09, so the teacher and admin accounts are signed out, and Claude cannot type passwords. Run after the user signs in again (NEXT_STEPS.md).
+
+- [x] GLW4: Full frontend checks pass after the change.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0.
+  EVIDENCE: Onboarding branch: Vitest 141 files / 842 tests passed (501 s); typecheck, `npm run lint -- --max-warnings=0` and anti-slop exit 0; `$env:VITE_API_URL='/api'; npm run build` exit 0 (check-api-url, check-prod-host and check-no-demo-creds PASS).
+
+- [x] GLW5: `docs/student-onboarding-guide.md` (engine) and `src/components/onboarding/codemap.md` describe `data-tour-loading` and the wait.
+  CHECK: git grep -c "data-tour-loading" -- docs/student-onboarding-guide.md src/components/onboarding/codemap.md
+  EXPECT: docs/student-onboarding-guide.md:1
+  EVIDENCE: CHECK printed `docs/student-onboarding-guide.md:1` and `src/components/onboarding/codemap.md:2`. The engine section explains the loaders, `data-tour-page`, the reveal rules, the restarted waits and the 20 s limit; the codemap lists both attributes.

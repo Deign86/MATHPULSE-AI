@@ -32,6 +32,7 @@ export const MathPulseLoader: React.FC<MathPulseLoaderProps> = ({
   const loaderContent = (
     <div
       className={containerClasses}
+      data-tour-loading=""
       role="status"
       aria-live="polite"
       aria-busy="true"

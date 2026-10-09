@@ -615,7 +615,7 @@ const GradesPage = () => {
 
   if (loading) {
     return (
-      <div className="p-12 flex flex-col justify-center items-center h-full min-h-[400px]">
+      <div data-tour-loading="" className="p-12 flex flex-col justify-center items-center h-full min-h-[400px]">
         <div className="w-12 h-12 border-4 border-[#7C3AED] border-t-transparent rounded-full animate-spin"></div>
         <p className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-widest">Loading Analytics...</p>
       </div>

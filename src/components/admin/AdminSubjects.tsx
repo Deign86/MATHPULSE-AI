@@ -175,7 +175,7 @@ const AdminSubjects: React.FC = () => {
     <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {loading && (
         <div className="flex items-center justify-end px-2">
-          <div className="flex items-center gap-3 px-4 py-2 bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 rounded-2xl border border-purple-100 dark:border-purple-900/40 animate-pulse shadow-xs">
+          <div data-tour-loading="" className="flex items-center gap-3 px-4 py-2 bg-purple-50 dark:bg-purple-950/40 text-[#9956DE] dark:text-purple-300 rounded-2xl border border-purple-100 dark:border-purple-900/40 animate-pulse shadow-xs">
             <Loader2 size={16} className="animate-spin" />
             <span className="text-[10px] font-black uppercase tracking-widest">Loading subjects...</span>
           </div>

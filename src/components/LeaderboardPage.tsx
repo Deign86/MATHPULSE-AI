@@ -216,7 +216,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
 
   if (leaderboardLoading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[450px] gap-3">
+      <div data-tour-loading="" className="flex flex-col justify-center items-center h-[450px] gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
         <p className="text-sm text-slate-500 font-medium">Loading leaderboard...</p>
       </div>
@@ -246,7 +246,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
 
   if (featureAccessLoading) {
     return (
-      <div className="flex flex-col justify-center items-center h-[450px] gap-3">
+      <div data-tour-loading="" className="flex flex-col justify-center items-center h-[450px] gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
         <p className="text-sm text-slate-500 font-medium">Loading...</p>
       </div>

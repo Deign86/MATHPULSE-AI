@@ -474,7 +474,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
       {/* Tab Content Section */}
       <div data-tour="rewards-content">
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
+          <div data-tour-loading="" className="flex flex-col items-center justify-center py-20 gap-4 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm">
             <div className="w-10 h-10 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
             <p className="text-sm font-bold text-slate-500 dark:text-slate-400">Loading trophies and achievements…</p>
           </div>

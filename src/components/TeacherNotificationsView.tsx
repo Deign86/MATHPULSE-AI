@@ -177,7 +177,7 @@ const TeacherNotificationsView: React.FC<TeacherNotificationsViewProps> = () => 
         {/* Notification List */}
         <div data-tour="notif-list" className="space-y-6 sm:space-y-8">
           {isLoading ? (
-            <div className="bg-white/80 backdrop-blur-[12px] rounded-[18px] sm:rounded-[24px] border border-white p-8 sm:p-12 flex flex-col items-center justify-center gap-4">
+            <div data-tour-loading="" className="bg-white/80 backdrop-blur-[12px] rounded-[18px] sm:rounded-[24px] border border-white p-8 sm:p-12 flex flex-col items-center justify-center gap-4">
               <Loader2 className="w-8 h-8 text-[#a855f7] animate-spin" />
               <p className="font-body text-[13px] font-medium text-[#64748b]">Syncing notifications...</p>
             </div>

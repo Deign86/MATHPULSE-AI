@@ -72,7 +72,14 @@ Props:
 - `onStepChange(step)`: receives each step so the host can open menus or show a `view`.
 - `onDismiss()`: caller handles persistence and returning to the original screen.
 
-The card stays hidden for up to 12 s while a non-optional target renders (lazy pages, slow data), showing "Loading this page…" after 0.6 s, then shows. A target that never renders does not trap the learner or block Continue: the instruction appears in a bounded central card without a spotlight. `src/components/onboarding/studentTourSteps.test.ts` fails if any step selector has no matching anchor in production source, or if a step targets a bare heading.
+The card stays hidden for up to 12 s while a non-optional target renders (lazy pages, slow data), showing "Loading this page…" with a **Skip guide** button after 0.6 s, then shows. A target that never renders does not trap the learner or block Continue: the instruction appears in a bounded central card without a spotlight.
+
+Pages that are still loading hold the step, so a highlight never lands on a loading screen (2026-10-09; before this, the Quiz Battle step could highlight its navigation entry while the full-screen "Loading content…" screen covered the app):
+
+- **Loading screens carry `data-tour-loading`**: the full-screen loader (`MathPulseLoader`, used for every lazy page and the dashboards' data loading), the Suspense placeholders on the student dashboard, and the page and section loaders on guided pages (Grades, Leaderboard, Avatar Studio, Rewards, Quiz Battle history, Topic Mastery, Competency, teacher Notifications, Question Bank status, admin Overview honor roll, Users, Classes and Subjects). Add the attribute to any new loader on a guided page.
+- **Hosts that animate page changes mark the mounted page with `data-tour-page`** (student `App` and `TeacherDashboard`). The old page stays on screen while it fades out, so a step on another page waits until its own page has mounted.
+- **Before a card first shows**, its page must be mounted, no loading screen may be on screen, and after a page change the page must stay quiet for 250 ms. **After it shows**, only a loader drawn over the highlighted feature hides it again, so a section loader elsewhere on the page does not make the card flicker.
+- The 12 s (required) and 1.5 s (optional) waits start again when loading ends, so a loading page is neither skipped nor shown half-loaded. A loading screen holds a step for at most 20 s. `src/components/onboarding/studentTourSteps.test.ts` fails if any step selector has no matching anchor in production source, or if a step targets a bare heading.
 
 ## Responsive and accessibility rules
 

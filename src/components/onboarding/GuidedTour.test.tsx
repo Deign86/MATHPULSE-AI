@@ -74,7 +74,7 @@ describe('tour scrolling and step resolution', () => {
     document.body.append(page);
     render(<GuidedTour steps={[{ title: 'Drift', description: 'Scroll check', target: '[data-tour="drift"]', tab: 'Dashboard' }]} onNavigate={() => {}} onDismiss={() => {}} />);
     await screen.findByRole('dialog');
-    expect(page.scrollBy).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(page.scrollBy).toHaveBeenCalledTimes(1));
     placeAt(target, -900);
     fireEvent.scroll(window);
     await waitFor(() => expect(page.scrollBy).toHaveBeenCalledTimes(2));
@@ -92,7 +92,7 @@ describe('tour scrolling and step resolution', () => {
     document.body.append(shell);
     render(<GuidedTour steps={[{ title: 'Deep', description: 'Shell check', target: '[data-tour="deep"]', tab: 'Dashboard' }]} onNavigate={() => {}} onDismiss={() => {}} />);
     await screen.findByRole('dialog');
-    expect(page.scrollBy).toHaveBeenCalled();
+    await waitFor(() => expect(page.scrollBy).toHaveBeenCalled());
     expect(shell.scrollBy).not.toHaveBeenCalled();
     shell.remove();
   });
@@ -163,6 +163,109 @@ describe('pinned bars', () => {
     });
     target.remove();
     nav.remove();
+  });
+});
+
+describe('pages that are still loading', () => {
+  function loadingScreen() {
+    const screenCover = document.createElement('div');
+    screenCover.setAttribute('data-tour-loading', '');
+    vi.spyOn(screenCover, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 1024, 768));
+    document.body.append(screenCover);
+    return screenCover;
+  }
+
+  it('waits behind a loading screen, then shows the step with its highlight', async () => {
+    const target = document.createElement('div');
+    target.dataset.tour = 'behind-loader';
+    placeAt(target, 100);
+    document.body.append(target);
+    const cover = loadingScreen();
+    render(<GuidedTour steps={[{ title: 'Behind', description: 'Loads late', target: '[data-tour="behind-loader"]', tab: 'Quiz Battle' }]} onNavigate={() => {}} onDismiss={() => {}} />);
+    const dialog = await screen.findByRole('dialog');
+    await new Promise(resolve => setTimeout(resolve, 400));
+    expect(dialog).toHaveAttribute('aria-busy', 'true');
+    expect(document.querySelector('[data-tour-overlay] rect[stroke]')).toBeNull();
+    cover.remove();
+    await waitFor(() => expect(dialog).toHaveAttribute('aria-busy', 'false'));
+    expect(document.querySelector('[data-tour-overlay] rect[stroke]')).not.toBeNull();
+    target.remove();
+  });
+
+  it('does not skip an optional step while its page is loading', async () => {
+    const anchor = document.createElement('div');
+    anchor.dataset.tour = 'present';
+    placeAt(anchor, 100);
+    document.body.append(anchor);
+    const optionalSteps: TourStep[] = [
+      { title: 'First', description: 'Present', target: '[data-tour="present"]', tab: 'Dashboard' },
+      { title: 'Arrives after loading', description: 'Late', target: '[data-tour="late-optional"]', tab: 'Dashboard', optional: true },
+      { title: 'Last', description: 'Present again', target: '[data-tour="present"]', tab: 'Dashboard' },
+    ];
+    render(<GuidedTour steps={optionalSteps} onNavigate={() => {}} onDismiss={() => {}} />);
+    const cover = loadingScreen();
+    fireEvent.click(await screen.findByRole('button', { name: 'Continue' }));
+    await new Promise(resolve => setTimeout(resolve, 2200));
+    expect(screen.getByText('Arrives after loading')).toBeInTheDocument();
+    cover.remove();
+    const late = document.createElement('div');
+    late.dataset.tour = 'late-optional';
+    placeAt(late, 300);
+    document.body.append(late);
+    await waitFor(() => expect(screen.getByRole('dialog')).toHaveAttribute('aria-busy', 'false'));
+    expect(screen.getByText('Arrives after loading')).toBeInTheDocument();
+    late.remove();
+    anchor.remove();
+  });
+
+  it('keeps a shown step when a loader appears elsewhere, and hides it when one covers the feature', async () => {
+    const target = document.createElement('div');
+    target.dataset.tour = 'steady';
+    placeAt(target, 100);
+    document.body.append(target);
+    render(<GuidedTour steps={[{ title: 'Steady', description: 'Shown', target: '[data-tour="steady"]', tab: 'Dashboard' }]} onNavigate={() => {}} onDismiss={() => {}} />);
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => expect(dialog).toHaveAttribute('aria-busy', 'false'));
+    const sectionLoader = document.createElement('div');
+    sectionLoader.setAttribute('data-tour-loading', '');
+    vi.spyOn(sectionLoader, 'getBoundingClientRect').mockReturnValue(new DOMRect(20, 500, 300, 120));
+    document.body.append(sectionLoader);
+    fireEvent.scroll(window);
+    await new Promise(resolve => setTimeout(resolve, 400));
+    expect(dialog).toHaveAttribute('aria-busy', 'false');
+    const cover = loadingScreen();
+    fireEvent.scroll(window);
+    await waitFor(() => expect(dialog).toHaveAttribute('aria-busy', 'true'));
+    cover.remove();
+    sectionLoader.remove();
+    await waitFor(() => expect(dialog).toHaveAttribute('aria-busy', 'false'));
+    target.remove();
+  });
+
+  it('waits for its own page while the previous page is still on screen', async () => {
+    const page = document.createElement('div');
+    page.setAttribute('data-tour-page', 'Dashboard');
+    const navItem = document.createElement('div');
+    navItem.dataset.tourNav = 'Quiz Battle';
+    placeAt(navItem, 400);
+    document.body.append(page, navItem);
+    render(<GuidedTour steps={[{ title: 'Quiz Battle', description: 'Page overview', target: '[data-tour-nav="Quiz Battle"]', tab: 'Quiz Battle' }]} onNavigate={() => {}} onDismiss={() => {}} />);
+    const dialog = await screen.findByRole('dialog');
+    await new Promise(resolve => setTimeout(resolve, 500));
+    expect(dialog).toHaveAttribute('aria-busy', 'true');
+    page.setAttribute('data-tour-page', 'Quiz Battle');
+    await waitFor(() => expect(dialog).toHaveAttribute('aria-busy', 'false'));
+    page.remove();
+    navItem.remove();
+  });
+
+  it('offers Skip guide while a page is loading', async () => {
+    const cover = loadingScreen();
+    const dismiss = vi.fn();
+    render(<GuidedTour steps={[{ title: 'Slow', description: 'Never loads', target: '[data-tour="slow"]', tab: 'Grades' }]} onNavigate={() => {}} onDismiss={dismiss} />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Skip guide' }));
+    expect(dismiss).toHaveBeenCalledOnce();
+    cover.remove();
   });
 });
 

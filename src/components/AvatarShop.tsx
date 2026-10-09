@@ -501,7 +501,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
 
   if (featureAccessLoading) {
     return (
-      <div className="flex flex-col justify-center items-center h-full min-h-[360px] gap-3">
+      <div data-tour-loading="" className="flex flex-col justify-center items-center h-full min-h-[360px] gap-3">
         <div className="animate-spin text-blue-500">
           <Save size={24} className="opacity-50" />
         </div>

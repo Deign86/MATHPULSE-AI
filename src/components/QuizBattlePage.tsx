@@ -2999,7 +2999,7 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode, tourPr
                           </p>
                           {widgetErrorCard(['stats', 'history'])}
                           {statsLoading ? (
-                            <div className="space-y-2">
+                            <div data-tour-loading="" className="space-y-2">
                               <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
                               <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />
                               <Skeleton className="h-14 w-full rounded-2xl bg-white/10" />

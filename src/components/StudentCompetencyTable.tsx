@@ -667,7 +667,7 @@ const StudentCompetencyTable: React.FC<{
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 p-6">
+      <div data-tour-loading="" className="flex items-center justify-center py-20 p-6">
         <Loader2 size={32} className="animate-spin text-[var(--primary)]" />
         <span className="ml-3 text-muted-foreground">Loading student data...</span>
       </div>

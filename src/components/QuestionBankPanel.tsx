@@ -309,7 +309,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           </div>
 
           {loading && pdfs.length === 0 ? (
-            <div className="flex items-center justify-center py-10 bg-white rounded-xl border border-slate-200/80">
+            <div data-tour-loading="" className="flex items-center justify-center py-10 bg-white rounded-xl border border-slate-200/80">
               <Loader2 className="w-5 h-5 animate-spin text-purple-600 mr-2" />
               <span className="text-xs sm:text-sm text-slate-500 font-medium">Checking processing status...</span>
             </div>

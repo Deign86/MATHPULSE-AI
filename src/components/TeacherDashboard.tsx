@@ -2165,6 +2165,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
             <AnimatePresence mode="wait">
               <motion.div
                 key={activeView}
+                data-tour-page={activeView}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}

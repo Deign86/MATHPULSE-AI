@@ -107,7 +107,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     <AppLoadingScreen message="Loading content..." />
   );
   const dashboardWidgetFallback = (
-    <div className="pb-4 text-sm font-semibold text-slate-500">Loading dashboard content...</div>
+    <div data-tour-loading="" className="pb-4 text-sm font-semibold text-slate-500">Loading dashboard content...</div>
   );
   const compactControlFallback = (
     <div className="h-11 w-11 shrink-0 rounded-xl bg-[#edf1f7]" aria-hidden="true" />
@@ -117,7 +117,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     <div className="h-dvh w-72 border-r border-[#dde3eb] bg-white/70" aria-hidden="true" />
   );
   const dashboardPanelFallback = (
-    <div className="min-h-[240px] rounded-3xl border border-[#dde3eb] bg-white/70" aria-hidden="true" />
+    <div data-tour-loading="" className="min-h-[240px] rounded-3xl border border-[#dde3eb] bg-white/70" aria-hidden="true" />
   );
 
   const [activeTab, setActiveTab] = useState('Dashboard');

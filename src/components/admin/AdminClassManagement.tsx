@@ -148,7 +148,7 @@ const AdminClassManagement: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 space-y-3">
+      <div data-tour-loading="" className="flex flex-col items-center justify-center py-24 space-y-3">
         <div className="w-10 h-10 border-3 border-[#9956DE] border-t-transparent rounded-full animate-spin" />
         <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading class sections...</p>
       </div>

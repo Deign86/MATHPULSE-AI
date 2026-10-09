@@ -418,7 +418,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div data-tour-loading="" className="flex items-center justify-center py-20">
         <Loader2 size={24} className="animate-spin text-indigo-500" />
         <span className="ml-2 text-[#64748b]">Loading topic mastery data...</span>
       </div>

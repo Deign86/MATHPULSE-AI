@@ -872,7 +872,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
                   <div className="flex flex-col gap-2.5 flex-1 justify-center">
                     {loadingOverview ? (
-                      <div className="py-12 flex items-center justify-center">
+                      <div data-tour-loading="" className="py-12 flex items-center justify-center">
                         <Loader2 size={24} className="animate-spin text-slate-400" />
                       </div>
                     ) : topPerformers.length === 0 ? (

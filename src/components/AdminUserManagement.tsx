@@ -1315,7 +1315,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
       {/* ── Users Table ── */}
       <div data-tour="users-list" className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm relative overflow-hidden">
         {loading && users.length > 0 && (
-          <div className="absolute inset-0 bg-white/40 dark:bg-slate-900/40 backdrop-blur-[1px] z-20 flex items-center justify-center">
+          <div data-tour-loading="" className="absolute inset-0 bg-white/40 dark:bg-slate-900/40 backdrop-blur-[1px] z-20 flex items-center justify-center">
             <Loader2 className="animate-spin text-[#9956DE]" size={32} />
           </div>
         )}
@@ -1354,7 +1354,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
             </div>
           </div>
           {loading && users.length === 0 ? (
-            <div className="px-6 py-12 text-center text-slate-400 font-bold">Loading user records...</div>
+            <div data-tour-loading="" className="px-6 py-12 text-center text-slate-400 font-bold">Loading user records...</div>
           ) : users.length > 0 ? (
             displayedUsers.map((user) => {
               const isPendingToggle = pendingRowActionUserId === user.id;
@@ -1499,7 +1499,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {loading && users.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="px-6 py-20 text-center">
+                    <td data-tour-loading="" colSpan={7} className="px-6 py-20 text-center">
                       <Loader2 className="animate-spin text-[#9956DE] mx-auto" size={36} />
                       <p className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-wider">Loading user records...</p>
                     </td>
