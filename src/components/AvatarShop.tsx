@@ -122,7 +122,8 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
 }) => {
   const { userProfile, refreshProfile, currentUser } = useAuth();
   const { cosmeticShop: shopAccess, loading: featureAccessLoading } = useFeatureAccess(currentUser?.uid || null);
-  const isDevMode = import.meta.env.DEV;
+  // Dev-only purchase reset, hidden unless VITE_SHOW_DEV_RESET=true (to be deleted).
+  const isDevMode = import.meta.env.DEV && import.meta.env.VITE_SHOW_DEV_RESET === 'true';
 
   const [equipped, setEquipped] = useState<AvatarLayers>({
     top: userProfile?.avatarLayers?.top ?? DEFAULT_TOP_ITEM_ID,

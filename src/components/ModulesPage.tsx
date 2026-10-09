@@ -30,6 +30,7 @@ import {
   Lightbulb,
   ChevronRight,
   Award,
+  Gift,
 } from 'lucide-react';
 import { collection, query, where, onSnapshot, type DocumentData, type QuerySnapshot } from 'firebase/firestore';
 import { db } from '../lib/firebase';
@@ -1492,10 +1493,21 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
           <p className="hidden lg:block text-[#3c4043] text-[13px] md:text-[17px] leading-relaxed md:leading-[1.7] md:pr-10">
             MathPulse AI loads modules directly from DepEd Strengthened SHS curriculum guides with AI-powered RAG lesson generation. Available now for Grade 11: General Mathematics, Business Mathematics, Statistics & Probability, and Finite Mathematics — every module fully unlocked.
           </p>
-          <div className="mt-2 md:mt-4 flex items-center gap-2 md:gap-3">
+          <div className="mt-2 md:mt-4 flex flex-wrap items-center gap-2 md:gap-3">
             <div className="inline-flex items-center rounded-full border border-sky-200 bg-sky-50 px-3 py-1 md:px-4 md:py-2 text-xs md:text-sm font-bold text-sky-900">
               {curriculumContextLabel}
             </div>
+            {/* The check-in opens once per visit; this brings it back if the student closed it before claiming. */}
+            {userProfile?.role === 'student' && canClaim && !showDailyCheckIn && (
+              <button
+                type="button"
+                onClick={() => setShowDailyCheckIn(true)}
+                className="inline-flex items-center gap-1.5 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 md:px-4 md:py-2 pointer-coarse:min-h-11 text-xs md:text-sm font-bold text-amber-900 hover:bg-amber-100 transition-colors shadow-sm cursor-pointer"
+              >
+                <Gift size={14} className="shrink-0 text-amber-600" aria-hidden="true" />
+                Claim daily reward
+              </button>
+            )}
           </div>
         </div>
         <div className="hidden xl:flex flex-shrink-0 items-center justify-end w-[300px] 2xl:w-[350px]">
@@ -1526,7 +1538,8 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
               placeholder="Search modules, lessons, or assessments..."
               className="w-full pl-10 pr-10 py-2 rounded-xl border border-[#dadce0] bg-white text-[#202124] text-[13px] font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
             />
-            {import.meta.env.DEV && (
+            {/* Dev-only test reset, hidden unless VITE_SHOW_DEV_RESET=true (to be deleted). */}
+            {import.meta.env.DEV && import.meta.env.VITE_SHOW_DEV_RESET === 'true' && (
               <button
                 onClick={async () => {
                   if (!userProfile?.uid) return;

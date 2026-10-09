@@ -125,14 +125,12 @@ const DailyCheckInModal: React.FC<DailyCheckInModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="daily-rewards-modal-title"
-      onClick={onClose}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.93, y: 16 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.93, y: 16 }}
         transition={{ duration: 0.22, ease: 'easeOut' }}
-        onClick={(e) => e.stopPropagation()}
         className="relative my-auto w-full max-w-[420px] bg-[#f7f9fc] dark:bg-slate-900 rounded-[28px] sm:rounded-[32px] border border-[#dde3eb] dark:border-slate-800 shadow-2xl flex flex-col items-center p-4 sm:p-5 pt-7 sm:pt-8 overflow-visible"
       >
         {/* Creative Top Floating Banner (User favorite) */}
