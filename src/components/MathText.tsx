@@ -47,12 +47,22 @@ function containsProse(text: string): boolean {
     });
 }
 
+/**
+ * A `$...$` pair whose content is prose ("$500 per week plus $20") is currency, not math:
+ * escape both dollars so remark-math leaves them literal instead of collapsing the sentence.
+ */
+function escapeCurrencyDollars(text: string): string {
+  return text.replace(/\$([^$]+)\$/g, (pair, inner: string) =>
+    !inner.includes('\\') && containsProse(inner) ? `\\$${inner}\\$` : pair,
+  );
+}
+
 /** Convert plain-text math notation to LaTeX-delimited string */
 function convertToLatex(text: string): string {
   if (!text) return '';
-  
-  // Already has $ delimiters — leave as-is
-  if (text.includes('$')) return text;
+
+  // Already has $ delimiters — keep real math, unwrap currency
+  if (text.includes('$')) return escapeCurrencyDollars(text);
   
   // Check if text contains any math-like patterns (require digit/variable context around operators).
   // S7 fix: a closing paren also counts as math context — "(0.8)^h" has ")" before "^".

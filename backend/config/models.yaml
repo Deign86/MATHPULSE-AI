@@ -14,7 +14,6 @@ models:
     top_p: 0.9
     enable_thinking_tasks:
       - rag_lesson
-      - verify_solution
       - risk_narrative
     no_thinking_tasks:
       - chat
@@ -36,7 +35,7 @@ models:
 routing:
   task_model_map:
     chat:                  deepseek-chat
-    verify_solution:       deepseek-reasoner
+    verify_solution:       deepseek-chat
     lesson_generation:     deepseek-chat
     quiz_generation:       deepseek-chat
     practice_generation:   deepseek-chat

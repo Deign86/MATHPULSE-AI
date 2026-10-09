@@ -13,20 +13,6 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
 }
 
-/** Quarter as carried by lessons: numeric 1-4 or CurriculumQuarter string. */
-type LessonQuarterInput = number | CurriculumQuarter | string;
-
-const QUARTER_TO_INT = new Map([
-  ['Q1', 1], ['Q2', 2], ['Q3', 3], ['Q4', 4],
-  ['1', 1], ['2', 2], ['3', 3], ['4', 4],
-]);
-
-/** Coerce lesson quarter to RAG API int 1-4; defaults 1. */
-function parseQuarterToInt(value: LessonQuarterInput): number {
-  const key = String(value ?? '').trim().toUpperCase();
-  return QUARTER_TO_INT.get(key) ?? 1;
-}
-
 // ---------------------------------------------------------------------------
 // Rich text formatter — breaks plain paragraphs into formatted JSX.
 //
@@ -374,10 +360,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { cn } from './ui/utils';
 import { Lesson, Quiz } from '../data/subjects';
-import type { RagLessonSection } from '../services/lessonService';
-import { useLessonContent, type UseLessonContentResult } from '../hooks/useLessonContent';
+import type { RagLessonSection, RagLessonStage } from '../services/lessonService';
+import {
+  buildRagLessonRequest,
+  useLessonContent,
+  useNextLessonPrefetch,
+  type UseLessonContentResult,
+} from '../hooks/useLessonContent';
 import { getFirebaseStoragePdfUrl } from '../data/curriculum/types';
-import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
@@ -405,6 +395,8 @@ interface LessonViewerProps {
   setIsInQuizMode?: (value: boolean) => void;
   initialContent?: UseLessonContentResult;
   onLogLessonView?: (userId: string, lessonId: string, topic: string) => Promise<void>;
+  /** Next lesson in the module's order; its content is pregenerated once this lesson loads. */
+  nextLesson?: Lesson;
 }
 
 export function shouldRestoreSavedLessonSection(initialSection: number): boolean {
@@ -484,11 +476,21 @@ const OBJECTIVE_COLORS = [
   { bg: 'bg-rose-50',    border: 'border-rose-200',   num: 'bg-rose-500',    text: 'text-rose-700',    ex: 'text-rose-500'    },
 ];
 
-function LoadingSkeleton() {
+const LESSON_STAGE_LABELS: Record<RagLessonStage, string> = {
+  retrieving: 'Finding curriculum sources…',
+  generating: 'Writing your lesson…',
+  thinking: 'Thinking through the lesson…',
+  verifying: 'Checking accuracy…',
+  finalizing: 'Almost ready…',
+  cached: 'Loading saved lesson…',
+};
+
+function LoadingSkeleton({ stage }: { stage?: RagLessonStage | null }) {
+  // MathPulseLoader's container is role="status" aria-live="polite", so stage changes are announced.
   return (
     <MathPulseLoader
       title="Loading lesson from DepEd curriculum..."
-      subtitle="This may take a moment while the AI retrieves curriculum content."
+      subtitle={stage ? LESSON_STAGE_LABELS[stage] : 'This may take a moment while the AI retrieves curriculum content.'}
       fullScreen
     />
   );
@@ -1299,6 +1301,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   setIsInQuizMode,
   initialContent,
   onLogLessonView,
+  nextLesson,
 }) => {
   const { userProfile, userRole } = useAuth();
   // Issue #164: students see assurance copy only; teacher/admin keep full RAG telemetry.
@@ -1337,22 +1340,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }, [showTryItPage]);
   const [tryItQuizCompleted, setTryItQuizCompleted] = useState(false);
 
-  const request = {
-    topic: lesson.title,
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    subject: (lesson as any).subject || 'General Mathematics',
-    // SAFETY: lessons may carry quarter as "Q1" string or number; RAG API requires int 1-4.
-    quarter: parseQuarterToInt((lesson as any).quarter),
-    lessonTitle: lesson.title,
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    moduleId: (lesson as any).subjectId,
-    lessonId: lesson.id,
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    competencyCode: (lesson as any).competencyCode,
-    learnerLevel: 'Grade 11',
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    storagePath: (lesson as any).storagePath,
-  };
+  const request = buildRagLessonRequest(lesson);
 
   const fetchedLessonContent = useLessonContent(lesson.id, request, !initialContent);
   const {
@@ -1366,7 +1354,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     needsReview,
     activeModel,
     isOffline,
+    stage,
   } = initialContent ?? fetchedLessonContent;
+
+  // Contract C4: once a student's lesson has loaded, pregenerate the next one in the background.
+  useNextLessonPrefetch(
+    lesson.id,
+    nextLesson,
+    !initialContent && !isLoading && !error && sections.length > 0 && userRole === 'student',
+  );
 
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
 
@@ -1526,7 +1522,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }, [currentSection, maxUnlockedSection, totalSections, sections.length, isLoading, sectionProgressLoaded, userProfile?.uid, lesson.id]);
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <LoadingSkeleton stage={stage} />;
   }
 
   if (error && sections.length === 0) {

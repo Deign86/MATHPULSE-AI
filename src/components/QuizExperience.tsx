@@ -1290,7 +1290,7 @@ playSound('complete');
                         <p className="text-sm text-slate-500 tabular-nums">Question {viewIndex + 1} Explanation</p>
                       </div>
                       <img 
-                        src={'/icons/default-module-avatar.png'} 
+                        src="/mascot/modules_avatar.png" 
                         alt="Module Avatar" 
                         className="w-12 h-12 rounded-full object-cover border-2 border-slate-200"
                       />

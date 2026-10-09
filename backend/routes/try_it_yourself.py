@@ -13,6 +13,7 @@ Implements:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Literal, Optional
@@ -408,7 +409,8 @@ async def generate_shadow_retries(request: Request, body: ShadowRetryRequest):
 
     try:
         # Retrieve curriculum context for the struggle topics
-        chunks = retrieve_curriculum_context(
+        chunks = await asyncio.to_thread(
+            retrieve_curriculum_context,
             query=topics_str,
             subject=body.subject,
             top_k=4,
@@ -441,9 +443,13 @@ Return ONLY valid JSON array."""
             task_type="quiz_generation",
             max_new_tokens=2000,
             temperature=0.8,
+            timeout_sec=60,
+            max_retries=1,
         )
 
-        raw = _get_inference_client().generate_from_messages(inference_request)
+        raw = await asyncio.to_thread(
+            _get_inference_client().generate_from_messages, inference_request
+        )
         variants = _parse_quiz_response(raw, body.count)
 
         return ShadowRetryResponse(variants=variants, generated=True)

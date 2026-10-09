@@ -1,5 +1,6 @@
 ﻿from __future__ import annotations
 
+import asyncio
 import re
 from typing import Any
 
@@ -73,7 +74,8 @@ def _source_names(chunks: list[dict[str, Any]]) -> list[str]:
 @router.post("/curriculum/generate-module", response_model=GenerateModuleResponse)
 async def generate_module(payload: GenerateModuleRequest) -> dict[str, Any]:
     try:
-        chunks, _retrieval_mode = retrieve_lesson_pdf_context(
+        chunks, _retrieval_mode = await asyncio.to_thread(
+            retrieve_lesson_pdf_context,
             topic=payload.topic,
             subject=payload.subject,
             quarter=payload.quarter,

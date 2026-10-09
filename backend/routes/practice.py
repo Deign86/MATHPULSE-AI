@@ -8,6 +8,7 @@ GET  /api/practice/history/{userId}  - Paginated session history
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -144,8 +145,9 @@ def _get_firestore():
 async def _call_deepseek(system_prompt: str, user_message: str, temperature: float = 0.7) -> str:
     """Call DeepSeek with JSON mode for structured output."""
     try:
-        client = get_deepseek_client()
-        response = client.chat.completions.create(
+        client = get_deepseek_client().with_options(timeout=90.0, max_retries=1)
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
             model=CHAT_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
