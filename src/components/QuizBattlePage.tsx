@@ -4969,8 +4969,10 @@ const QuizBattlePage: React.FC<QuizBattlePageProps> = ({ setIsInQuizMode, tourPr
                     </div>
 
                     {/* RIGHT COLUMN: FIXED-HEIGHT CARD CONTAINER (ONLY INNER LIST SCROLLS) */}
-                    <div className="w-full lg:w-[390px] xl:w-[430px] shrink-0 mt-6 lg:mt-0 flex flex-col h-auto lg:h-full min-h-0">
-                      <div className="w-full bg-slate-900/90 backdrop-blur-2xl rounded-3xl p-4 sm:p-5 border border-purple-500/30 shadow-[0_18px_45px_rgba(0,0,0,0.25)] flex flex-col h-auto lg:h-full min-h-0 relative overflow-hidden">
+                    {/* lg: the card is absolutely filled so a long standings list cannot stretch the row and push the podium down.
+                        The column keeps height auto so flex stretch sizes it to the podium column; h-full would block the stretch and collapse it. */}
+                    <div className="w-full lg:w-[390px] xl:w-[430px] shrink-0 mt-6 lg:mt-0 flex flex-col h-auto min-h-0 lg:relative">
+                      <div className="w-full bg-slate-900/90 backdrop-blur-2xl rounded-3xl p-4 sm:p-5 border border-purple-500/30 shadow-[0_18px_45px_rgba(0,0,0,0.25)] flex flex-col h-auto lg:h-full min-h-0 relative lg:absolute lg:inset-0 overflow-hidden">
                         {/* Top Accent Gradient Line */}
                         <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-amber-400 via-rose-500 to-purple-600" />
 

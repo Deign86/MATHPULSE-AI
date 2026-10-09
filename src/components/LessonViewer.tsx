@@ -8,6 +8,7 @@ import {
   ChevronDown, Check, Lock
 } from 'lucide-react';
 import MathPulseLoader from './ui/MathPulseLoader';
+import MathText from './MathText';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -33,6 +34,25 @@ export function isNum<T>(value: T): value is T & number {
 /** Math symbols that signal a formula line */
 const MATH_RE = /[=×÷±√∑∫π²³%]/;
 
+/**
+ * LaTeX the lesson prompt asks for: $$…$$ / \[…\] display, $…$ / \(…\) inline.
+ * An inline $ must hug its content and the closing $ must not precede a digit,
+ * so currency like "$5 and $10" stays plain text.
+ */
+const LESSON_MATH_RE = /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]|\\\([\s\S]+?\\\)|\$(?![\s$])[^$\n]*?[^\s$]\$(?!\d)/g;
+const DISPLAY_MATH_BLOCK_RE = /\$\$[\s\S]+?\$\$|\\\[[\s\S]+?\\\]/g;
+/** A line that is one formula and nothing else. */
+const STANDALONE_MATH_LINE_RE = /^(?:\$\$[^$]+\$\$|\\\[[\s\S]+\\\]|\$[^$]+\$)$/;
+/** Placeholder that shields masked math from the emphasis parser. */
+const MATH_TOKEN_RE = /\uE000(\d+)\uE001/g;
+
+function renderLessonMath(source: string, key: number): React.ReactNode {
+  const isDisplay = source.startsWith('$$') || source.startsWith('\\[');
+  const delimiterLength = isDisplay || source.startsWith('\\(') ? 2 : 1;
+  const tex = source.slice(delimiterLength, -delimiterLength).trim();
+  return <MathText key={key}>{isDisplay ? `$$\n${tex}\n$$` : `$${tex}$`}</MathText>;
+}
+
 /** Callout prefix patterns — "Definition:", "Formula:", "Note:", etc. */
 const CALLOUT_PREFIX_RE = /^(Definition|Formula|Note|Reminder|Important|Example|Key Concept|Concept|Rule|Theorem|Property|Step)s?\s*:/i;
 
@@ -49,7 +69,10 @@ function autoHighlightTerms(text: string): string {
 function formatContent(raw: string): React.ReactNode {
   if (!raw?.trim()) return null;
 
-  const rawLines = raw.split('\n');
+  // Fold multi-line display math onto one line so the line parser keeps each formula whole.
+  const rawLines = raw
+    .replace(DISPLAY_MATH_BLOCK_RE, (block) => block.replace(/\s*\n\s*/g, ' '))
+    .split('\n');
   const leadingNumRegex = /^\s*(\d+)[\.\)]\s*(.*)$/;
 
   // Check if content is a series of numbered concepts (e.g. "1. Variables: ...")
@@ -144,7 +167,6 @@ function formatContent(raw: string): React.ReactNode {
   }
 
   // Fallback for general content
-  const lines = raw.split('\n');
   const nodes: React.ReactNode[] = [];
   let paraBuffer: string[] = [];
   let listBuffer: string[] = [];
@@ -221,7 +243,7 @@ function formatContent(raw: string): React.ReactNode {
     return { bg: 'bg-slate-50 dark:bg-slate-900', border: 'border-slate-300 dark:border-slate-700', text: 'text-slate-800 dark:text-slate-200', label: <Lightbulb aria-hidden="true" size={14} /> };
   };
 
-  for (const rawLine of lines) {
+  for (const rawLine of rawLines) {
     const line = rawLine.trimEnd();
     const trimmed = line.trim();
 
@@ -269,13 +291,13 @@ function formatContent(raw: string): React.ReactNode {
     }
 
     // Standalone formula line
-    if (isFormula(trimmed) && !/[a-z]{5,}/.test(trimmed)) {
+    if (STANDALONE_MATH_LINE_RE.test(trimmed) || (isFormula(trimmed) && !/[a-z]{5,}/.test(trimmed))) {
       flushList();
       flushNumbered();
       flushPara();
       nodes.push(
-        <div key={key++} className="lesson-formula-box my-2 text-xs sm:text-sm">
-          {trimmed}
+        <div key={key++} className="lesson-formula-box my-2 overflow-x-auto text-xs sm:text-sm">
+          {inlineFormat(trimmed)}
         </div>
       );
       continue;
@@ -307,9 +329,18 @@ function formatContent(raw: string): React.ReactNode {
 }
 
 // ---------------------------------------------------------------------------
-// Inline formatter: **bold**, *italic*, `code`, ==highlight==
+// Inline formatter: **bold**, *italic*, `code`, ==highlight==, $math$
 // ---------------------------------------------------------------------------
 function inlineFormat(text: string): React.ReactNode {
+  // Mask math first so "*" or "==" inside a formula never reads as emphasis,
+  // and emphasis wrapped around a formula still parses.
+  const mathSources: string[] = [];
+  const masked = text.replace(LESSON_MATH_RE, (source) => `\uE000${mathSources.push(source) - 1}\uE001`);
+  const withMath = (segment: string): React.ReactNode =>
+    segment
+      .split(MATH_TOKEN_RE)
+      .map((piece, i) => (i % 2 === 1 ? renderLessonMath(mathSources[Number(piece)], i) : piece));
+
   const parts: React.ReactNode[] = [];
   // Order matters: bold before italic
   const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|==(.+?)==)/g;
@@ -317,37 +348,37 @@ function inlineFormat(text: string): React.ReactNode {
   let match: RegExpExecArray | null;
   let k = 0;
 
-  while ((match = regex.exec(text)) !== null) {
+  while ((match = regex.exec(masked)) !== null) {
     if (match.index > last) {
-      parts.push(<React.Fragment key={k++}>{text.slice(last, match.index)}</React.Fragment>);
+      parts.push(<React.Fragment key={k++}>{withMath(masked.slice(last, match.index))}</React.Fragment>);
     }
     if (match[2]) {
       // Clean, strong typography
       parts.push(
         <strong key={k++} className="font-bold text-slate-900 dark:text-white font-body">
-          {match[2]}
+          {withMath(match[2])}
         </strong>
       );
     } else if (match[3]) {
-      parts.push(<em key={k++} className="italic text-slate-600 dark:text-slate-400 font-body">{match[3]}</em>);
+      parts.push(<em key={k++} className="italic text-slate-600 dark:text-slate-400 font-body">{withMath(match[3])}</em>);
     } else if (match[4]) {
       parts.push(
         <code key={k++} className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-[0.85em] font-mono text-rose-600 dark:text-rose-400 border border-slate-200 dark:border-white/10 font-semibold">
-          {match[4]}
+          {match[4].replace(MATH_TOKEN_RE, (_, index: string) => mathSources[Number(index)])}
         </code>
       );
     } else if (match[5]) {
       parts.push(
         <mark key={k++} className="bg-amber-100 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 px-1 py-0.5 rounded font-bold border-b-2 border-amber-400">
-          {match[5]}
+          {withMath(match[5])}
         </mark>
       );
     }
     last = match.index + match[0].length;
   }
 
-  if (last < text.length) {
-    parts.push(<React.Fragment key={k++}>{text.slice(last)}</React.Fragment>);
+  if (last < masked.length) {
+    parts.push(<React.Fragment key={k++}>{withMath(masked.slice(last))}</React.Fragment>);
   }
 
   return parts.length > 0 ? <>{parts}</> : text;
@@ -948,7 +979,7 @@ function SectionRenderer({
                         )}>
                           {callout.type === 'important' ? 'Important Rule' : callout.type === 'tip' ? 'Pro Tip' : 'Key Note'}
                         </p>
-                        <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{calloutText}</p>
+                        <p className="font-body text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">{inlineFormat(calloutText)}</p>
                       </div>
                     </div>
                   );
@@ -991,7 +1022,7 @@ function SectionRenderer({
                     <p className="text-[9px] font-black uppercase tracking-wider text-rose-500 font-display">
                       Example {i + 1}
                     </p>
-                    <p className="font-body font-bold text-slate-800 text-xs sm:text-sm leading-snug">{example.problem}</p>
+                    <p className="font-body font-bold text-slate-800 text-xs sm:text-sm leading-snug">{inlineFormat(example.problem)}</p>
                   </div>
                 </div>
 
@@ -1002,8 +1033,8 @@ function SectionRenderer({
                     {example.steps.map((step, si) => {
                       const isFormulaStep = MATH_RE.test(step) && step.length < 100 && !/[a-z]{6,}/.test(step);
                       return isFormulaStep ? (
-                        <div key={si} className="lesson-formula-box my-1">
-                          {step}
+                        <div key={si} className="lesson-formula-box my-1 overflow-x-auto">
+                          {inlineFormat(step)}
                         </div>
                       ) : (
                         <div key={si} className="flex items-start gap-2">
@@ -1023,7 +1054,7 @@ function SectionRenderer({
                     <span className="px-2 py-0.5 bg-rose-600 rounded-md text-white text-[9px] font-black uppercase tracking-wider shrink-0 shadow-2xs">
                       Answer
                     </span>
-                    <p className="font-body text-slate-800 text-xs sm:text-sm font-bold">{example.answer}</p>
+                    <p className="font-body text-slate-800 text-xs sm:text-sm font-bold">{inlineFormat(example.answer)}</p>
                   </div>
                 )}
               </div>
