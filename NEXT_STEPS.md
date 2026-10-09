@@ -11,29 +11,30 @@ Two local branches, stacked. Neither is pushed and there is no PR: the user aske
    - `dd3ad30` the header **?** button asks "Play the <page> guide?" (**Play guide** / **Skip**) before it plays.
    - `de6b8fe` the Topic Mastery guide opens the Mastery Matrix tab when Module Availability was left open, and restores the teacher's tab afterwards.
    - `613badc` guides wait for pages that are still loading (`data-tour-loading` loaders, `data-tour-page` page containers), so a highlight never lands on a loading screen.
-2. `claude/responsiveness-optimization-4b76c0` (this worktree), on top of `claude/onboarding-tours`: responsive primitives, admin, teacher and student layout fixes, the layout guide and audit tooling, the fixes from the real-app teacher check, then the student daily check-in and dev-reset change.
+   - `da0bebd` only the full-screen loader hides a guide step that is already showing (a page's own loader under a phone menu no longer makes it flicker).
+2. `claude/responsiveness-optimization-4b76c0` (this worktree), on top of `claude/onboarding-tours`: responsive primitives, admin, teacher and student layout fixes, the layout guide and audit tooling, the fixes from the real-app teacher check, then two student commits: the daily check-in no longer closes on outside taps, the Modules page always offers "Claim Daily Reward" / "Check Daily Rewards", claimed days are now saved (they never were, also on `main`), past unclaimed days read "Missed", and the dev-only reset buttons are hidden (`VITE_SHOW_DEV_RESET=true` shows them).
 
 Merge in that order (onboarding first). A PR from the responsiveness branch alone would carry both.
 
 - Conventions, the measuring method, and every layout finding with before/after numbers: `docs/responsive-layout-guide.md`. Guide engine rules: `docs/student-onboarding-guide.md`. Evidence: `GATES.md` (INT, PGC, TMV, GLW, RESP and DCI sections).
-- Verified in the real app: student, teacher and admin pages at all eight sizes; touch sweeps at 390x844 and 768x1024; dialogs at 844x390 and 320x568; every student, teacher and admin page guide at phone (touch), landscape, tablet and desktop sizes; the student first-use guide and page guides after a fresh load with the new loading wait. The sign-in page was checked headless.
+- Verified in the real app: student, teacher and admin pages at all eight sizes; touch sweeps at 390x844 and 768x1024; dialogs at 844x390 and 320x568; every student, teacher and admin page guide at phone (touch), landscape, tablet and desktop sizes; the student, teacher and admin first-use guides and page guides after a fresh load with the new loading wait (1440x900 and 390x844 with touch). The sign-in page was checked headless.
 - Not verified in the real app:
-  - Teacher and admin guides with the new loading wait (`GLW3b`, ABANDON): the Browser pane session was reset on 2026-10-09 and both accounts are signed out.
   - Quiz Battle after the layout fixes (`RESP5b`, ABANDON). See "Testing notes".
   - The teacher Intervention Center (`RESP4b`, ABANDON). Opening it sends AI requests for the selected student (issue #313).
 
 ## Next
 
 1. **Sync with `main` before any PR.** `origin/main` is 71 commits ahead of our base (`5bbaa0e` on 2026-10-09). It removed AI Monitoring (`eb388c73`), which this branch restyled (expect conflicts in `src/pages/admin/AIMonitoringPage.tsx`; drop our changes there), and it contains its own leaderboard profile-modal close-button fix (`89fd4cfe`) that overlaps ours. Merge `main` into `claude/onboarding-tours` first, re-run its checks, then into this branch. Re-run the layout audit and guide runs on any page main changed.
-2. **Teacher and admin guide check (GLW3b).** Once the user signs in on `teacher.localhost:5174` and `127.0.0.1:5174`: in the app page run `await import('/.tmp/guide-walker.js')` (gitignored helper that drives frames from a message loop, because the hidden pane pauses them), then `__startWalk('[data-tour="replay"]')` from Settings for the first-use guide and `__runPageGuides([...labels])` for the page guides, at 1440x900 and at 390x844 with touch, after a fresh load. Flags to look for: `LOADING-VISIBLE`, `ON-LOADER`, `HIDDEN-AGAIN`, `NO-SPOTLIGHT`. If the helper is gone, `tests/browser/layout-audit-guides.js` in the audit frame does the same walk.
-3. **Quiz Battle check (RESP5b).** With a disposable student account (never a real student's), measure the hub, setup, match and results screens at all eight sizes. Opening the page resumes, and can start, that account's unfinished matches.
-4. **Intervention Center check (RESP4b)**, only with the user's go-ahead: `__runPlan` with a `click` step at all eight sizes, then `__touchSweep()` with touch on.
-5. **PR** only when the user asks. Ask before any force-push or replacing a remote branch.
+2. **Quiz Battle check (RESP5b).** With a disposable student account (never a real student's), measure the hub, setup, match and results screens at all eight sizes. Opening the page resumes, and can start, that account's unfinished matches.
+3. **Intervention Center check (RESP4b)**, only with the user's go-ahead: `__runPlan` with a `click` step at all eight sizes, then `__touchSweep()` with touch on.
+4. **PR** only when the user asks. Ask before any force-push or replacing a remote branch.
+
+The user asked on 2026-10-09 to keep further testing light; prefer unit tests and one targeted real-app check over full sweeps.
 
 ## Testing notes
 
 - The Browser pane preview uses a second dev server on 5174 (`.claude/launch.json`, gitignored). Claude must not type passwords (Firebase Auth is a remote identity provider), so the user signs in in the pane; sessions persist per origin (`localhost` student, `teacher.localhost` teacher, `127.0.0.1` admin) until the pane is reset.
-- The pane document is often hidden (`document.visibilityState === 'hidden'`), which pauses animation frames and throttles timers. The guide engine measures on animation frames, so real-app guide checks must run through the layout-audit frame or `.tmp/guide-walker.js`, both of which drive frames from a message loop.
+- The pane document is often hidden (`document.visibilityState === 'hidden'`), which pauses animation frames and throttles timers. The guide engine and page transitions run on animation frames, so real-app guide checks must run inside the layout-audit frame (its shim is installed before the app starts). `.tmp/guide-walker.js` and `.tmp/guide-trace.js` (gitignored) add a step walker and a step tracer; load them into the frame as module scripts.
 - Seed test accounts are defined in `scripts/seed-users.js` with plain-text passwords. Rotate them and move them out of the repo (issue #322).
 - **Quiz Battle:** opening `/battle` outside a guide resumes, and can start, the signed-in student's unfinished match (`resumeQuizBattleSession` and `startQuizBattleMatch` run on mount). Guides open it in preview, which skips that. Keep Quiz Battle out of audit plans on real accounts.
 - Vite reloads every open page when a watched file changes (docs and `GATES.md` included), or when a module the page imported changes. Don't edit files while an audit or guide run is going; results already saved to `localStorage` survive, but the audit page comes back with an empty frame, so call `__load('/')` before the next run.
@@ -60,3 +61,5 @@ Not filed, because `main` already fixed or removed them: AI Monitoring's endless
 Still open on these branches (not filed; they belong to this work):
 
 - Ordinary text buttons and form fields are 30–40px on touch (all ≥ 24px), for example Avatar Studio purchase buttons, Grades "Practice" links, the sign-in form, and Module Availability's Refresh Statuses, Configure and page-size controls. Raising them would change layouts beyond the responsiveness pass.
+- At 390x844 the guide walker read the sections list under the admin Class Management "Section totals" highlight (the stats sit above the list at that size). Not investigated; check the spotlight there before the PR.
+- Daily rewards claimed before the claimed-days fix are not recorded, so they show as "Missed" until the week resets (Monday, PHT).
