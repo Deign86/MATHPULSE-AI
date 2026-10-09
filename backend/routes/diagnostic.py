@@ -360,8 +360,9 @@ OUTPUT FORMAT (strict JSON array, no extra text, no markdown):
 
 async def _call_deepseek(system_prompt: str, user_message: str, temperature: float = 0.7) -> str:
     try:
-        client = get_deepseek_client()
-        response = client.chat.completions.create(
+        client = get_deepseek_client().with_options(timeout=90.0, max_retries=1)
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
             model=CHAT_MODEL,
             messages=[
                 {"role": "system", "content": system_prompt},
@@ -446,7 +447,7 @@ async def _generate_questions(
         except Exception:
             pass
     
-    rag_context = _build_rag_context(strand)
+    rag_context = await asyncio.to_thread(_build_rag_context, strand)
     system_prompt = _build_system_prompt(
         strand,
         grade_level,

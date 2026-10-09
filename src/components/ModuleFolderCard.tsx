@@ -202,13 +202,32 @@ interface ModuleStatusOverlayProps {
   onNotifyMe?: (moduleId: string) => void;
 }
 
+type ModulePreview = Awaited<ReturnType<typeof fetchModulePreview>>;
+
+// One AI preview request per module for the page session: every coming-soon card mounts this overlay,
+// and remounts (tab switches, grid re-renders) would otherwise re-run the AI call each time.
+// Failed previews (generated: false) are evicted so a later mount can try again.
+const modulePreviewCache = new Map<string, Promise<ModulePreview>>();
+
+function loadModulePreview(moduleId: string, moduleTitle: string, subject: string, quarter: number): Promise<ModulePreview> {
+  const cacheKey = JSON.stringify([moduleId, moduleTitle, subject, quarter]);
+  const cachedPreview = modulePreviewCache.get(cacheKey);
+  if (cachedPreview) return cachedPreview;
+  const pendingPreview = fetchModulePreview(moduleId, moduleTitle, subject, quarter).then((preview) => {
+    if (!preview.generated) modulePreviewCache.delete(cacheKey);
+    return preview;
+  });
+  modulePreviewCache.set(cacheKey, pendingPreview);
+  return pendingPreview;
+}
+
 const ModuleStatusOverlay: React.FC<ModuleStatusOverlayProps> = ({ moduleStatus, moduleId, moduleTitle, moduleSubject, moduleQuarter, onNotifyMe }) => {
   const [aiPreview, setAiPreview] = useState<string | null>(null);
 
   useEffect(() => {
     if (moduleStatus !== 'coming_soon' || !moduleId || !moduleTitle) return;
     let cancelled = false;
-    fetchModulePreview(moduleId, moduleTitle, moduleSubject || 'General Mathematics', moduleQuarter || 1)
+    loadModulePreview(moduleId, moduleTitle, moduleSubject || 'General Mathematics', moduleQuarter || 1)
       .then((r) => { if (!cancelled && r.generated) setAiPreview(r.ai_overview); })
       .catch((err) => {
         // Issue #159: progressive enhancement — the card renders fully without

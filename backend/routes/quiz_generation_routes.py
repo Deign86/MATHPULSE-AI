@@ -10,6 +10,7 @@ picks up the new content via RAG retrieval.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import random
 from typing import Any, Dict, List, Optional
@@ -340,7 +341,8 @@ async def generate_quiz(request: QuizGenerationRequest):
     try:
         # 1. Retrieve curriculum context via RAG
         query = request.lessonTitle or request.topic
-        chunks = retrieve_curriculum_context(
+        chunks = await asyncio.to_thread(
+            retrieve_curriculum_context,
             query=query,
             subject=request.subject,
             quarter=request.quarter,
@@ -395,9 +397,13 @@ async def generate_quiz(request: QuizGenerationRequest):
             max_new_tokens=6000,
             temperature=0.7,  # Higher temp for variance
             top_p=0.9,
+            timeout_sec=90,
+            max_retries=1,
         )
 
-        raw_response = _get_inference_client().generate_from_messages(inference_request)
+        raw_response = await asyncio.to_thread(
+            _get_inference_client().generate_from_messages, inference_request
+        )
 
         # 4. Parse response
         questions = _parse_quiz_response(raw_response, request.questionCount)

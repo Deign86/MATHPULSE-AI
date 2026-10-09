@@ -80,6 +80,7 @@ import {
   ApiError,
   apiFetch,
   fetchAnalysisCurriculumContext,
+  type DailyInsightRequest,
   type ImportedClassOverviewResponse,
   type LessonPlanResponse,
   type UploadResponse,
@@ -1282,44 +1283,43 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     };
   }, [currentUser]);
 
+  // The insight only depends on these fields; keying on their serialized form stops the AI call from
+  // refiring when `students` gets a new array reference with the same values (roster merges, snapshots).
+  const dailyInsightInputKey = useMemo(() => JSON.stringify(students.map((student) => ({
+    name: student.name || 'Student',
+    engagementScore: Number.isFinite(student.engagementScore) ? student.engagementScore : 0,
+    avgQuizScore: Number.isFinite(student.avgScore) ? student.avgScore : 0,
+    attendance: Number.isFinite(student.attendance) ? student.attendance : 0,
+    riskLevel: student.riskLevel || 'low',
+  }))), [students]);
+
   // Fetch AI daily insight when students data is available
   useEffect(() => {
-    if (students.length === 0) return;
+    // SAFETY: dailyInsightInputKey is JSON.stringify of the DailyInsightRequest student rows built above.
+    const studentData = JSON.parse(dailyInsightInputKey) as DailyInsightRequest['students'];
+    if (studentData.length === 0) return;
+    let active = true;
+    const highRiskCount = studentData.filter((s) => s.riskLevel === 'high').length;
+    const highRiskMessage = `${highRiskCount} students are at high risk of falling behind. Review their progress in the analytics view.`;
 
     const fetchInsight = async () => {
-      if (students.length === 0) {
-        setDailyInsight('');
-        return;
-      }
       setInsightLoading(true);
       try {
-        const studentData = students.map((student) => ({
-          name: student.name || 'Student',
-          engagementScore: Number.isFinite(student.engagementScore) ? student.engagementScore : 0,
-          avgQuizScore: Number.isFinite(student.avgScore) ? student.avgScore : 0,
-          attendance: Number.isFinite(student.attendance) ? student.attendance : 0,
-          riskLevel: student.riskLevel || 'low',
-        }));
         const { data, fromFallback } = await apiService.getDailyInsightSafe({ students: studentData });
-        if (fromFallback) {
-          const highRiskCount = students.filter((s) => s.riskLevel === 'high').length;
-          setDailyInsight(
-            highRiskCount > 0
-              ? `${highRiskCount} students are at high risk of falling behind. Review their progress in the analytics view.`
-              : data.insight,
-          );
-        } else {
-          setDailyInsight(data.insight);
-        }
+        if (!active) return;
+        setDailyInsight(fromFallback && highRiskCount > 0 ? highRiskMessage : data.insight);
       } catch {
-        setDailyInsight(`${students.filter((s) => s.riskLevel === 'high').length} students are at high risk of falling behind. Review their progress in the analytics view.`);
+        if (active) setDailyInsight(highRiskMessage);
       } finally {
-        setInsightLoading(false);
+        if (active) setInsightLoading(false);
       }
     };
 
-    fetchInsight();
-  }, [students]);
+    void fetchInsight();
+    return () => {
+      active = false;
+    };
+  }, [dailyInsightInputKey]);
 
   // Computed stats
   const totalStudents = resolvedClassCounts.totalStudents;
@@ -4541,10 +4541,13 @@ const InterventionView: React.FC<{
     return 'Foundational Mathematics';
   }, [student.weakestTopic, student.struggles]);
 
+  // Keyed on content, not the array reference: roster merges hand us a new `student` object with the same
+  // struggles, which would otherwise refire the AI learning-path request below.
+  const strugglesKey = (student.struggles || []).join('\u0000');
   const effectiveStruggles = useMemo(() => {
     const valid = (student.struggles || []).filter((s) => s && s !== 'N/A' && s.trim());
     return valid.length > 0 ? valid : [effectiveWeakestTopic];
-  }, [student.struggles, effectiveWeakestTopic]);
+  }, [strugglesKey, effectiveWeakestTopic]);
 
   const [interventionPlan, setInterventionPlan] = useState<InterventionPlan | null>(null);
   const [interventionTab, setInterventionTab] = useState<'overview' | 'path' | 'lesson'>('overview');
@@ -4683,6 +4686,7 @@ const InterventionView: React.FC<{
   }, [lessonPlan, learningPath, gradeDraft, sectionDraft, student.id, onCacheUpdate]);
 
   useEffect(() => {
+    let active = true;
     const fetchPath = async () => {
       setPathLoading(true);
       try {
@@ -4692,9 +4696,9 @@ const InterventionView: React.FC<{
             effectiveStruggles,
             'general_math',
           );
-          setAnalysisCurriculumContext(curriculumContext);
+          if (active) setAnalysisCurriculumContext(curriculumContext);
         } catch {
-          setAnalysisCurriculumContext('');
+          if (active) setAnalysisCurriculumContext('');
         }
 
         const response = await apiService.getLearningPath({
@@ -4702,19 +4706,24 @@ const InterventionView: React.FC<{
           gradeLevel: 'High School',
           subject: 'general_math',
         });
+        if (!active) return;
         const enrichedLearningPath = curriculumContext
           ? `${response.learningPath}\n\n${curriculumContext}`
           : response.learningPath;
         setLearningPath(enrichedLearningPath);
       } catch {
+        if (!active) return;
         setLearningPath('Unable to generate learning path. Please try again later.');
         setAnalysisCurriculumContext('');
       } finally {
-        setPathLoading(false);
+        if (active) setPathLoading(false);
       }
     };
-    fetchPath();
-  }, [student, effectiveStruggles]);
+    void fetchPath();
+    return () => {
+      active = false;
+    };
+  }, [student.id, effectiveStruggles]);
 
   const generateTargetedLessonPlan = useCallback(async () => {
     setLessonLoading(true);

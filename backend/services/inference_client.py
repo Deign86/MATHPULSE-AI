@@ -261,6 +261,7 @@ class InferenceRequest:
     repetition_penalty: float = 1.15
     timeout_sec: Optional[int] = None
     enable_thinking: bool = False
+    max_retries: Optional[int] = None
 
 
 class InferenceClient:
@@ -598,6 +599,7 @@ class InferenceClient:
                 top_p=req.top_p if req.top_p is not None else self.default_top_p,
                 repetition_penalty=req.repetition_penalty,
                 timeout_sec=req.timeout_sec,
+                max_retries=req.max_retries,
             )
 
             try:
@@ -721,6 +723,8 @@ class InferenceClient:
 
         timeout = self._timeout_for(req, "deepseek")
         max_retries, backoff_sec = self._retry_profile(task_type)
+        if req.max_retries is not None:
+            max_retries = max(1, req.max_retries)
 
         client = get_deepseek_client()
 
@@ -941,6 +945,8 @@ def rag_grounded_completion(
     system_prompt: str,
     user_prompt: str,
     temperature: float = 0.2,
+    timeout_sec: float = 60.0,
+    max_tokens: int = 4096,
 ) -> Optional[str]:
     """Call DeepSeek with retry on 429. Returns response text or None if disabled/failed."""
     if not is_enabled():
@@ -958,6 +964,8 @@ def rag_grounded_completion(
                     {"role": "user", "content": user_prompt},
                 ],
                 temperature=temperature,
+                max_tokens=max_tokens,
+                timeout=timeout_sec,
             )
             usage = response.usage
             if usage:

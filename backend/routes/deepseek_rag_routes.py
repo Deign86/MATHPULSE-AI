@@ -6,6 +6,7 @@ Feature 2: AI preview for coming_soon modules
 Feature 3: Personalized study tips per flagged topic
 """
 
+import asyncio
 import json
 import logging
 from typing import Optional
@@ -117,16 +118,20 @@ async def detect_weaknesses(req: WeaknessDetectionRequest):
 
     # RAG retrieval
     topic_names = list({q.topic_id for q in req.questions if q.topic_id in rule_flagged})
-    rag_chunks = build_analysis_curriculum_context(weak_topics=topic_names, subject=req.subject)
+    def _retrieve_weakness_chunks() -> list:
+        collected = build_analysis_curriculum_context(weak_topics=topic_names, subject=req.subject)
+        for topic_name in topic_names:
+            collected.extend(
+                retrieve_curriculum_context(
+                    query=f"DepEd learning competency for {topic_name}",
+                    subject=req.subject,
+                    chunk_type="learning_competency",
+                    top_k=3,
+                )
+            )
+        return collected
 
-    for topic_name in topic_names:
-        chunks = retrieve_curriculum_context(
-            query=f"DepEd learning competency for {topic_name}",
-            subject=req.subject,
-            chunk_type="learning_competency",
-            top_k=3,
-        )
-        rag_chunks.extend(chunks)
+    rag_chunks = await asyncio.to_thread(_retrieve_weakness_chunks)
 
     rag_context = format_retrieved_chunks(rag_chunks)
 
@@ -148,7 +153,10 @@ async def detect_weaknesses(req: WeaknessDetectionRequest):
     )
 
     try:
-        raw = rag_grounded_completion(REASONER_MODEL, system_prompt, user_prompt, temperature=0.1)
+        raw = await asyncio.to_thread(
+            rag_grounded_completion, REASONER_MODEL, system_prompt, user_prompt,
+            temperature=0.1, timeout_sec=120.0, max_tokens=8192,
+        )
         parsed = parse_json_response(raw)
     except Exception as exc:
         logger.warning(f"RAG grounded completion failed for weakness detection: {exc}, falling back to rule-based with Jev mastery")
@@ -215,7 +223,8 @@ async def generate_module_preview(req: ModulePreviewRequest):
         subject=req.subject,
         quarter=req.quarter,
     )
-    chunks, _ = retrieve_lesson_pdf_context(
+    chunks, _ = await asyncio.to_thread(
+        retrieve_lesson_pdf_context,
         topic=req.module_title,
         subject=req.subject,
         quarter=req.quarter,
@@ -240,7 +249,10 @@ async def generate_module_preview(req: ModulePreviewRequest):
         "curriculum evidence above."
     )
 
-    raw = rag_grounded_completion(CHAT_MODEL, system_prompt, user_prompt, temperature=0.3)
+    raw = await asyncio.to_thread(
+        rag_grounded_completion, CHAT_MODEL, system_prompt, user_prompt,
+        temperature=0.3, timeout_sec=45.0, max_tokens=600,
+    )
 
     if not raw:
         return ModulePreviewResponse(ai_overview="", rag_confidence=band, generated=False)
@@ -278,27 +290,30 @@ async def generate_study_tips(req: StudyTipsRequest):
         return StudyTipsResponse(tips="", generated=False, confidence_score=req.confidence_score)
 
     # RAG retrieval: practice chunks
-    practice_chunks = retrieve_curriculum_context(
-        query=f"study tips practice exercises for {req.topic_name}",
-        subject=req.subject,
-        chunk_type="practice",
-        top_k=4,
-    )
-    # Fallback if no practice chunks found
-    if not practice_chunks:
-        practice_chunks = retrieve_curriculum_context(
+    def _retrieve_tip_chunks() -> tuple[list, list]:
+        practice = retrieve_curriculum_context(
             query=f"study tips practice exercises for {req.topic_name}",
             subject=req.subject,
+            chunk_type="practice",
             top_k=4,
         )
+        # Fallback if no practice chunks found
+        if not practice:
+            practice = retrieve_curriculum_context(
+                query=f"study tips practice exercises for {req.topic_name}",
+                subject=req.subject,
+                top_k=4,
+            )
+        # Worked examples
+        examples = retrieve_curriculum_context(
+            query=f"worked examples for {req.topic_name}",
+            subject=req.subject,
+            chunk_type="worked_examples",
+            top_k=2,
+        )
+        return practice, examples
 
-    # Worked examples
-    example_chunks = retrieve_curriculum_context(
-        query=f"worked examples for {req.topic_name}",
-        subject=req.subject,
-        chunk_type="worked_examples",
-        top_k=2,
-    )
+    practice_chunks, example_chunks = await asyncio.to_thread(_retrieve_tip_chunks)
 
     # Merge and deduplicate
     seen_keys: set[str] = set()
@@ -324,7 +339,10 @@ async def generate_study_tips(req: StudyTipsRequest):
         "context above. Be direct and student-friendly."
     )
 
-    raw = rag_grounded_completion(CHAT_MODEL, system_prompt, user_prompt, temperature=0.4)
+    raw = await asyncio.to_thread(
+        rag_grounded_completion, CHAT_MODEL, system_prompt, user_prompt,
+        temperature=0.4, timeout_sec=45.0, max_tokens=800,
+    )
 
     if not raw:
         return StudyTipsResponse(tips="", generated=False, confidence_score=req.confidence_score)

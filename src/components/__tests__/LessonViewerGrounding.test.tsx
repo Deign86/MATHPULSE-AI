@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import LessonViewer from '../LessonViewer';
 import type { User, UserRole } from '../../types/models';
 import type { CurriculumSource } from '../../types/curriculum';
@@ -184,6 +184,69 @@ describe('Issue #164: Curriculum Grounding Evidence role gating', () => {
     expect(screen.queryByRole('region', { name: 'Merrill micro-lesson' })).toBeNull();
     expect(screen.getByText('AI lesson unavailable')).toBeInTheDocument();
     expect(screen.getByText(/showing the DepEd source PDF/i)).toBeInTheDocument();
+  });
+
+  it('announces the lesson generation stage while loading', () => {
+    setRole('student');
+    renderLessonViewer({ ...stubLessonContent, sections: [], isLoading: true, stage: 'retrieving' });
+
+    const stageLine = screen.getByText('Finding curriculum sources…');
+    expect(stageLine.closest('[aria-live="polite"]')).not.toBeNull();
+  });
+
+  describe('next-lesson prefetch (contract C4)', () => {
+    const nextLesson = { ...lesson, id: 'gm-q1-l3', title: 'Compound Interest' };
+    const fetchStub = vi.fn();
+    const prefetchUrls = () => fetchStub.mock.calls.map((call) => String(call[0])).filter((url) => url.endsWith('/prefetch'));
+
+    function renderFetching() {
+      return render(
+        <AuthContext.Provider value={buildTestAuthContext(activeProfile)}>
+          <LessonViewer lesson={lesson} nextLesson={nextLesson} onBack={vi.fn()} onComplete={vi.fn()} />
+        </AuthContext.Provider>
+      );
+    }
+
+    beforeEach(() => {
+      sessionStorage.clear();
+      fetchStub.mockReset();
+      vi.stubGlobal('fetch', fetchStub);
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it('prefetches the next lesson after a student lesson loads', async () => {
+      setRole('student');
+      fetchStub.mockImplementation(async (url: string) => (url.endsWith('/prefetch')
+        ? new Response('{"status":"queued"}', { status: 202 })
+        : new Response(JSON.stringify(stubLessonContent), { status: 200, headers: { 'Content-Type': 'application/json' } })));
+      renderFetching();
+
+      await waitFor(() => expect(prefetchUrls()).toHaveLength(1));
+      const prefetchCall = fetchStub.mock.calls.find((call) => String(call[0]).endsWith('/prefetch'));
+      expect(JSON.parse(String(prefetchCall?.[1]?.body)).lessonId).toBe('gm-q1-l3');
+    });
+
+    it('does not prefetch when the current lesson fails to load', async () => {
+      setRole('student');
+      fetchStub.mockImplementation(async () => new Response('boom', { status: 500, statusText: 'Server Error' }));
+      renderFetching();
+
+      await screen.findByText('AI lesson unavailable');
+      expect(prefetchUrls()).toHaveLength(0);
+    });
+
+    it('does not prefetch for initialContent previews', () => {
+      setRole('student');
+      render(
+        <AuthContext.Provider value={buildTestAuthContext(activeProfile)}>
+          <LessonViewer lesson={lesson} nextLesson={nextLesson} initialContent={stubLessonContent} onBack={vi.fn()} onComplete={vi.fn()} />
+        </AuthContext.Provider>
+      );
+      expect(prefetchUrls()).toHaveLength(0);
+    });
   });
 
   it('returns to the lesson after lesson quiz generation fails', async () => {

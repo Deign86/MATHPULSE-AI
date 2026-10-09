@@ -458,6 +458,7 @@ const ModuleDetailView: React.FC<ModuleDetailViewProps> = ({ module, onBack, onE
           practiceQuizCompleted={practiceQuizCompleted}
           initialSection={selectedLesson.returnFromQuiz ? -1 : 0}
           nextContentLabel={nextContentLabel}
+          nextLesson={currentIdx !== -1 ? module.lessons.at(currentIdx + 1) : undefined}
           onBack={handleBack}
           onStartPractice={() => handleStartPractice(selectedLesson.lesson)}
           onComplete={handleComplete}

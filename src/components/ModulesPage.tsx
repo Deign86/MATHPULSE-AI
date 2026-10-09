@@ -708,8 +708,12 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     setSearchQuery('');
   };
 
+  // Profile snapshots (XP updates etc.) rebuild the risk-topic arrays with identical content; key the
+  // AI context request on the topics themselves so it does not refire on every snapshot.
+  const riskTopicsKey = normalizedRiskTopics.join('|');
   useEffect(() => {
     if (activeTab !== 'recommended' || normalizedRiskTopics.length === 0) return;
+    let cancelled = false;
     setLearningPath({ status: 'loading' });
 
     getRagAnalysisContext({
@@ -718,15 +722,18 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
       userId: userProfile?.uid,
     })
       .then((res) => {
-        setLearningPath({ status: 'ready', context: res.curriculumContext });
+        if (!cancelled) setLearningPath({ status: 'ready', context: res.curriculumContext });
       })
       .catch((err) => {
         // Issue #159: visible fallback already handled — the panel renders the
         // idle state below. Warn so RAG outages stay visible in telemetry.
         console.warn('[ModulesPage] learning-path context failed, showing idle:', err);
-        setLearningPath(IDLE_LEARNING_PATH);
+        if (!cancelled) setLearningPath(IDLE_LEARNING_PATH);
       });
-  }, [activeTab, normalizedRiskTopics]);
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, riskTopicsKey]);
 
   const handleQuizComplete = (score: number, xpEarned: number) => {
     if (onEarnXP) {
