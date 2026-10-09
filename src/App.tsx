@@ -1234,7 +1234,7 @@ const App = ({ authOverride }: AppProps = {}) => {
     <NotificationProvider>
     <>
     <ChatProvider>
-      <div className="flex h-dvh w-full bg-[#f8faff] overflow-hidden">
+      <div className="flex h-dvh w-full bg-[#f8faff] overflow-hidden pl-safe pr-safe">
         {/* Desktop Sidebar */}
         {!isInQuizMode && (
           <div className="hidden lg:block h-full shrink-0 relative z-20">
@@ -1286,27 +1286,27 @@ const App = ({ authOverride }: AppProps = {}) => {
 
         {/* Main Content */}
         <div className={`flex-1 min-h-0 flex flex-col min-w-0 ${activeTab === 'Quiz Battle' ? 'bg-[#0B0F19]' : 'bg-gradient-to-br from-[#f8faff] via-[#f1f5fd] to-[#f5f0fc] dark:from-[#050d18] dark:via-[#0c1527] dark:to-[#120e24] shadow-[rgba(124,58,237,0.04)_0px_0px_30px_inset]'} relative z-10 overflow-hidden`}>
-          {/* Ambient glowing gradient orbs */}
+          {/* Ambient glowing gradient orbs, clipped so they never make the shell scrollable sideways */}
           {activeTab !== 'Quiz Battle' && (
-            <>
+            <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none">
               <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-bl from-purple-200/30 via-indigo-100/20 to-transparent rounded-full blur-3xl pointer-events-none -translate-y-1/3 translate-x-1/4" />
               <div className="absolute bottom-0 left-0 w-[450px] h-[450px] bg-gradient-to-tr from-sky-200/25 via-purple-100/15 to-transparent rounded-full blur-3xl pointer-events-none translate-y-1/3 -translate-x-1/4" />
               <div className="absolute inset-0 bg-math-pattern opacity-10 mix-blend-overlay pointer-events-none z-0" />
-            </>
+            </div>
           )}
 
           <OnlineOfflineBanner />
 
           {/* Invisible Universal Student Header Bar — Clean & Floating */}
           {!isInQuizMode && (
-            <header data-tour-sticky="" className={`w-full px-3 sm:px-6 lg:px-8 xl:px-12 pt-2.5 sm:pt-3.5 lg:pt-4 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
+            <header data-tour-sticky="" className={`w-full px-3 sm:px-6 lg:px-8 xl:px-12 pt-2.5 sm:pt-3.5 lg:pt-4 short:pt-1 pb-1 sm:pb-1.5 shrink-0 z-30 bg-transparent ${activeTab === 'Quiz Battle' ? 'absolute top-0 left-0 right-0 pointer-events-none [&_button]:pointer-events-auto [&_a]:pointer-events-auto' : ''}`}>
               <div className="max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full flex items-center justify-between gap-2">
                 {/* Upper Left: Level Badge & XP Counter */}
                 <div data-tour="level" className="flex items-center gap-1.5 sm:gap-2 min-w-0">
                   <button
                     type="button"
                     onClick={() => setActiveModal('rewards')}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-gradient-to-b from-rose-50 to-rose-100/90 border border-rose-200/80 shadow-[0_2px_0_#fecdd3,0_3px_8px_rgba(244,63,94,0.08)] active:translate-y-[1px] active:shadow-none hover:bg-rose-50 transition-all shrink-0 cursor-pointer"
+                    className="relative flex items-center gap-1.5 px-2.5 py-1 rounded-xl pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 bg-gradient-to-b from-rose-50 to-rose-100/90 border border-rose-200/80 shadow-[0_2px_0_#fecdd3,0_3px_8px_rgba(244,63,94,0.08)] active:translate-y-[1px] active:shadow-none hover:bg-rose-50 transition-all shrink-0 cursor-pointer"
                     title="Level Progress"
                     aria-label={`Level ${userLevel}`}
                   >
@@ -1317,7 +1317,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                 <button
                   type="button"
                   onClick={() => setActiveModal('rewards')}
-                  className="hidden min-[360px]:flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 rounded-xl bg-gradient-to-b from-violet-50 to-violet-100/90 border border-violet-200/80 shadow-[0_2px_0_#ddd6fe,0_3px_8px_rgba(139,92,246,0.1)] active:translate-y-[1px] active:shadow-none hover:bg-violet-50 transition-all shrink-0 cursor-pointer"
+                  className="relative hidden min-[360px]:flex items-center gap-1.5 sm:gap-2 px-2.5 py-1 rounded-xl pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-2.5 bg-gradient-to-b from-violet-50 to-violet-100/90 border border-violet-200/80 shadow-[0_2px_0_#ddd6fe,0_3px_8px_rgba(139,92,246,0.1)] active:translate-y-[1px] active:shadow-none hover:bg-violet-50 transition-all shrink-0 cursor-pointer"
                   title={`${progressXPInLevel}/${xpToNextLevel} XP`}
                   aria-label={`XP: ${displayXP}`}
                 >
@@ -1330,7 +1330,7 @@ const App = ({ authOverride }: AppProps = {}) => {
               </div>
 
               {/* Upper Right: Calculator, Notification Bell (All), Profile Avatar (Tablet & Desktop: md: and up) */}
-              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 pointer-coarse:gap-2 shrink-0">
                 <InstallPwaButton />
 
                 {userRole === 'student' && (
@@ -1342,7 +1342,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                     <button
                       type="button"
                       data-tour="page-guide"
-                      className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/80 border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:border-purple-200/80 text-slate-700 dark:text-slate-100 hover:text-purple-600 transition-all flex items-center justify-center cursor-pointer active:scale-95"
+                      className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 backdrop-blur-xl bg-white/70 dark:bg-slate-900/80 border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:border-purple-200/80 text-slate-700 dark:text-slate-100 hover:text-purple-600 transition-all flex items-center justify-center cursor-pointer active:scale-95"
                       title="Guide for this page"
                       aria-label="Guide for this page"
                     >
@@ -1354,7 +1354,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                 <button
                   type="button"
                   onClick={() => setActiveModal(prev => prev === 'calculator' ? null : 'calculator')}
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/80 border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:shadow-[0_6px_20px_rgba(14,165,233,0.18)] hover:border-sky-200/80 text-slate-700 dark:text-slate-100 hover:text-sky-500 transition-all flex items-center justify-center cursor-pointer active:scale-95"
+                  className="relative w-9 h-9 sm:w-10 sm:h-10 rounded-2xl pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 backdrop-blur-xl bg-white/70 dark:bg-slate-900/80 border border-white/80 dark:border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] hover:bg-white/90 hover:shadow-[0_6px_20px_rgba(14,165,233,0.18)] hover:border-sky-200/80 text-slate-700 dark:text-slate-100 hover:text-sky-500 transition-all flex items-center justify-center cursor-pointer active:scale-95"
                   title="Scientific Calculator"
                   aria-label="Scientific Calculator"
                 >
@@ -1362,7 +1362,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                 </button>
 
                 <Suspense fallback={compactControlFallback}>
-                  <div data-tour="notifications" className="scale-90 origin-center">
+                  <div data-tour="notifications" className="scale-90 origin-center max-sm:pointer-coarse:scale-100">
                     <NotificationBell />
                   </div>
                 </Suspense>
@@ -1373,7 +1373,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                     <DropdownMenuTrigger asChild>
                       <button
                         type="button"
-                        className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-purple-400 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-purple-500"
+                        className="w-9 h-9 sm:w-10 sm:h-10 pointer-coarse:w-11 pointer-coarse:h-11 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-purple-400 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-purple-500"
                         data-tour-group="Profile"
                         aria-label={`Profile menu: ${profileData.name}`}
                       >
@@ -1432,7 +1432,7 @@ const App = ({ authOverride }: AppProps = {}) => {
           {/* Main Content Area */}
           <main
             ref={scrollContainerRef}
-            className={`flex-1 min-h-0 ${activeTab === 'AI Chat' ? 'overflow-hidden p-0 pb-[4.5rem] lg:pb-0' : activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : activeTab === 'Leaderboard' ? 'overflow-y-auto lg:overflow-hidden p-0 pb-28 sm:pb-32 lg:pb-0' : activeTab === 'Quiz Battle' ? 'overflow-y-auto p-0 pb-28 sm:pb-32 lg:pb-8' : 'pt-1 sm:pt-2 overflow-y-auto pb-28 sm:pb-32 lg:pb-8'}`}
+            className={`@container flex-1 min-h-0 ${activeTab === 'AI Chat' ? 'overflow-hidden p-0 pb-[4.5rem] lg:pb-0' : activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'overflow-hidden p-0' : activeTab === 'Leaderboard' ? 'overflow-y-auto xl:overflow-hidden p-0 pb-28 sm:pb-32 lg:pb-28 xl:pb-0' : activeTab === 'Quiz Battle' ? 'overflow-y-auto p-0 pb-28 sm:pb-32 lg:pb-8' : 'pt-1 sm:pt-2 overflow-y-auto pb-28 sm:pb-32 lg:pb-28'}`}
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -1442,7 +1442,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' || activeTab === 'Leaderboard' ? 'h-full min-h-0' : activeTab === 'Quiz Battle' ? 'min-h-full flex flex-col' : ''}
+                className={activeTab === 'AI Chat' || activeTab === 'Modules' || activeTab === 'Avatar Studio' ? 'h-full min-h-0' : activeTab === 'Leaderboard' ? 'min-h-full xl:h-full xl:min-h-0' : activeTab === 'Quiz Battle' ? 'min-h-full flex flex-col' : ''}
               >
                 {/* Per-route boundary (issue #159 item 5): a crash in one tab
                     shows a retry card instead of the app-wide fallback. */}
@@ -1453,7 +1453,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                 {activeTab === 'Dashboard' ? (
                   <div className="px-5 sm:px-8 xl:px-12 py-1.5 sm:py-2.5 lg:py-3 flex flex-col gap-3 sm:gap-4 lg:gap-4.5 max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto w-full">
                     <div className="grid grid-cols-12 gap-4 sm:gap-6 lg:gap-10">
-                      <div className="col-span-12 xl:col-span-9 flex flex-col gap-4 sm:gap-5 md:gap-6 lg:gap-8 pt-0">
+                      <div className="col-span-12 xl:col-span-8 2xl:col-span-9 flex flex-col gap-4 sm:gap-5 md:gap-6 lg:gap-8 pt-0">
 
                         <Suspense fallback={dashboardPanelFallback}>
                           <HeroBanner
@@ -1702,7 +1702,7 @@ const App = ({ authOverride }: AppProps = {}) => {
                         )}
                       </div>
 
-                      <div className="hidden xl:block xl:col-span-3 pt-0">
+                      <div className="hidden xl:block xl:col-span-4 2xl:col-span-3 pt-0">
                         {dashboardShellDeferredReady ? (
                           <Suspense fallback={dashboardPanelFallback}>
                             <RightSidebar

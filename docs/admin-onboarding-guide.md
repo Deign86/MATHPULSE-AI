@@ -11,7 +11,7 @@ The admin guide reuses the shared engine (`GuidedTour`), the role-scoped hook (`
 
 ## Safety
 
-The guide only shows screens; the overlay blocks every click. Several admin controls write immediately, often without confirmation, so the guide explains them and never presses them: the **Maintenance** switch (locks the whole platform), subject availability switches, user activation and bulk actions (role, status, password reset), teacher assignment, file deletes, Deploy Knowledge Source, Rebuild Knowledge and Clear All, AI Monitoring Refresh, exports, and theme cards (live preview). The guide never uses the Overview "Add Faculty or Student" shortcut, because it auto-opens the create-user dialog.
+The guide only shows screens; the overlay blocks every click. Several admin controls write immediately, often without confirmation, so the guide explains them and never presses them: the **Maintenance** switch (locks the whole platform), subject availability switches, user activation and bulk actions (role, status, password reset), teacher assignment, file deletes, Deploy Knowledge Source, Rebuild Knowledge and Clear All, exports, and theme cards (live preview). The guide never uses the Overview "Add Faculty or Student" shortcut, because it auto-opens the create-user dialog.
 
 ## Files
 

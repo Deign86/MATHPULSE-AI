@@ -117,7 +117,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
   };
 
   return (
-    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 lg:space-y-6 pb-28 sm:pb-32 lg:pb-8 min-h-[calc(100vh-80px)]">
+    <div className="w-full max-w-7xl 2xl:max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6 space-y-5 lg:space-y-6 pb-28 sm:pb-32 lg:pb-8">
       {/* Top Header & Navigation Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -149,7 +149,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div data-tour="teacher-profile-actions" className="flex items-center gap-2 self-end sm:self-auto">
+        <div data-tour="teacher-profile-actions" className="flex flex-wrap justify-end items-center gap-2 self-end sm:self-auto">
           {!isEditMode ? (
             <Button
               type="button"
@@ -216,9 +216,9 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
       </div>
 
       {/* Main 2-Column Responsive Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 lg:gap-8 items-start">
         {/* Left Column: Interactive Teacher ID Pass */}
-        <div className="lg:col-span-5 xl:col-span-4 flex flex-col items-center gap-4">
+        <div className="xl:col-span-5 2xl:col-span-4 flex flex-col items-center gap-4">
           <TeacherIDCard
             profileData={accountData}
             onPhotoUploaded={handlePhotoUploaded}
@@ -251,7 +251,7 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
         </div>
 
         {/* Right Column: Faculty Profile Details Form */}
-        <div className="lg:col-span-7 xl:col-span-8 space-y-6">
+        <div className="xl:col-span-7 2xl:col-span-8 space-y-6">
           <div data-tour="teacher-profile-info" className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xs">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 dark:border-slate-800 pb-4 mb-6">
               <div>

@@ -437,13 +437,13 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
         <button
           type="button"
           onClick={() => handleTabSwitch('mastery')}
-          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-display font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 pointer-coarse:min-h-11 rounded-full text-xs sm:text-sm font-display font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
             currentTab === 'mastery'
               ? 'bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white shadow-sm shadow-purple-500/25 ring-1 ring-white/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/70'
           }`}
         >
-          <BarChart3 size={15} className="shrink-0" />
+          <BarChart3 size={15} className="hidden sm:block shrink-0" />
           <span className="sm:hidden">Mastery Matrix</span>
           <span className="hidden sm:inline">Student Mastery Matrix</span>
         </button>
@@ -451,13 +451,13 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
         <button
           type="button"
           onClick={() => handleTabSwitch('availability')}
-          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full text-xs sm:text-sm font-display font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+          className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 px-3.5 sm:px-5 py-1.5 sm:py-2 pointer-coarse:min-h-11 rounded-full text-xs sm:text-sm font-display font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
             currentTab === 'availability'
               ? 'bg-gradient-to-r from-violet-600 via-indigo-600 to-purple-600 text-white shadow-sm shadow-purple-500/25 ring-1 ring-white/20'
               : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 dark:text-slate-400 dark:hover:text-slate-200 dark:hover:bg-slate-800/70'
           }`}
         >
-          <BookOpen size={15} className="shrink-0" />
+          <BookOpen size={15} className="hidden sm:block shrink-0" />
           <span className="sm:hidden">Module Availability</span>
           <span className="hidden sm:inline">Module Availability & Materials</span>
         </button>
@@ -468,7 +468,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
       ) : (
         <>
           {/* Search & Filters Row */}
-          <div data-tour="mastery-filters" className="flex flex-col md:flex-row gap-2.5 sm:gap-4">
+          <div data-tour="mastery-filters" className="flex flex-col @4xl:flex-row gap-2.5 sm:gap-4">
             {classOptions.length > 0 && (
               <label className="sr-only" htmlFor="topic-mastery-class">Class section</label>
             )}
@@ -486,18 +486,19 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 ))}
               </select>
             )}
-            <div className="flex items-center bg-white px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full md:w-64">
+            <label className="flex items-center bg-white px-3.5 sm:px-4 py-2 sm:py-2.5 pointer-coarse:min-h-11 rounded-[12px] shadow-[0_1px_4px_rgba(0,0,0,0.02)] border border-[#e2e8f0] group focus-within:ring-2 focus-within:ring-indigo-500/20 transition-all w-full @4xl:w-64 cursor-text">
               <Search size={15} className="text-[#64748b] shrink-0 group-focus-within:text-[#4f46e5] transition-colors" />
               <input
                 type="text"
                 placeholder="Search topics..."
+                aria-label="Search topics"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="bg-transparent border-none focus:outline-none ml-2 text-xs sm:text-[13px] w-full text-[#475569] placeholder:text-[#94a3b8]"
               />
-            </div>
-            <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full md:w-auto md:flex md:items-center">
-              <div className="relative w-full md:w-48">
+            </label>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3 w-full @4xl:w-auto @4xl:flex @4xl:items-center">
+              <div className="relative w-full @4xl:w-48">
                 <select
                   value={subjectFilter}
                   onChange={(e) => setSubjectFilter(e.target.value)}
@@ -510,7 +511,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 </select>
                 <ChevronDown size={14} className="text-[#64748b] absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
-              <div className="relative w-full md:w-48">
+              <div className="relative w-full @4xl:w-48">
                 <select
                   value={gradeFilter}
                   onChange={(e) => setGradeFilter(e.target.value)}
@@ -527,7 +528,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
           </div>
 
           {/* 4 Stats Cards */}
-          <div data-tour="mastery-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+          <div data-tour="mastery-kpis" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-4">
             <TeacherStatCard
               color="purple"
               title="Total Topics"
@@ -613,7 +614,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
 
         {/* Selection & Pagination Sub-Header Bar (Card Style) */}
         <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50/90 rounded-2xl border border-slate-200/80 mb-3 text-xs shadow-2xs">
-          <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-600 uppercase tracking-wider text-[11px] select-none">
+          <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-600 uppercase tracking-wider text-[11px] select-none pointer-coarse:py-3.5 pointer-coarse:-my-3.5">
             <input
               type="checkbox"
               checked={filteredTopics.length > 0 && paginatedTopics.length > 0 && paginatedTopics.every(t => selectedTopics.has(t.topicName))}
@@ -632,7 +633,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={validCurrentPage <= 1}
-                className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                className="w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
                 aria-label="Previous Page"
               >
                 <ChevronLeft size={14} />
@@ -644,7 +645,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 type="button"
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={validCurrentPage >= totalPages}
-                className="w-7 h-7 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                className="w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg flex items-center justify-center bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
                 aria-label="Next Page"
               >
                 <ChevronRight size={14} />
@@ -690,17 +691,20 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
 
                   {/* Card Header: Checkbox + Icon + Title */}
                   <div className="flex items-start gap-3 pl-1.5">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => {
-                        const next = new Set(selectedTopics);
-                        if (isSelected) next.delete(topic.topicName);
-                        else next.add(topic.topicName);
-                        setSelectedTopics(next);
-                      }}
-                      className="mt-1 rounded text-violet-600 focus:ring-violet-500 w-4 h-4 border-slate-300 cursor-pointer shrink-0"
-                    />
+                    <label className="flex shrink-0 cursor-pointer pointer-coarse:-m-3 pointer-coarse:p-3">
+                      <input
+                        type="checkbox"
+                        aria-label={`Select ${topic.topicName}`}
+                        checked={isSelected}
+                        onChange={() => {
+                          const next = new Set(selectedTopics);
+                          if (isSelected) next.delete(topic.topicName);
+                          else next.add(topic.topicName);
+                          setSelectedTopics(next);
+                        }}
+                        className="mt-1 rounded text-violet-600 focus:ring-violet-500 w-4 h-4 pointer-coarse:w-5 pointer-coarse:h-5 border-slate-300 cursor-pointer shrink-0"
+                      />
+                    </label>
 
                     <div className="relative shrink-0">
                       <div className="w-10 h-10 rounded-full bg-violet-50 border border-violet-100 flex items-center justify-center text-violet-600">
@@ -807,12 +811,15 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
               {/* Header Row */}
               <div className="bg-[#9956DE] grid grid-cols-12 gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-2.5 border-b border-[#8b5cf6] items-center text-[10px] sm:text-[11px] font-bold text-white tracking-wider uppercase shadow-xs relative z-10 min-h-[38px] sm:h-11">
                 <div className="col-span-1 flex justify-center">
-                  <input
-                    type="checkbox"
-                    checked={filteredTopics.length > 0 && paginatedTopics.length > 0 && paginatedTopics.every(t => selectedTopics.has(t.topicName))}
-                    onChange={toggleSelectCurrentPage}
-                    className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3.5 h-3.5 sm:w-4 sm:h-4 border-white/30 bg-white/10 cursor-pointer"
-                  />
+                  <label className="flex cursor-pointer pointer-coarse:-m-3 pointer-coarse:p-3">
+                    <input
+                      type="checkbox"
+                      aria-label="Select all topics on this page"
+                      checked={filteredTopics.length > 0 && paginatedTopics.length > 0 && paginatedTopics.every(t => selectedTopics.has(t.topicName))}
+                      onChange={toggleSelectCurrentPage}
+                      className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3.5 h-3.5 sm:w-4 sm:h-4 pointer-coarse:w-5 pointer-coarse:h-5 border-white/30 bg-white/10 cursor-pointer"
+                    />
+                  </label>
                 </div>
                 <div 
                   className="col-span-3 flex items-center gap-1 cursor-pointer hover:text-white/80 select-none"
@@ -879,17 +886,20 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                         className={`grid grid-cols-12 gap-3 sm:gap-4 px-3 sm:px-4 py-2 sm:py-3 border-b border-[#f1f5f9] items-center hover:bg-slate-50/80 transition-colors group ${rowBg} ${topic.isExcluded ? 'line-through decoration-slate-400' : ''}`}
                       >
                         <div className="col-span-1 flex justify-center">
-                          <input
-                            type="checkbox"
-                            checked={isSelected}
-                            onChange={() => {
-                              const next = new Set(selectedTopics);
-                              if (isSelected) next.delete(topic.topicName);
-                              else next.add(topic.topicName);
-                              setSelectedTopics(next);
-                            }}
-                            className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3.5 h-3.5 sm:w-4 sm:h-4 border-gray-300 cursor-pointer"
-                          />
+                          <label className="flex cursor-pointer pointer-coarse:-m-3 pointer-coarse:p-3">
+                            <input
+                              type="checkbox"
+                              aria-label={`Select ${topic.topicName}`}
+                              checked={isSelected}
+                              onChange={() => {
+                                const next = new Set(selectedTopics);
+                                if (isSelected) next.delete(topic.topicName);
+                                else next.add(topic.topicName);
+                                setSelectedTopics(next);
+                              }}
+                              className="rounded text-[#4f46e5] focus:ring-[#4f46e5] w-3.5 h-3.5 sm:w-4 sm:h-4 pointer-coarse:w-5 pointer-coarse:h-5 border-gray-300 cursor-pointer"
+                            />
+                          </label>
                         </div>
                         <div className="col-span-3 flex flex-col sm:flex-row sm:items-center gap-1.5 pr-2 min-w-0">
                           <span className="font-semibold text-[#1e293b] text-xs sm:text-[13px] truncate">{topic.topicName}</span>
@@ -915,7 +925,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                           </span>
                         </div>
                         <div className="col-span-1 flex justify-center relative sticky right-0 z-10 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] py-2 sm:py-3 h-full">
-                          <label className="relative inline-flex items-center cursor-pointer group/toggle">
+                          <label className="relative inline-flex items-center cursor-pointer group/toggle pointer-coarse:py-3 pointer-coarse:-my-3 pointer-coarse:px-1 pointer-coarse:-mx-1">
                             <input
                               type="checkbox"
                               checked={topic.isExcluded}
@@ -964,19 +974,19 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex flex-wrap justify-center items-center gap-1">
               <button
                 type="button"
                 onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                 disabled={validCurrentPage === 1}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 pointer-coarse:min-h-11 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Previous page"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 Previous
               </button>
 
-              <div className="flex items-center gap-1 px-1">
+              <div className="flex flex-wrap justify-center items-center gap-1 px-1">
                 {createPaginationItems(totalPages, validCurrentPage).map((item) =>
                   item.kind === 'ellipsis' ? (
                     <span key={item.id} className="px-1 text-xs text-slate-400">
@@ -987,7 +997,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                       key={item.page}
                       type="button"
                       onClick={() => setCurrentPage(item.page)}
-                      className={`w-7 h-7 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
+                      className={`w-7 h-7 pointer-coarse:w-11 pointer-coarse:h-11 rounded-lg text-xs font-medium transition-colors cursor-pointer ${
                         validCurrentPage === item.page
                           ? 'bg-[#9956DE] text-white shadow-xs font-bold'
                           : 'text-slate-600 hover:bg-slate-100'
@@ -1003,7 +1013,7 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
                 type="button"
                 onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
                 disabled={validCurrentPage === totalPages}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 pointer-coarse:min-h-11 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                 aria-label="Next page"
               >
                 Next

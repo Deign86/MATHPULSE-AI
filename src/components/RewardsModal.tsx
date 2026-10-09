@@ -128,7 +128,7 @@ export const RewardsModal: React.FC<RewardsModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/90 hover:text-white cursor-pointer"
+              className="relative shrink-0 p-1.5 sm:p-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors text-white/90 hover:text-white cursor-pointer pointer-coarse:after:absolute pointer-coarse:after:-inset-2"
               aria-label="Close rewards summary"
             >
               <X size={16} />

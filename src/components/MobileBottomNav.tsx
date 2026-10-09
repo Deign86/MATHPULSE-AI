@@ -61,7 +61,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
     <nav
       ref={navRef}
       aria-label="Mobile and Tablet navigation"
-      data-tour-sticky="" className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+      data-tour-sticky="" className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 before:absolute before:inset-0 before:-z-10 before:pointer-events-none before:backdrop-blur-md border-t border-slate-200/90 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
     >
       {/* ─── MOBILE VIEW (< md): 5 Primary Buttons with Expandable Popups ─── */}
       <div className="md:hidden relative">

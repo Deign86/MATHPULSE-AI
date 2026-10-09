@@ -956,6 +956,7 @@ export default function DataImportView({
                       variant="outline"
                       disabled={!accountPreview.previewToken || accountCommitting}
                       onClick={() => void handleCommitStudentAccounts(false)}
+                      className="h-auto min-h-9 whitespace-normal"
                     >
                       Import without moves (moves stay blocked)
                     </Button>
@@ -1079,7 +1080,7 @@ export default function DataImportView({
                   <button 
                     type="button"
                     onClick={() => void refreshRecentMaterials()}
-                    className="text-xs font-semibold text-violet-600 hover:text-violet-700 transition-colors cursor-pointer"
+                    className="relative text-xs font-semibold text-violet-600 hover:text-violet-700 transition-colors cursor-pointer pointer-coarse:after:absolute pointer-coarse:after:-inset-x-2 pointer-coarse:after:-inset-y-3.5"
                   >
                     Refresh
                   </button>
@@ -1121,7 +1122,7 @@ export default function DataImportView({
                   <button
                     type="button"
                     onClick={onNavigateToModuleAvailability}
-                    className="mt-2 text-xs font-semibold text-violet-700 hover:text-violet-800 underline"
+                    className="relative mt-2 text-xs font-semibold text-violet-700 hover:text-violet-800 underline pointer-coarse:after:absolute pointer-coarse:after:-inset-x-2 pointer-coarse:after:-inset-y-3.5"
                   >
                     Go to Modules
                   </button>
@@ -1179,7 +1180,7 @@ export default function DataImportView({
             </div>
 
             <div className="bg-white rounded-[18px] border border-slate-200 shadow-sm overflow-hidden flex flex-col flex-1">
-              <div className="p-5 border-b border-slate-200 flex justify-between items-center bg-white">
+              <div className="p-5 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3 bg-white">
                 <div>
                   <h2 className="text-[18px] font-bold text-[#1e293b]">Edit Class Records</h2>
                   <p className="text-[13px] text-[#64748b]">Review and modify student data manually</p>
@@ -1208,7 +1209,7 @@ export default function DataImportView({
                   <div className="min-w-[1100px] w-full flex flex-col min-h-full">
                     {/* Header Row */}
                     <div className="flex items-center w-full bg-slate-100/90 border-b border-slate-200 text-[12px] font-semibold text-slate-500 tracking-wide sticky top-0 z-20 shadow-[0_1px_2px_rgba(0,0,0,0.02)] h-12">
-                      <div className="flex-[1.5] min-w-[240px] px-6 sticky left-0 z-30 bg-slate-100/90 backdrop-blur-sm border-r border-slate-200 h-full flex items-center shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
+                      <div className="flex-[1.5] min-w-[150px] sm:min-w-[240px] px-6 sticky left-0 z-30 bg-slate-100/90 backdrop-blur-sm border-r border-slate-200 h-full flex items-center shadow-[2px_0_4px_rgba(0,0,0,0.02)]">
                         Student Name
                       </div>
                       <div className="w-[100px] shrink-0 px-4 h-full flex items-center justify-center">LRN</div>
@@ -1218,7 +1219,7 @@ export default function DataImportView({
                       <div className="w-[120px] shrink-0 px-4 h-full flex items-center justify-center">Risk Level</div>
                       <div className="flex-1 min-w-[180px] px-4 h-full flex items-center justify-center">Weakest Topic</div>
                       {/* Sticky Right Action Column */}
-                      <div className="w-[90px] shrink-0 px-4 h-full flex items-center justify-center sticky right-0 z-30 bg-slate-100/95 backdrop-blur-sm border-l border-slate-200 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] font-bold text-slate-600">
+                      <div className="w-[90px] shrink-0 px-4 h-full flex items-center justify-center sm:sticky sm:right-0 z-30 bg-slate-100/95 backdrop-blur-sm border-l border-slate-200 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] font-bold text-slate-600">
                         Action
                       </div>
                     </div>
@@ -1264,7 +1265,7 @@ export default function DataImportView({
                       
                       return (
                           <div key={rowKey} className="flex items-center w-full border-b border-slate-100 hover:bg-slate-50 transition-colors group min-h-[64px]">
-                            <div className="flex-[1.5] min-w-[240px] px-6 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-r border-slate-100 h-full flex items-center gap-4 shadow-[2px_0_4px_rgba(0,0,0,0.01)]">
+                            <div className="flex-[1.5] min-w-[150px] sm:min-w-[240px] px-6 sticky left-0 z-10 bg-white group-hover:bg-slate-50 border-r border-slate-100 h-full flex items-center gap-4 shadow-[2px_0_4px_rgba(0,0,0,0.01)]">
                               <div className={`w-8 h-8 rounded-full ${color} text-white flex items-center justify-center font-bold text-[12px] shrink-0`}>
                                 {initials}
                               </div>
@@ -1302,7 +1303,7 @@ export default function DataImportView({
                               {student.weakestTopic || 'Foundational Skills'}
                             </div>
                             {/* Sticky Right Action Cell */}
-                            <div className="w-[90px] shrink-0 px-4 h-full min-h-[64px] flex items-center justify-center sticky right-0 z-10 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] transition-colors">
+                            <div className="w-[90px] shrink-0 px-4 h-full min-h-[64px] flex items-center justify-center sm:sticky sm:right-0 z-10 bg-white group-hover:bg-slate-50 border-l border-slate-100 shadow-[-2px_0_4px_rgba(0,0,0,0.02)] transition-colors">
                               <button
                                 type="button"
                                 onClick={() => setEditingRowKey(editingRowKey === rowKey ? null : rowKey)}
@@ -1334,7 +1335,7 @@ export default function DataImportView({
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4">
+                  <div className="flex flex-wrap items-center justify-between sm:justify-end gap-3 sm:gap-4">
                     {/* Rows per page selector */}
                     <div className="flex items-center gap-1.5 text-xs text-slate-500">
                       <span className="hidden sm:inline">Rows:</span>
@@ -1364,7 +1365,7 @@ export default function DataImportView({
                         <ChevronLeft size={16} />
                       </button>
 
-                      <div className="flex items-center gap-1 px-1">
+                      <div className="hidden sm:flex items-center gap-1 px-1">
                         {createPaginationItems(totalPages, validCurrentPage).map((item) =>
                           item.kind === 'ellipsis' ? (
                             <span key={item.id} className="px-1 text-slate-400 text-xs">...</span>
@@ -1425,7 +1426,7 @@ export default function DataImportView({
               role="dialog"
               aria-modal="true"
               aria-labelledby="confirm-upload-title"
-              className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto z-10 p-5 sm:p-6 space-y-4"
+              className="relative bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-md max-h-[90dvh] overflow-y-auto z-10 p-5 sm:p-6 space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}

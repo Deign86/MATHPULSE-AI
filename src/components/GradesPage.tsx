@@ -623,7 +623,7 @@ const GradesPage = () => {
   }
 
   return (
-    <div className="px-3.5 sm:px-6 lg:px-8 pt-0 sm:pt-0.5 pb-28 sm:pb-12 space-y-4 sm:space-y-5 max-w-[1540px] mx-auto">
+    <div className="px-3.5 sm:px-6 lg:px-8 pt-0 sm:pt-0.5 pb-4 space-y-4 sm:space-y-5 max-w-[1540px] mx-auto">
       
       {/* 1. Header Bar with Compact Spacing & Clear Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 sm:p-5 rounded-[1.75rem] border border-purple-100/80 dark:border-purple-900/40 shadow-[0_4px_20px_-8px_rgba(124,58,237,0.06)]">
@@ -646,9 +646,9 @@ const GradesPage = () => {
 
         <div
           data-tour="grades-export"
-          className="flex items-center gap-2 w-full md:w-auto"
+          className="flex flex-wrap items-center gap-2 w-full md:w-auto"
         >
-          <div className="relative flex-1 md:flex-none">
+          <div className="relative flex-1 md:flex-none min-w-[8.5rem]">
             <select
               value={filterQuarter}
               onChange={(e) => setFilterQuarter(e.target.value)}
@@ -712,14 +712,14 @@ const GradesPage = () => {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
           {/* CARD HEADER */}
-          <div className="relative z-10 flex flex-col xs:flex-row xs:items-center justify-between gap-1 mb-1 sm:mb-2">
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1 sm:mb-2">
             <div className="flex items-center gap-1 sm:gap-1.5 text-white/95">
               <Award className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
               <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
                 Average
               </span>
             </div>
-            <span className="self-start xs:self-auto px-1.5 xs:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
+            <span className="self-start sm:self-auto px-1.5 xs:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
               {averageScore >= 75 ? 'Passing' : averageScore > 0 ? 'Needs Boost' : 'Pending'}
             </span>
           </div>
@@ -789,14 +789,14 @@ const GradesPage = () => {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
           {/* CARD HEADER */}
-          <div className="relative z-10 flex flex-col xs:flex-row xs:items-center justify-between gap-1 mb-1 sm:mb-2">
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1 sm:mb-2">
             <div className="flex items-center gap-1 sm:gap-1.5 text-white/95">
               <Target className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
               <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
                 Focus
               </span>
             </div>
-            <span className="self-start xs:self-auto px-1.5 xs:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
+            <span className="self-start sm:self-auto px-1.5 xs:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
               Priority
             </span>
           </div>
@@ -869,7 +869,7 @@ const GradesPage = () => {
                 e.stopPropagation();
                 handleStartPractice(diagnosticSummary?.weaknesses?.[0]);
               }}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-1 text-[8.5px] xs:text-[9.5px] sm:text-xs font-black text-[#D97706] bg-white hover:bg-slate-50 px-2 sm:px-3 py-1 rounded-lg shadow-xs hover:scale-[1.03] active:scale-[0.97] transition-all cursor-pointer whitespace-nowrap shrink-0"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1 text-[8.5px] xs:text-[9.5px] sm:text-xs font-black text-[#D97706] bg-white hover:bg-slate-50 px-2 sm:px-3 py-1 pointer-coarse:min-h-11 rounded-lg shadow-xs hover:scale-[1.03] active:scale-[0.97] transition-all cursor-pointer whitespace-nowrap shrink-0"
             >
               <span>Practice</span>
               <ArrowUpRight className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5" />
@@ -890,14 +890,14 @@ const GradesPage = () => {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
           {/* CARD HEADER */}
-          <div className="relative z-10 flex flex-col xs:flex-row xs:items-center justify-between gap-1 mb-1 sm:mb-2">
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-1 sm:mb-2">
             <div className="flex items-center gap-1 sm:gap-1.5 text-white/95">
               <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 shrink-0" />
               <span className="text-[9.5px] xs:text-[11px] sm:text-xs font-black uppercase tracking-wider text-white truncate">
                 Quizzes
               </span>
             </div>
-            <span className="self-start xs:self-auto px-1.5 xs:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
+            <span className="self-start sm:self-auto px-1.5 xs:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white text-[8px] xs:text-[9px] sm:text-[10.5px] font-bold uppercase tracking-wider border border-white/25 shadow-2xs whitespace-nowrap">
               Active
             </span>
           </div>
@@ -1011,7 +1011,7 @@ const GradesPage = () => {
           </div>
 
           {/* 3 Balanced Pods Inside Diagnostic Banner */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-1 @2xl:grid-cols-2 @4xl:grid-cols-3 gap-3.5">
             {/* Pod 1: Score */}
             <div className="bg-white/95 dark:bg-slate-800/90 rounded-[1.5rem] p-4 border border-purple-100/80 dark:border-purple-800/50 shadow-xs flex items-center gap-3.5">
               <RadialScoreRing 
@@ -1092,7 +1092,7 @@ const GradesPage = () => {
             {/* Pod 3: AI Recommendation with high affordance and unmistakable CTA */}
             <div 
               onClick={() => setShowBreakdownModal(true)}
-              className="bg-gradient-to-br from-purple-50/90 via-white to-indigo-50/80 dark:from-purple-950/40 dark:via-slate-800 dark:to-indigo-950/40 rounded-[1.5rem] p-4 border-2 border-purple-200/90 dark:border-purple-800/80 hover:border-purple-500 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group relative overflow-hidden"
+              className="@2xl:col-span-2 @4xl:col-span-1 bg-gradient-to-br from-purple-50/90 via-white to-indigo-50/80 dark:from-purple-950/40 dark:via-slate-800 dark:to-indigo-950/40 rounded-[1.5rem] p-4 border-2 border-purple-200/90 dark:border-purple-800/80 hover:border-purple-500 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex flex-col justify-between group relative overflow-hidden"
             >
               {/* Subtle ambient spotlight */}
               <div className="absolute top-0 right-0 w-24 h-24 bg-purple-400/10 rounded-full blur-xl pointer-events-none group-hover:scale-125 transition-transform" />
@@ -1134,7 +1134,7 @@ const GradesPage = () => {
       {/* ------------------------------------------------------------------ */}
       {/* 4. TWO-COLUMN ROW: LEFT = SUBJECT GRADES | RIGHT = SUBJECT STANDINGS */}
       {/* ------------------------------------------------------------------ */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-stretch">
+      <div className="grid grid-cols-1 @5xl:grid-cols-2 gap-5 lg:gap-6 items-stretch">
         
         {/* Left Column: Subject Grades & Passing Line with Modal Trigger */}
         <div
@@ -1313,7 +1313,7 @@ const GradesPage = () => {
                         #{rankIdx + 1}
                       </span>
                       <div className="min-w-0">
-                        <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white truncate">
+                        <h4 className="text-xs sm:text-sm font-black text-slate-900 dark:text-white line-clamp-2">
                           {isGenMath ? '📐 ' : isStats ? '🎲 ' : ''}{subject.subject}
                         </h4>
                         <p className="text-[11px] font-bold text-slate-400 dark:text-slate-500">{subject.quizzes} activities</p>
@@ -1530,7 +1530,7 @@ const GradesPage = () => {
         {/* Left: Exam Readiness & Milestones */}
         <div
           data-tour="grades-readiness"
-          className="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] w-full flex flex-col justify-between">
+          className="@container bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 p-4.5 sm:p-6 shadow-[0_8px_25px_-12px_rgba(0,0,0,0.05)] w-full flex flex-col justify-between">
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <div className="flex items-center gap-2.5">
@@ -1577,7 +1577,7 @@ const GradesPage = () => {
             </div>
 
             {/* Milestones List */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mb-4">
+            <div className="grid grid-cols-1 @2xl:grid-cols-2 gap-2.5 mb-4">
               {examMilestones.map((milestone, milestoneIdx) => {
                 const isGenMath = milestone.subject.toLowerCase().includes('general');
                 const isStats = milestone.subject.toLowerCase().includes('stat');
@@ -1604,7 +1604,7 @@ const GradesPage = () => {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 truncate group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">
+                        <p className="text-xs sm:text-sm font-bold text-slate-800 dark:text-slate-200 line-clamp-2 group-hover:text-purple-700 dark:group-hover:text-purple-300 transition-colors">
                           {milestone.title}
                         </p>
                         <p className={`text-[10px] font-bold ${
@@ -1718,7 +1718,7 @@ const GradesPage = () => {
               <button
                 type="button"
                 onClick={() => setShowFullGraphModal(false)}
-                className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+                className="relative w-9 h-9 shrink-0 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer pointer-coarse:after:absolute pointer-coarse:after:-inset-1"
                 title="Close Modal"
               >
                 <X className="w-4 h-4" />

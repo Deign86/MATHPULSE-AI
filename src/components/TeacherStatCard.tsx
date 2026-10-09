@@ -175,10 +175,10 @@ export const TeacherStatCard: React.FC<TeacherStatCardProps> = ({
       <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-white/30 to-transparent pointer-events-none" />
 
       {/* CARD HEADER */}
-      <div className="relative z-10 flex items-center justify-between gap-1 mb-1 sm:mb-2">
-        <div className="flex items-center gap-1 sm:gap-1.5 text-white/95 min-w-0 flex-1">
+      <div className="relative z-10 flex flex-wrap items-center justify-between gap-1 mb-1 sm:mb-2">
+        <div className="flex items-center gap-1 sm:gap-1.5 text-white/95 min-w-0 flex-auto">
           {renderIcon()}
-          <span className="text-[8px] xs:text-[9.5px] sm:text-xs font-black uppercase tracking-tight xs:tracking-wider text-white leading-tight truncate sm:whitespace-normal">
+          <span className="text-[8px] xs:text-[9.5px] sm:text-xs font-black uppercase tracking-tight xs:tracking-wider text-white leading-tight line-clamp-2">
             {title}
           </span>
         </div>
@@ -192,7 +192,7 @@ export const TeacherStatCard: React.FC<TeacherStatCardProps> = ({
       {/* CARD BODY */}
       <div className="relative z-10 my-auto py-0 sm:py-1 flex items-center justify-between gap-1.5 sm:gap-2">
         <div className="min-w-0 flex-1">
-          <div className="text-lg xs:text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-0.5 sm:mb-1 drop-shadow-xs">
+          <div className="text-lg xs:text-2xl sm:text-3xl font-display font-black text-white tracking-tight tabular-nums leading-none mb-0.5 sm:mb-1 break-words hyphens-auto drop-shadow-xs">
             {value}
           </div>
           {subtitle && (

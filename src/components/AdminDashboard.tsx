@@ -438,7 +438,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
   };
 
   return (
-    <div className="flex h-dvh w-full bg-[#f8fafc] overflow-hidden font-body">
+    <div className="flex h-dvh w-full bg-[#f8fafc] overflow-hidden font-body pl-safe pr-safe">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block">
         <Sidebar
@@ -455,14 +455,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 w-full max-w-full overflow-hidden">
         {/* Header */}
-        <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 xl:px-8 py-3.5 sm:py-4 flex-shrink-0 z-30 w-full min-w-0">
+        <header className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200/80 px-4 sm:px-6 xl:px-8 py-3.5 sm:py-4 short:py-2 flex-shrink-0 z-30 w-full min-w-0">
           <div className="flex items-center justify-between gap-2 sm:gap-4 mb-0 w-full min-w-0">
             <div className="flex-1 min-w-0 flex items-center gap-2.5 sm:gap-3">
               <div className="min-w-0 flex-1">
-                <h1 className="text-lg sm:text-2xl font-display font-black text-slate-900 dark:text-white tracking-tight leading-tight truncate">
+                <h1 className="text-base min-[360px]:text-lg sm:text-2xl font-display font-black text-slate-900 dark:text-white tracking-tight leading-tight line-clamp-2">
                   {ADMIN_TAB_META[activeTab].title}
                 </h1>
-                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 truncate font-medium short:hidden">
                   {ADMIN_TAB_META[activeTab].subtitle}
                 </p>
               </div>
@@ -492,7 +492,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-3 max-sm:pointer-coarse:gap-2 shrink-0">
               <PageGuideConfirm
                 guide={adminPageTour(activeTab)?.label ?? null}
                 audience="admin"
@@ -501,7 +501,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <button
                   type="button"
                   data-tour="page-guide"
-                  className="w-10 h-10 sm:w-11 sm:h-11 flex items-center justify-center rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] text-slate-700 dark:text-slate-100 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 shrink-0"
+                  className="relative w-10 h-10 sm:w-11 sm:h-11 pointer-coarse:after:absolute pointer-coarse:after:-inset-1 flex items-center justify-center rounded-2xl backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] text-slate-700 dark:text-slate-100 hover:text-indigo-600 hover:border-indigo-200 transition-all cursor-pointer active:scale-95 shrink-0"
                   title="Guide for this page"
                   aria-label="Guide for this page"
                 >
@@ -514,7 +514,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                 <div className="relative">
                   <button
                     onClick={() => setIsSubjectsHelpModalOpen(true)}
-                    className="h-10 px-3 sm:px-3.5 flex items-center gap-1.5 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] rounded-xl shadow-md shadow-purple-500/25 text-white transition-all cursor-pointer hover:scale-105 active:scale-95 text-xs font-bold border border-purple-400/30"
+                    className="relative h-10 px-3 sm:px-3.5 pointer-coarse:after:absolute pointer-coarse:after:-inset-1 flex items-center gap-1.5 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] rounded-xl shadow-md shadow-purple-500/25 text-white transition-all cursor-pointer hover:scale-105 active:scale-95 text-xs font-bold border border-purple-400/30"
                     aria-label="How it works"
                   >
                     <HelpCircle size={16} />
@@ -541,7 +541,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   <button
                     type="button"
                     data-tour-group="Profile"
-                    className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-indigo-500 shrink-0 p-0"
+                    className="w-10 h-10 sm:w-11 sm:h-11 pointer-coarse:w-11 pointer-coarse:h-11 rounded-2xl overflow-hidden backdrop-blur-xl bg-white/70 dark:bg-slate-900/60 border border-white/80 dark:border-white/10 shadow-[0_4px_16px_rgba(0,0,0,0.06),0_1px_2px_rgba(0,0,0,0.04),inset_0_1px_1px_rgba(255,255,255,0.9)] flex items-center justify-center hover:ring-2 hover:ring-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:outline-hidden transition-all active:scale-95 cursor-pointer data-[state=open]:ring-2 data-[state=open]:ring-indigo-500 shrink-0 p-0"
                     aria-label={`Profile menu: ${effectiveProfileData.name?.replace(/System Administrator/gi, 'Administrator') || 'Administrator'}`}
                   >
                     <UserAvatar
@@ -606,7 +606,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </header>
 
         {/* Main Grid */}
-        <main className={`flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden px-4 sm:px-[24px] xl:px-[32px] scrollbar-hide pb-24 sm:pb-28 lg:pb-8`}>
+        <main className={`@container flex-1 overflow-y-auto w-full max-w-full overflow-x-hidden px-4 sm:px-[24px] xl:px-[32px] scrollbar-hide pb-24 sm:pb-28 lg:pb-8`}>
           {activeTab === 'Overview' && (
             <div className="max-w-[1600px] mx-auto space-y-5 lg:space-y-6 pt-4 sm:pt-6 w-full min-w-0">
               {/* Executive Branded Hero Banner */}
@@ -690,7 +690,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               {/* Bento KPI Grid (Full Color Gradients with Glassmorphism) */}
-              <div data-tour="admin-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 min-w-0">
+              <div data-tour="admin-kpis" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-4 min-w-0">
                 {systemStats.map((statItem, index) => (
                   <motion.div
                     key={index}
@@ -715,7 +715,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <p className="text-lg sm:text-[30px] font-display font-black text-white leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">
                         {loadingOverview ? '...' : statItem.value}
                       </p>
-                      <p className="text-[10px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">
+                      <p className="text-[10px] sm:text-sm font-bold text-white leading-tight line-clamp-2 mt-0.5 sm:mt-1 drop-shadow-xs">
                         {statItem.label}
                       </p>
                       <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">
@@ -727,7 +727,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               </div>
 
               {/* Creative Mobile Segmented View Switcher (Sticky Header) */}
-              <div data-tour="admin-overview-switch" data-tour-sticky="" className="xl:hidden sticky top-0 z-20 py-1.5 -mx-1 px-1 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+              <div data-tour="admin-overview-switch" data-tour-sticky="" className="xl:hidden sticky top-0 short:static z-20 py-1.5 -mx-1 px-1 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
                 <div className="flex items-center p-1 bg-slate-100/90 dark:bg-slate-800/90 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs">
                   <button
                     type="button"
@@ -759,15 +759,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Row 2: Performance Analytics & Top Performers */}
               <div className={`grid grid-cols-12 gap-4 lg:gap-6 min-w-0 ${mobileOverviewTab === 'insights' ? 'block' : 'hidden xl:grid'}`}>
                 {/* System Performance & AI Activity Chart */}
-                <div data-tour="admin-engagement" className="col-span-12 xl:col-span-7 relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] min-w-0 min-h-[360px]">
+                <div data-tour="admin-engagement" className="@container col-span-12 xl:col-span-7 relative overflow-hidden bg-white dark:bg-slate-900/90 rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between shadow-[0_2px_12px_rgba(0,0,0,0.03)] min-w-0 min-h-[360px] short:min-h-0">
                   {/* Subtle Top Accent Line */}
                   <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-emerald-400 pointer-events-none" />
 
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4 sm:mb-6">
+                  <div className="flex flex-col @xl:flex-row @xl:items-center justify-between gap-3 mb-4 sm:mb-6">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <div className="w-1.5 h-6 rounded-full bg-gradient-to-b from-indigo-500 to-violet-500 shrink-0" />
                       <div className="min-w-0">
-                        <h3 className="font-display text-base font-bold text-slate-900 dark:text-white truncate">
+                        <h3 className="font-display text-base font-bold text-slate-900 dark:text-white">
                           Learning Engagement & AI Activity
                         </h3>
                         <p className="font-body text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 sm:line-clamp-none">
@@ -776,13 +776,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 self-start md:self-center shrink-0">
+                    <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 self-start @xl:self-center shrink-0">
                       {/* Timeframe Filter Pill */}
                       <div className="flex items-center p-0.5 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200/80 dark:border-slate-700 text-[11px] font-semibold shrink-0">
                         <button
                           type="button"
                           onClick={() => setTimeframeFilter('7d')}
-                          className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                          className={`px-2.5 py-1 pointer-coarse:min-h-11 rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                             timeframeFilter === '7d'
                               ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
                               : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -793,7 +793,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         <button
                           type="button"
                           onClick={() => setTimeframeFilter('30d')}
-                          className={`px-2.5 py-1 rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
+                          className={`px-2.5 py-1 pointer-coarse:min-h-11 rounded-md transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                             timeframeFilter === '30d'
                               ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
                               : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -817,7 +817,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex-1 w-full min-h-[230px]">
+                  <div className="flex-1 w-full min-h-[230px] short:min-h-[180px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -860,7 +860,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <button
                       type="button"
                       onClick={() => setActiveTab('Analytics')}
-                      className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                      className="inline-flex items-center gap-1 px-2 py-3 -mx-2 -my-3 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
                     >
                       <span>View All</span>
                       <ChevronRight size={14} />
@@ -935,7 +935,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               {/* Row 3: Curriculum Health & Live Campus Stream (Clean, Teacher-Inspired Calm Design) */}
               <div className={`grid grid-cols-12 gap-4 lg:gap-6 items-stretch min-w-0 ${mobileOverviewTab === 'curriculum' ? 'block' : 'hidden xl:grid'}`}>
                 {/* Left Column: Priority Attention & Global Mastery */}
-                <div className="col-span-12 xl:col-span-4 flex flex-col gap-4 lg:gap-6">
+                <div className="col-span-12 xl:col-span-4 flex flex-col md:grid md:grid-cols-2 xl:flex gap-4 lg:gap-6">
                   {/* Priority Attention Card (Highlighting Action Needed) */}
                   <div
                     data-tour="admin-priority"
@@ -1097,7 +1097,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                               key={filterCategory}
                               type="button"
                               onClick={() => setSubjectCategoryFilter(filterCategory)}
-                              className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+                              className={`px-2.5 py-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-md transition-all cursor-pointer ${
                                 subjectCategoryFilter === filterCategory
                                   ? 'bg-white dark:bg-slate-700 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold'
                                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
@@ -1266,7 +1266,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <button
                         type="button"
                         onClick={() => setActiveTab('Audit Log')}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
+                        className="relative inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer pointer-coarse:after:absolute pointer-coarse:after:-inset-x-2 pointer-coarse:after:-inset-y-3.5"
                       >
                         <span>Audit Log</span>
                         <ArrowUpRight size={14} />

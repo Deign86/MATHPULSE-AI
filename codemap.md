@@ -74,3 +74,4 @@ MathPulse AI — installable, repo-owned PWA for AI-powered mathematics tutoring
 | `src/features/import/services/shsExcel/parser/utils/` | Workbook matrix/cell/range/anchor/text/row helpers. | [View Map](src/features/import/services/shsExcel/parser/utils/codemap.md) |
 | `scripts/` | Maintenance/sync/backfill utilities (hooks, model sync, assignment backfill). | [View Map](scripts/codemap.md) |
 | `tests/e2e/` | Agentic browser E2E suites via tester-army/e2e (local dev servers only). | [View Map](tests/e2e/codemap.md) |
+| `tests/browser/` | Real-browser checks: guided-tour smoke test, layout audits of the signed-in app and the sign-in page. | [View Map](tests/browser/codemap.md) |

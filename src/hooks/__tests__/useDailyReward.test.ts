@@ -50,6 +50,7 @@ describe('useDailyReward', () => {
     const { result } = renderHook(() => useDailyReward(null));
     expect(result.current.todayReward).not.toBeNull();
     expect(result.current.canClaim).toBe(false);
+    expect(result.current.loaded).toBe(false);
     expect(result.current.currentStreak).toBe(0);
   });
 
@@ -76,6 +77,7 @@ describe('useDailyReward', () => {
     expect(result.current.hintTokens).toBe(5);
     expect(result.current.streakShields).toBe(2);
     expect(result.current.canClaim).toBe(true);
+    expect(result.current.loaded).toBe(true);
   });
 
   it('canClaim is false when already claimed today', async () => {
@@ -225,5 +227,6 @@ describe('useDailyReward', () => {
     });
 
     expect(result.current.canClaim).toBe(false);
+    expect(result.current.loaded).toBe(false);
   });
 });

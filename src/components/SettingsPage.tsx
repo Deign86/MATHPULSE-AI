@@ -345,7 +345,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const currentTab = tabs.find((t) => t.id === activeTab) || tabs[0];
 
   return (
-    <div className="px-3.5 sm:px-6 lg:px-8 xl:px-12 pt-1 sm:pt-2 pb-28 sm:pb-16 space-y-4 sm:space-y-6 max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto min-h-screen">
+    <div className="px-3.5 sm:px-6 lg:px-8 xl:px-12 pt-1 sm:pt-2 pb-4 space-y-4 sm:space-y-6 max-w-7xl 2xl:max-w-[1680px] 3xl:max-w-[1920px] mx-auto">
       {/* ── 0. Back to previous location ── */}
       {onBack && (
         <div className="flex items-center justify-between gap-3 pt-0.5">
@@ -584,7 +584,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           </div>
 
           {/* Folder Jacket Body Container with Notebook Grid & Paperclip */}
-          <div data-tour="settings-panel" className={`relative rounded-2xl rounded-b-2xl bg-white dark:bg-slate-900 border-2 ${currentTab.folderBorder} shadow-xl p-4 sm:p-6 lg:p-7 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]`}>
+          <div data-tour="settings-panel" className={`@container relative rounded-2xl rounded-b-2xl bg-white dark:bg-slate-900 border-2 ${currentTab.folderBorder} shadow-xl p-4 sm:p-6 lg:p-7 z-10 bg-[radial-gradient(#e2e8f0_1px,transparent_1px)] dark:bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]`}>
             {/* Top spine / folder rim highlight with matching tab gradient */}
             <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${currentTab.spineGradient} opacity-90 rounded-t-sm`} />
 
@@ -645,7 +645,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               >
                 {/* TAB 1: DISPLAY & THEME */}
                 {activeTab === 'appearance' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5">
                     {/* Theme & Display Mode */}
                     <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
                       <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
@@ -743,7 +743,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                               {localSettings.learning.dailyXpGoal} XP / day
                             </span>
                           </div>
-                          <div className="grid grid-cols-4 gap-2">
+                          <div className="grid grid-cols-2 @md:grid-cols-4 gap-2">
                             {[50, 100, 200, 300].map((goal) => (
                               <button
                                 key={goal}
@@ -754,7 +754,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                                     learning: { ...s.learning, dailyXpGoal: goal },
                                   }))
                                 }
-                                className={`py-2 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
+                                className={`py-2 pointer-coarse:min-h-11 rounded-xl text-xs font-bold transition-all border cursor-pointer ${
                                   localSettings.learning.dailyXpGoal === goal
                                     ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
                                     : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -766,7 +766,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-3.5">
                           <div>
                             <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
                               Practice Level
@@ -826,7 +826,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                 {/* TAB 3: ALERTS & REMINDERS */}
                 {activeTab === 'notifications' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5">
                     {/* Device Alerts Card */}
                     <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
                       <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
@@ -1019,7 +1019,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                 {/* TAB 4: LOGIN & PASSWORD */}
                 {activeTab === 'security' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5">
                     {/* Change Password Card */}
                     <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
                       <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">
@@ -1162,7 +1162,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
 
                 {/* TAB 5: MY DATA & FILES */}
                 {activeTab === 'data' && (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                  <div className="grid grid-cols-1 2xl:grid-cols-2 gap-5">
                     {/* Backup & Export */}
                     <div className="bg-slate-50/70 dark:bg-slate-800/60 rounded-2xl p-5 sm:p-6 border border-slate-200/80 dark:border-slate-700/80 shadow-xs space-y-4">
                       <div className="flex items-center gap-2 pb-2 border-b border-slate-200/60 dark:border-slate-700/60">

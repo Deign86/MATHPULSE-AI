@@ -287,7 +287,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
           <button 
             type="button"
             onClick={onClose} 
-            className="w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer" 
+            className="relative w-8 h-8 sm:w-9 sm:h-9 shrink-0 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5" 
             title="Close modal"
           >
             <X className="w-4 h-4 sm:w-5 sm:h-5" />

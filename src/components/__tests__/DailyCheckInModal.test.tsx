@@ -141,6 +141,50 @@ describe('DailyCheckInModal', () => {
     vi.useRealTimers();
   });
 
+  it('stays open when the backdrop is tapped and closes only from its close button', () => {
+    const handleClose = vi.fn();
+    render(
+      <DailyCheckInModal
+        isOpen={true}
+        onClose={handleClose}
+        onClaim={vi.fn()}
+        weekRewards={mockWeekRewards}
+        todayReward={mockWeekRewards[1]}
+        canClaim={true}
+        isClaiming={false}
+        claimedDays={[0]}
+        currentDayIndex={1}
+        timeUntilReset="12:34:56"
+      />
+    );
+
+    fireEvent.click(screen.getByRole('dialog'));
+    expect(handleClose).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Close daily rewards' }));
+    expect(handleClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('marks today as claimed once it is, even when the saved days lack it, and past unclaimed days as missed', () => {
+    render(
+      <DailyCheckInModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onClaim={vi.fn()}
+        weekRewards={mockWeekRewards}
+        todayReward={mockWeekRewards[2]}
+        canClaim={false}
+        isClaiming={false}
+        claimedDays={[0]}
+        currentDayIndex={2}
+        timeUntilReset="12:34:56"
+      />
+    );
+
+    expect(screen.getAllByText('Claimed')).toHaveLength(2);
+    expect(screen.getByText('Missed')).toBeInTheDocument();
+    expect(screen.queryByText('Available')).not.toBeInTheDocument();
+  });
+
   it('renders completed state when canClaim is false', () => {
     render(
       <DailyCheckInModal

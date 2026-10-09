@@ -183,7 +183,7 @@ const AdminSubjects: React.FC = () => {
       )}
 
       {/* Stats Grid */}
-      <div data-tour="subjects-stats" className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
+      <div data-tour="subjects-stats" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2 sm:gap-4">
         {[
           {
             label: 'Total Subjects',
@@ -277,7 +277,7 @@ const AdminSubjects: React.FC = () => {
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Grade filter */}
           <Select value={selectedGrade} onValueChange={setSelectedGrade}>
             <SelectTrigger className="h-10 text-xs font-bold bg-slate-50/70 dark:bg-slate-800/60 border-slate-200/80 dark:border-slate-700/60 rounded-xl min-w-[120px]">

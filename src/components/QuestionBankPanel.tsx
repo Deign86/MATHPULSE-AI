@@ -172,7 +172,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           <div className="relative overflow-hidden bg-gradient-to-br from-[#3b82f6] to-[#2563eb] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-5 shadow-[0_2px_8px_rgba(59,130,246,0.18)] sm:shadow-[0_4px_12px_rgba(59,130,246,0.2)] hover:shadow-[0_6px_20px_rgba(59,130,246,0.28)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
             <div className="absolute -right-6 -bottom-6 sm:-right-12 sm:-bottom-12 w-20 h-20 sm:w-36 sm:h-36 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.6]"></div>
             <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-2 md:mb-3 gap-1">
-              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 truncate leading-tight">Total PDFs</span>
+              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 line-clamp-2 leading-tight">Total PDFs</span>
               <div className="w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
                 <FileText className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-white" />
               </div>
@@ -184,7 +184,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           <div className="relative overflow-hidden bg-gradient-to-br from-[#a855f7] to-[#9333ea] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-5 shadow-[0_2px_8px_rgba(168,85,247,0.18)] sm:shadow-[0_4px_12px_rgba(168,85,247,0.2)] hover:shadow-[0_6px_20px_rgba(168,85,247,0.28)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
             <div className="absolute -right-6 -bottom-6 sm:-right-12 sm:-bottom-12 w-20 h-20 sm:w-36 sm:h-36 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.6]"></div>
             <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-2 md:mb-3 gap-1">
-              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 truncate leading-tight">
+              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 line-clamp-2 leading-tight">
                 <span className="inline sm:hidden">Questions</span>
                 <span className="hidden sm:inline">Total Questions</span>
               </span>
@@ -199,7 +199,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
           <div className="relative overflow-hidden bg-gradient-to-br from-[#10b981] to-[#059669] rounded-xl sm:rounded-2xl p-2.5 sm:p-3.5 md:p-5 shadow-[0_2px_8px_rgba(168,85,247,0.18)] sm:shadow-[0_4px_12px_rgba(168,85,247,0.2)] hover:shadow-[0_6px_20px_rgba(168,85,247,0.28)] hover:-translate-y-0.5 transition-all duration-300 flex flex-col justify-between group text-white">
             <div className="absolute -right-6 -bottom-6 sm:-right-12 sm:-bottom-12 w-20 h-20 sm:w-36 sm:h-36 bg-white/10 rounded-full transition-transform duration-500 group-hover:scale-[1.6]"></div>
             <div className="flex items-center justify-between relative z-10 mb-1 sm:mb-2 md:mb-3 gap-1">
-              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 truncate leading-tight">Processed</span>
+              <span className="font-body text-[10px] sm:text-xs md:text-[13px] font-semibold text-white/90 line-clamp-2 leading-tight">Processed</span>
               <div className="w-5 h-5 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded-full border border-white/30 flex items-center justify-center bg-white/10 shrink-0">
                 <RefreshCw className="w-2.5 h-2.5 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-white" />
               </div>
@@ -303,7 +303,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
               type="button"
               onClick={fetchStatus}
               disabled={loading}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-2xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
+              className="w-7 h-7 sm:w-8 sm:h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-2xs transition-all hover:scale-105 active:scale-95 disabled:opacity-50 cursor-pointer"
               aria-label="Refresh processing status"
               title="Refresh processing status"
             >
@@ -383,12 +383,12 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                 <table className="w-full text-left border-collapse table-fixed">
                   <thead>
                     <tr className="bg-slate-50/90 border-b border-slate-200/80 text-slate-600">
-                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-4/12">Filename</th>
+                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-3/12">Filename</th>
                       <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-1/12 text-center">Grade</th>
                       <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-3/12">Topic</th>
-                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-1/12 text-center">Questions</th>
+                      <th className="h-9 px-2 text-[11px] font-bold uppercase tracking-wider w-[12%] text-center">Questions</th>
                       <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-2/12 text-center">Status</th>
-                      <th className="h-9 px-3.5 text-[11px] font-bold uppercase tracking-wider w-1/12 text-right">Processed</th>
+                      <th className="h-9 px-2 text-[11px] font-bold uppercase tracking-wider w-[12%] text-right">Processed</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 bg-white">
@@ -450,7 +450,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
               onClick={fetchQuestions}
               disabled={questionsLoading}
               aria-label="Refresh question bank"
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
+              className="w-7 h-7 sm:w-8 sm:h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${questionsLoading ? 'animate-spin' : ''}`} />
             </button>
@@ -467,7 +467,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
               <p className="text-[11px] text-slate-400 mt-0.5">Ingest a PDF above to populate the question bank.</p>
             </div>
           ) : (
-            <div className="space-y-2 max-h-[500px] overflow-y-auto">
+            <div className="space-y-2 max-h-[min(500px,60dvh)] overflow-y-auto">
               {questions.map((q) => (
                 <div
                   key={q.id}
@@ -476,7 +476,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                   <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={() => setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}>
                     <div className="flex-1 min-w-0">
                       <p className="text-[13px] font-medium text-[#1e293b] line-clamp-2">{q.question}</p>
-                      <div className="flex items-center gap-2 mt-2">
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
                         <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-semibold">Grade {q.grade_level}</span>
                         <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium">{q.topic}</span>
                         <span className={`text-[11px] px-2 py-0.5 rounded-md font-semibold ${

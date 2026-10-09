@@ -99,7 +99,7 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
   };
 
   return (
-    <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300 min-h-[calc(100vh-80px)]">
+    <div className="space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 pb-6 animate-in fade-in duration-300">
       {/* Navigation Header */}
       {onBack && (
         <div className="flex items-center justify-between gap-3">
@@ -131,9 +131,9 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
       )}
 
       {/* Main Grid: ID Pass on Left, Details Editor on Right */}
-      <div className="flex flex-col lg:flex-row items-start gap-6 lg:gap-8">
+      <div className="flex flex-col xl:flex-row items-start gap-6 xl:gap-8">
         {/* Left Column: 3D Executive Admin ID Pass */}
-        <div className="w-full lg:w-[360px] xl:w-[410px] shrink-0 flex flex-col items-center gap-4 lg:sticky lg:top-4">
+        <div className="w-full xl:w-[360px] 2xl:w-[410px] shrink-0 flex flex-col items-center gap-4 xl:sticky xl:top-4">
           <AdminIDCard
             profileData={accountData}
             onPhotoUploaded={(photoURL) => handleFieldChange('photo', photoURL)}
@@ -172,9 +172,9 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-sky-400 to-indigo-600 pointer-events-none" />
 
             {/* Header: Title + Actions */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-5 mb-6 border-b border-slate-200/80 dark:border-slate-800">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3 pb-5 mb-6 border-b border-slate-200/80 dark:border-slate-800">
               <div className="space-y-1">
-                <div className="flex items-center gap-2.5">
+                <div className="flex flex-wrap items-center gap-2.5">
                   <div className="w-8 h-8 rounded-xl bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold">
                     <Shield size={18} />
                   </div>

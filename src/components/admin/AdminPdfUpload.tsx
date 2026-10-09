@@ -318,12 +318,12 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess, tourVi
       </div>
 
       {/* ── Tab Switcher Bar (Sticky Header) ── */}
-      <div data-tour-sticky="" className="sticky top-0 z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
+      <div data-tour-sticky="" className="sticky top-0 short:static z-20 -mx-1 px-1 py-1.5 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div data-tour="content-tabs" className="flex items-center gap-1.5 bg-slate-100/90 dark:bg-slate-800/90 p-1 sm:p-1.5 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-xs">
             <button
               onClick={() => setActiveTab('upload')}
-              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
+              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 pointer-coarse:min-h-11 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
                 activeTab === 'upload'
                   ? 'bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white shadow-sm shadow-purple-500/20'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
@@ -334,7 +334,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess, tourVi
             </button>
             <button
               onClick={() => setActiveTab('inventory')}
-              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
+              className={`flex items-center gap-2 px-3.5 sm:px-4 py-2 pointer-coarse:min-h-11 rounded-xl text-xs font-bold transition-all duration-200 cursor-pointer active:scale-95 ${
                 activeTab === 'inventory'
                   ? 'bg-gradient-to-r from-[#9956DE] to-[#7274ED] text-white shadow-sm shadow-purple-500/20'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white/60 dark:hover:bg-slate-700/50'
@@ -474,7 +474,7 @@ const AdminPdfUpload: React.FC<AdminPdfUploadProps> = ({ onUploadSuccess, tourVi
                       <SelectTrigger className="w-full h-[54px] bg-slate-50/80 dark:bg-slate-800/80 border-slate-200/80 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-slate-100 hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all px-3.5 py-2">
                         <SelectValue placeholder="Select curriculum subject" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-2xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl max-h-[280px]">
+                      <SelectContent className="rounded-2xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-xl max-h-[min(280px,var(--radix-select-content-available-height))]">
                         {SHS_MATH_SUBJECTS.map((s) => {
                           // SAFETY: Subject objects from SHS_MATH_SUBJECTS optionally define termStructure and quarters metadata.
                           const subject = s as { termStructure?: string; quarters?: readonly string[] };

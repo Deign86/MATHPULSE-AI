@@ -291,7 +291,7 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
                 <button
                   onClick={(e) => handleDeleteSession(session.id, e)}
                   aria-label={`Delete conversation: ${session.title}`}
-                  className="absolute top-2.5 right-2.5 p-1 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-red-50 text-[#a1a1aa] hover:text-red-500 transition-all"
+                  className="absolute top-2.5 right-2.5 p-1 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 pointer-coarse:opacity-100 pointer-coarse:after:absolute pointer-coarse:after:-inset-3 hover:bg-red-50 text-[#a1a1aa] hover:text-red-500 transition-all"
                 >
                   <Trash2 size={11} />
                 </button>
@@ -322,7 +322,7 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
                   <button
                     onClick={() => setActiveSessionId(null)}
                     aria-label="Back to conversations"
-                    className="md:hidden p-1.5 -ml-1 text-[#71717a] hover:text-[#0a1628] rounded-xl hover:bg-[#f4f4f5] transition-all"
+                    className="relative md:hidden p-1.5 -ml-1 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 text-[#71717a] hover:text-[#0a1628] rounded-xl hover:bg-[#f4f4f5] transition-all"
                   >
                     <ChevronLeft size={20} />
                   </button>
@@ -413,7 +413,7 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
                         <button
                           onClick={() => handleCopyMessage(message.text, message.id)}
                           aria-label="Copy message"
-                          className="absolute -top-2 -right-2 p-1.5 bg-white border border-[#e4e4e7] rounded-lg opacity-0 group-hover:opacity-100 text-[#a1a1aa] hover:text-[#9956DE] shadow-sm transition-all"
+                          className="absolute -top-2 -right-2 p-1.5 bg-white border border-[#e4e4e7] rounded-lg opacity-0 group-hover:opacity-100 pointer-coarse:opacity-100 pointer-coarse:after:absolute pointer-coarse:after:-inset-3 text-[#a1a1aa] hover:text-[#9956DE] shadow-sm transition-all"
                         >
                           {copiedMsgId === message.id ? <Check size={11} /> : <Copy size={11} />}
                         </button>
@@ -541,9 +541,9 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
               </div>
 
               {/* Topic cards */}
-              <div className="max-w-2xl mx-auto" data-tour="chat-topics">
+              <div className="@container max-w-2xl mx-auto" data-tour="chat-topics">
                 <p className="text-xs font-bold text-[#a1a1aa] uppercase tracking-wider mb-3">Explore Topics</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 @lg:grid-cols-4 gap-3">
                   {TOPIC_CARDS.map(({ label, icon: Icon, color, desc }) => (
                     <button
                       key={label}

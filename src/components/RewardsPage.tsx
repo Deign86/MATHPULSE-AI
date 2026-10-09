@@ -260,7 +260,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
               <button
                 type="button"
                 onClick={onBack}
-                className="p-2.5 sm:p-3 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 border border-white/25 backdrop-blur-md transition-all text-white shadow-sm flex items-center justify-center shrink-0 cursor-pointer"
+                className="relative p-2.5 sm:p-3 rounded-2xl pointer-coarse:after:absolute pointer-coarse:after:-inset-1 bg-white/15 hover:bg-white/25 active:scale-95 border border-white/25 backdrop-blur-md transition-all text-white shadow-sm flex items-center justify-center shrink-0 cursor-pointer"
                 aria-label="Go back"
               >
                 <ArrowLeft size={20} className="stroke-[2.5]" />
@@ -315,14 +315,14 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
         {/* Quick Metrics Slabs */}
         <div
           data-tour="rewards-metrics"
-          className="relative z-10 grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5 mt-5 sm:mt-6"
+          className="relative z-10 grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-3.5 mt-5 sm:mt-6"
         >
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 sm:p-3.5 border border-white/15 flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-amber-400/20 border border-amber-300/30 text-amber-300 shrink-0">
+            <div className="max-[359px]:hidden p-2 sm:p-2.5 rounded-xl bg-amber-400/20 border border-amber-300/30 text-amber-300 shrink-0">
               <Trophy size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-black text-white/70 uppercase truncate">Badges Unlocked</p>
+              <p className="text-[10px] font-black text-white/70 uppercase leading-tight">Badges Unlocked</p>
               <p className="text-base sm:text-lg font-black text-white tabular-nums leading-tight mt-0.5">
                 {unlockedCount} <span className="text-xs text-white/60 font-semibold">/ {allAchievements.length}</span>
               </p>
@@ -330,11 +330,11 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
           </div>
 
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 sm:p-3.5 border border-white/15 flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-cyan-400/20 border border-cyan-300/30 text-cyan-300 shrink-0">
+            <div className="max-[359px]:hidden p-2 sm:p-2.5 rounded-xl bg-cyan-400/20 border border-cyan-300/30 text-cyan-300 shrink-0">
               <Star size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-black text-white/70 uppercase truncate">Total Career XP</p>
+              <p className="text-[10px] font-black text-white/70 uppercase leading-tight">Total Career XP</p>
               <p className="text-base sm:text-lg font-black text-white tabular-nums leading-tight mt-0.5">
                 {totalXP.toLocaleString()}
               </p>
@@ -342,11 +342,11 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
           </div>
 
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 sm:p-3.5 border border-white/15 flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-rose-400/20 border border-rose-300/30 text-rose-300 shrink-0">
+            <div className="max-[359px]:hidden p-2 sm:p-2.5 rounded-xl bg-rose-400/20 border border-rose-300/30 text-rose-300 shrink-0">
               <Flame size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-black text-white/70 uppercase truncate">Active Streak</p>
+              <p className="text-[10px] font-black text-white/70 uppercase leading-tight">Active Streak</p>
               <p className="text-base sm:text-lg font-black text-white tabular-nums leading-tight mt-0.5">
                 {currentStreak} <span className="text-xs text-white/60 font-semibold">Days</span>
               </p>
@@ -354,11 +354,11 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
           </div>
 
           <div className="bg-white/10 backdrop-blur-md rounded-2xl p-3 sm:p-3.5 border border-white/15 flex items-center gap-3">
-            <div className="p-2 sm:p-2.5 rounded-xl bg-emerald-400/20 border border-emerald-300/30 text-emerald-300 shrink-0">
+            <div className="max-[359px]:hidden p-2 sm:p-2.5 rounded-xl bg-emerald-400/20 border border-emerald-300/30 text-emerald-300 shrink-0">
               <Gift size={18} />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-black text-white/70 uppercase truncate">Daily Quests</p>
+              <p className="text-[10px] font-black text-white/70 uppercase leading-tight">Daily Quests</p>
               <p className="text-base sm:text-lg font-black text-white tabular-nums leading-tight mt-0.5">
                 {dailyQuests.filter((q) => q.completed).length}{' '}
                 <span className="text-xs text-white/60 font-semibold">/ {dailyQuests.length}</span>
@@ -369,7 +369,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
       </div>
 
       {/* Sticky Navigation Tabs & Filter Bar */}
-      <div data-tour-sticky="" className="sticky top-0 z-30 -mx-4 sm:-mx-6 lg:-mx-8 xl:-mx-12 px-4 sm:px-6 lg:px-8 xl:px-12 py-2 sm:py-2.5 bg-gradient-to-b from-[#f8faff]/95 via-[#f8faff]/90 to-[#f8faff]/60 dark:from-slate-950/95 dark:via-slate-950/90 dark:to-slate-950/60 backdrop-blur-md transition-all">
+      <div data-tour-sticky="" className="sticky top-0 [@media(max-height:44rem)]:static z-30 -mx-4 sm:-mx-6 lg:-mx-8 xl:-mx-12 px-4 sm:px-6 lg:px-8 xl:px-12 py-2 sm:py-2.5 bg-gradient-to-b from-[#f8faff]/95 via-[#f8faff]/90 to-[#f8faff]/60 dark:from-slate-950/95 dark:via-slate-950/90 dark:to-slate-950/60 backdrop-blur-md transition-all">
         <div
           data-tour="rewards-tabs"
           className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-md shadow-purple-500/5 border border-slate-200/90 dark:border-slate-800 flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-2 sm:gap-2.5"
@@ -380,7 +380,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
               type="button"
               onClick={() => setActiveTab('badges')}
               className={cn(
-                'flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-display font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                'flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 pointer-coarse:min-h-11 rounded-xl sm:rounded-2xl font-display font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0',
                 activeTab === 'badges'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25'
                   : 'text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -396,7 +396,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
               type="button"
               onClick={() => setActiveTab('quests')}
               className={cn(
-                'flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-display font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                'flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 pointer-coarse:min-h-11 rounded-xl sm:rounded-2xl font-display font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0',
                 activeTab === 'quests'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25'
                   : 'text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -412,7 +412,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
               type="button"
               onClick={() => setActiveTab('roadmap')}
               className={cn(
-                'flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl font-display font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0',
+                'flex-1 sm:flex-initial px-3 sm:px-4 py-2 sm:py-2.5 pointer-coarse:min-h-11 rounded-xl sm:rounded-2xl font-display font-black text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap shrink-0',
                 activeTab === 'roadmap'
                   ? 'bg-purple-600 text-white shadow-md shadow-purple-500/25'
                   : 'text-slate-600 dark:text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -433,7 +433,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
                   type="button"
                   onClick={() => setStatusFilter('all')}
                   className={cn(
-                    'px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-center whitespace-nowrap',
+                    'px-2.5 sm:px-3 py-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-center whitespace-nowrap',
                     statusFilter === 'all'
                       ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
@@ -445,7 +445,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
                   type="button"
                   onClick={() => setStatusFilter('unlocked')}
                   className={cn(
-                    'px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-center whitespace-nowrap',
+                    'px-2.5 sm:px-3 py-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-center whitespace-nowrap',
                     statusFilter === 'unlocked'
                       ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
@@ -457,7 +457,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
                   type="button"
                   onClick={() => setStatusFilter('locked')}
                   className={cn(
-                    'px-2.5 sm:px-3 py-1 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-center whitespace-nowrap',
+                    'px-2.5 sm:px-3 py-1 pointer-coarse:min-h-11 pointer-coarse:min-w-11 rounded-lg sm:rounded-xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer text-center whitespace-nowrap',
                     statusFilter === 'locked'
                       ? 'bg-white dark:bg-slate-700 text-purple-700 dark:text-purple-300 shadow-xs'
                       : 'text-slate-500 dark:text-slate-400 hover:text-slate-700'
@@ -495,7 +495,7 @@ export const RewardsPage: React.FC<RewardsPageProps> = ({
                   type="button"
                   onClick={() => setActiveCategory(cat.id)}
                   className={cn(
-                    'px-3.5 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-xs font-bold whitespace-nowrap border transition-all cursor-pointer',
+                    'px-3.5 py-1.5 sm:py-2 pointer-coarse:min-h-11 rounded-xl sm:rounded-2xl text-xs font-bold whitespace-nowrap border transition-all cursor-pointer',
                     activeCategory === cat.id
                       ? 'bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/40 dark:text-purple-300 dark:border-purple-700 shadow-xs'
                       : 'bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-800 hover:border-purple-300'

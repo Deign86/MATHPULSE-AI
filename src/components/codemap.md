@@ -16,6 +16,11 @@
 - App/router pages compose these components; `AuthContext`, `NotificationContext`, and chat context supply shared identity/notifications/chat where applicable.
 - Learning/admin/teacher components consume typed API services, Firebase-backed services, and curriculum/domain data; `RequireRole` gates pages by role; UI primitives come from `components/ui/`.
 
+## Responsive layout
+- Page grids use container queries on the role shell's `<main>` (`@4xl:grid-cols-4` KPI rows, `@5xl:` card grids), not viewport breakpoints, because the sidebar changes the width left for content.
+- Pinned toolbars and tab bars keep `data-tour-sticky=""` and become static on short screens (`short:static`); pages that scroll their own container clear the bottom nav themselves.
+- Touch-only sizes and invisible hit areas use `pointer-coarse:`; hover-only actions are visible on coarse pointers. Conventions: `docs/responsive-layout-guide.md`.
+
 ## Student guided tour
 
 - `onboarding/GuidedTour.tsx` and `studentTourSteps.ts` implement the interactive feature guide; see [onboarding map](onboarding/codemap.md).

@@ -264,14 +264,14 @@ const AdminAuditLog: React.FC = () => {
             disabled={loading}
             title="Synchronize logs"
             aria-label="Synchronize logs"
-            className="p-2 min-w-[38px] min-h-[38px] flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-[#9956DE] dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-700 shadow-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+            className="p-2 min-w-[38px] min-h-[38px] pointer-coarse:min-w-11 pointer-coarse:min-h-11 flex items-center justify-center rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:text-[#9956DE] dark:hover:text-purple-300 hover:border-purple-300 dark:hover:border-purple-700 shadow-xs transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
           >
             <RefreshCw size={14} className={loading ? 'animate-spin text-[#9956DE]' : ''} />
           </button>
           <button
             onClick={handleExportCSV}
             disabled={isExporting || loading || filteredLogs.length === 0}
-            className="inline-flex items-center gap-1.5 min-h-[38px] rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] px-3.5 text-xs font-bold text-white shadow-xs hover:shadow-md hover:shadow-purple-500/20 transition-all active:scale-95 disabled:opacity-50 border border-purple-400/30 cursor-pointer"
+            className="inline-flex items-center gap-1.5 min-h-[38px] pointer-coarse:min-h-11 rounded-xl bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] px-3.5 text-xs font-bold text-white shadow-xs hover:shadow-md hover:shadow-purple-500/20 transition-all active:scale-95 disabled:opacity-50 border border-purple-400/30 cursor-pointer"
           >
             {isExporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
             Export CSV
@@ -280,7 +280,7 @@ const AdminAuditLog: React.FC = () => {
       </div>
 
       {/* ── Top Executive KPI Bento Cards (Compact 2x2 on mobile, 4-col on desktop) ── */}
-      <div data-tour="audit-kpis" className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+      <div data-tour="audit-kpis" className="grid grid-cols-2 @4xl:grid-cols-4 gap-2.5 sm:gap-4">
         {kpis.map((kpi) => {
           const Icon = kpi.icon;
           return (
@@ -295,7 +295,7 @@ const AdminAuditLog: React.FC = () => {
               <div className="relative z-10 flex items-start justify-between gap-1.5 sm:gap-2 mb-1.5 sm:mb-3">
                 <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
                   <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
-                    <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 truncate">
+                    <span className="text-[9px] sm:text-[11px] font-black uppercase tracking-wider text-white/95 min-w-0 leading-tight">
                       {kpi.title}
                     </span>
                     {kpi.badge && (
@@ -324,7 +324,7 @@ const AdminAuditLog: React.FC = () => {
               {/* Subtext and Progress Bar */}
               <div className="relative z-10 space-y-1.5 sm:space-y-2 mt-1 sm:mt-2 pt-1.5 sm:pt-2.5 border-t border-white/20">
                 <div className="flex items-center justify-between text-[10px] sm:text-[11px] gap-1.5">
-                  <span className="text-white/90 font-medium truncate drop-shadow-xs hidden sm:inline">
+                  <span className="text-white/90 font-medium min-w-0 leading-snug drop-shadow-xs hidden sm:inline">
                     {kpi.subValue}
                   </span>
                   <span className="inline-flex items-center gap-0.5 font-black text-white text-[9px] sm:text-[10px] bg-white/20 backdrop-blur-md px-1.5 sm:px-2 py-0.5 rounded-full border border-white/25 shadow-2xs shrink-0">
@@ -346,7 +346,7 @@ const AdminAuditLog: React.FC = () => {
       </div>
 
       {/* ── Ultra-Compact Sticky Toolbar + Collapsible Filters ── */}
-      <div data-tour-sticky="" className="sticky top-0 z-20 px-1 pt-1.5 pb-2 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
+      <div data-tour-sticky="" className="sticky top-0 short:static z-20 px-1 pt-1.5 pb-2 bg-[#f8fafc]/95 dark:bg-slate-900/95 backdrop-blur-md w-full">
         <div data-tour="audit-filters" className="bg-white/95 dark:bg-slate-800/90 backdrop-blur-md border border-slate-200/80 dark:border-slate-700/60 rounded-2xl p-2 sm:p-2.5 lg:px-4 lg:py-3 shadow-sm flex flex-col gap-2 w-full">
           {/* Line 1: Search, Filter Toggle & Action Buttons */}
           <div className="flex items-center gap-1.5 sm:gap-2 w-full">
@@ -356,7 +356,7 @@ const AdminAuditLog: React.FC = () => {
               <input
                 type="text"
                 placeholder="Search actor, action, or event details…"
-                className="w-full pl-8.5 pr-7 h-9 sm:h-10 bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs font-semibold focus:border-purple-400 focus:ring-1 focus:ring-purple-400 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-all outline-none"
+                className="w-full pl-8.5 pr-7 h-9 sm:h-10 pointer-coarse:h-11 bg-slate-50/70 dark:bg-slate-900/60 border border-slate-200/70 dark:border-slate-700/60 rounded-xl text-xs font-semibold focus:border-purple-400 focus:ring-1 focus:ring-purple-400 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 transition-all outline-none"
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
@@ -380,7 +380,7 @@ const AdminAuditLog: React.FC = () => {
               type="button"
               variant="outline"
               size="sm"
-              className={`h-9 sm:h-10 px-2.5 rounded-xl border font-bold text-xs gap-1.5 shrink-0 lg:hidden transition-all ${
+              className={`h-9 sm:h-10 pointer-coarse:h-11 pointer-coarse:min-w-11 px-2.5 rounded-xl border font-bold text-xs gap-1.5 shrink-0 lg:hidden transition-all ${
                 mobileFiltersOpen || (selectedCategory !== 'All Categories' || selectedSeverity !== 'All Severities' || selectedRole !== 'All Roles')
                   ? 'bg-purple-50 dark:bg-purple-950/60 border-purple-300 dark:border-purple-700 text-[#9956DE] dark:text-purple-300 shadow-2xs'
                   : 'border-slate-200/80 dark:border-slate-700/60 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800'
@@ -410,7 +410,7 @@ const AdminAuditLog: React.FC = () => {
                   setSelectedRole('All Roles');
                   setCurrentPage(1);
                 }}
-                className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl border-slate-200/80 dark:border-slate-700/60 text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 hover:border-purple-300 shrink-0 cursor-pointer"
+                className="h-9 w-9 sm:h-10 sm:w-10 pointer-coarse:h-11 pointer-coarse:w-11 rounded-xl border-slate-200/80 dark:border-slate-700/60 text-slate-500 hover:text-purple-600 dark:hover:text-purple-400 hover:border-purple-300 shrink-0 cursor-pointer"
                 title="Reset Filters"
                 aria-label="Reset Filters"
               >
@@ -422,7 +422,7 @@ const AdminAuditLog: React.FC = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-200/60 transition-all shrink-0 cursor-pointer"
+              className="h-9 w-9 sm:h-10 sm:w-10 pointer-coarse:h-11 pointer-coarse:w-11 rounded-xl text-slate-400 dark:text-slate-400 hover:bg-purple-50 dark:hover:bg-purple-950/40 hover:text-[#9956DE] border border-slate-200/60 dark:border-slate-700/60 hover:border-purple-200/60 transition-all shrink-0 cursor-pointer"
               onClick={loadLogs}
               disabled={loading}
               title="Refresh logs"
@@ -433,9 +433,10 @@ const AdminAuditLog: React.FC = () => {
 
             {/* Export CSV Button */}
             <Button
-              className="h-9 sm:h-10 gap-1.5 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white rounded-xl shadow-md shadow-purple-500/25 hover:shadow-purple-500/40 transition-all px-3 sm:px-4 font-bold text-xs shrink-0 border border-purple-400/30 cursor-pointer"
+              className="h-9 sm:h-10 pointer-coarse:h-11 pointer-coarse:min-w-11 gap-1.5 bg-gradient-to-r from-[#9956DE] via-[#8643C8] to-[#7274ED] hover:from-[#8643C8] hover:to-[#6366F1] text-white rounded-xl shadow-md shadow-purple-500/25 hover:shadow-purple-500/40 transition-all px-3 sm:px-4 font-bold text-xs shrink-0 border border-purple-400/30 cursor-pointer"
               onClick={handleExportCSV}
               disabled={isExporting || loading || filteredLogs.length === 0}
+              aria-label="Export CSV"
             >
               {isExporting ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
               <span className="hidden xs:inline">Export</span>
@@ -488,7 +489,7 @@ const AdminAuditLog: React.FC = () => {
 
           {/* ── Collapsible Mobile Filters Drawer (< lg) ── */}
           {mobileFiltersOpen && (
-            <div className="lg:hidden pt-2 border-t border-slate-100 dark:border-slate-700/60 grid grid-cols-1 sm:grid-cols-3 gap-2 animate-in slide-in-from-top-1 duration-200">
+            <div className="lg:hidden pt-2 border-t border-slate-100 dark:border-slate-700/60 grid grid-cols-2 sm:grid-cols-3 gap-2 animate-in slide-in-from-top-1 duration-200">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Category</label>
                 <Select value={selectedCategory} onValueChange={(val) => { setSelectedCategory(val); setCurrentPage(1); }}>
@@ -522,7 +523,7 @@ const AdminAuditLog: React.FC = () => {
                 </Select>
               </div>
 
-              <div>
+              <div className="col-span-2 sm:col-span-1">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Actor Role</label>
                 <Select value={selectedRole} onValueChange={(val) => { setSelectedRole(val); setCurrentPage(1); }}>
                   <SelectTrigger className="h-9 w-full rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-semibold">
@@ -760,7 +761,7 @@ const AdminAuditLog: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 w-8 p-0 rounded-lg border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40 cursor-pointer"
+                className="h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 p-0 rounded-lg border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40 cursor-pointer"
                 disabled={currentPage <= 1 || loading}
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                 aria-label="Previous page"
@@ -775,7 +776,7 @@ const AdminAuditLog: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                className="h-8 w-8 p-0 rounded-lg border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40 cursor-pointer"
+                className="h-8 w-8 pointer-coarse:h-11 pointer-coarse:w-11 p-0 rounded-lg border-slate-200/80 dark:border-slate-700/60 disabled:opacity-40 cursor-pointer"
                 disabled={currentPage >= totalPages || loading}
                 onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages || 1))}
                 aria-label="Next page"
@@ -838,7 +839,7 @@ const AdminAuditLog: React.FC = () => {
                     {copiedId ? 'Copied' : 'Copy Details'}
                   </button>
                 </div>
-                <p className="text-xs font-medium text-slate-800 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-900/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 font-mono select-all">
+                <p className="text-xs font-medium text-slate-800 dark:text-slate-200 leading-relaxed bg-slate-50 dark:bg-slate-900/90 p-3.5 rounded-xl border border-slate-200/80 dark:border-slate-800 font-mono select-all break-all">
                   {selectedLog.details}
                 </p>
               </div>

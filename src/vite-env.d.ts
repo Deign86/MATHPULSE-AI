@@ -11,6 +11,8 @@ interface ImportMetaEnv {
   readonly VITE_APP_VERSION?: string;
   /** Register the PWA service worker in dev builds (default: false). */
   readonly VITE_ENABLE_SW_IN_DEV?: string;
+  /** Show the dev-only test reset buttons (Modules daily rewards, Avatar Studio purchases) in dev builds (default: hidden). */
+  readonly VITE_SHOW_DEV_RESET?: string;
   readonly VITE_ENABLE_IMPORT_GROUNDED_QUIZ?: string;
   readonly VITE_ENABLE_IMPORT_GROUNDED_LESSON?: string;
   readonly VITE_ENABLE_IMPORT_GROUNDED_FEEDBACK_EVENTS?: string;
