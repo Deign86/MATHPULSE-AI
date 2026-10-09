@@ -4,17 +4,18 @@ Read this file before starting, then follow `AGENTS.md` (Ponytail + Unlazy + Ant
 
 ## Where things stand
 
-Two local branches, stacked. Neither is pushed and there is no PR: the user asked to wait.
+Two stacked branches, both merged with `origin/main` at `1bc66f06` on 2026-10-09 and opened as stacked PRs (onboarding into `main`, responsiveness into the onboarding branch).
 
-1. `claude/onboarding-tours`: `origin/main` at `a1e5e7d` plus the onboarding work.
+1. `claude/onboarding-tours`: `origin/main` plus the onboarding work.
    - `00e8cfc` guided tours for students, teachers and admins (cherry-pick of `e5263a1` from `codex/student-onboarding-tour`; main's "Assigned by your teacher" section carries `data-tour="assigned-quizzes"`, and both sides of `GATES.md` were kept).
    - `dd3ad30` the header **?** button asks "Play the <page> guide?" (**Play guide** / **Skip**) before it plays.
    - `de6b8fe` the Topic Mastery guide opens the Mastery Matrix tab when Module Availability was left open, and restores the teacher's tab afterwards.
    - `613badc` guides wait for pages that are still loading (`data-tour-loading` loaders, `data-tour-page` page containers), so a highlight never lands on a loading screen.
    - `da0bebd` only the full-screen loader hides a guide step that is already showing (a page's own loader under a phone menu no longer makes it flicker).
+   - `535478d` merge of `origin/main` (76 commits): main's logic kept; the admin AI Monitoring page guide and the student Leaderboard "Time period" step were removed because main removed those features.
 2. `claude/responsiveness-optimization-4b76c0` (this worktree), on top of `claude/onboarding-tours`: responsive primitives, admin, teacher and student layout fixes, the layout guide and audit tooling, the fixes from the real-app teacher check, then two student commits: the daily check-in no longer closes on outside taps, the Modules page always offers "Claim Daily Reward" / "Check Daily Rewards", claimed days are now saved (they never were, also on `main`), past unclaimed days read "Missed", and the dev-only reset buttons are hidden (`VITE_SHOW_DEV_RESET=true` shows them).
 
-Merge in that order (onboarding first). A PR from the responsiveness branch alone would carry both.
+Merge in that order (onboarding first; GitHub then retargets the responsiveness PR to `main`). The responsiveness branch's own merge commit keeps main's logic too: AI Chat keeps main's shell padding for the bottom nav (our duplicate padding inside `AIChatPage` was dropped), the leaderboard rank message uses main's `rankBarMessage`, Data Import's "Go to Modules" uses main's `onNavigateToModuleAvailability`, and the AI Monitoring components stay deleted.
 
 - Conventions, the measuring method, and every layout finding with before/after numbers: `docs/responsive-layout-guide.md`. Guide engine rules: `docs/student-onboarding-guide.md`. Evidence: `GATES.md` (INT, PGC, TMV, GLW, RESP and DCI sections).
 - Verified in the real app: student, teacher and admin pages at all eight sizes; touch sweeps at 390x844 and 768x1024; dialogs at 844x390 and 320x568; every student, teacher and admin page guide at phone (touch), landscape, tablet and desktop sizes; the student, teacher and admin first-use guides and page guides after a fresh load with the new loading wait (1440x900 and 390x844 with touch). The sign-in page was checked headless.
@@ -24,10 +25,12 @@ Merge in that order (onboarding first). A PR from the responsiveness branch alon
 
 ## Next
 
-1. **Sync with `main` before any PR.** `origin/main` is 71 commits ahead of our base (`5bbaa0e` on 2026-10-09). It removed AI Monitoring (`eb388c73`), which this branch restyled (expect conflicts in `src/pages/admin/AIMonitoringPage.tsx`; drop our changes there), and it contains its own leaderboard profile-modal close-button fix (`89fd4cfe`) that overlaps ours. Merge `main` into `claude/onboarding-tours` first, re-run its checks, then into this branch. Re-run the layout audit and guide runs on any page main changed.
+1. **Review and merge the PRs** in order (onboarding, then responsiveness). If `main` moves again before merging, merge it into `claude/onboarding-tours` first, then into this branch, keeping main's logic.
 2. **Quiz Battle check (RESP5b).** With a disposable student account (never a real student's), measure the hub, setup, match and results screens at all eight sizes. Opening the page resumes, and can start, that account's unfinished matches.
 3. **Intervention Center check (RESP4b)**, only with the user's go-ahead: `__runPlan` with a `click` step at all eight sizes, then `__touchSweep()` with touch on.
-4. **PR** only when the user asks. Ask before any force-push or replacing a remote branch.
+4. Ask before any force-push or replacing a remote branch.
+
+On this Windows checkout (`core.autocrlf=true`), main's `ragLessonStream.contract.test.ts` fails 4 tests because its fixture `src/services/__tests__/fixtures/ragLessonStream.sse` is written with CRLF; git stores it with LF and CI (Linux) passes. Rewrite the working copy with LF (git sees no change) or add `*.sse text eol=lf` to `.gitattributes` (dev lead's call).
 
 The user asked on 2026-10-09 to keep further testing light; prefer unit tests and one targeted real-app check over full sweeps.
 

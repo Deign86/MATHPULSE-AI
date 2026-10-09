@@ -12,11 +12,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import ChatMarkdown from './ChatMarkdown';
 import UserAvatar from './UserAvatar';
 
-const QUICK_PROMPTS = [
-  { label: 'Explain step-by-step', icon: BookOpen, prompt: 'Can you explain this step-by-step?' },
-  { label: 'SHS practice problem', icon: Calculator, prompt: 'Give me an SHS STEM practice problem on this topic.' },
-  { label: 'Simplify concept', icon: Brain, prompt: "Simplify this concept for me like I'm a Grade 11 student." },
-  { label: 'Check my solution', icon: FlaskConical, prompt: 'Can you check if my solution is correct?' },
+export const QUICK_PROMPTS = [
+  { label: 'Explain step-by-step', icon: BookOpen, prompt: 'Can you explain this math problem step-by-step?' },
+  { label: 'SHS practice problem', icon: Calculator, prompt: 'Give me an SHS STEM math practice problem on this topic.' },
+  { label: 'Simplify concept', icon: Brain, prompt: "Simplify this math concept for me like I'm a Grade 11 student." },
+  { label: 'Check my solution', icon: FlaskConical, prompt: 'Can you check if my math solution is correct?' },
 ] as const;
 
 const TOPIC_CARDS = [
@@ -200,7 +200,7 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
   );
 
   return (
-    <div className="h-full min-h-0 overflow-hidden flex md:gap-4 px-0 pt-0 sm:px-3 sm:pt-3 md:px-5 md:pt-2.5 pb-[calc(4.3125rem+env(safe-area-inset-bottom))] md:pb-[calc(4.5625rem+env(safe-area-inset-bottom))] lg:px-6 lg:py-6 xl:px-10">
+    <div className="h-full min-h-0 overflow-hidden flex md:gap-4 px-0 pt-0 pb-0 sm:px-3 sm:pt-3 sm:pb-2.5 md:px-5 md:pt-2.5 md:pb-3 lg:px-6 lg:py-6 xl:px-10">
 
       {/* ── Left Sidebar ── */}
       <div className={`${activeSessionId ? 'hidden md:flex' : 'flex'} w-full md:w-80 min-h-0 flex-col bg-white rounded-none md:rounded-3xl border-0 md:border border-[#e4e4e7] overflow-hidden`}>
@@ -475,7 +475,7 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
             <div
               className="flex-shrink-0 px-3 md:px-4 pt-2 bg-white"
               data-tour="chat-input"
-              style={{ paddingBottom: '0.75rem' }}
+              style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
             >
               <div className="flex gap-2 items-center bg-[#fafafa] border border-[#e4e4e7] rounded-2xl px-3 py-1.5 transition-all focus-within:border-[#9956DE]/40">
                 <Input
@@ -547,11 +547,7 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
                   {TOPIC_CARDS.map(({ label, icon: Icon, color, desc }) => (
                     <button
                       key={label}
-                      onClick={() => {
-                        const id = createNewSession();
-                        setActiveSessionId(id);
-                        setTimeout(() => handleSendMessage(`I want to learn about ${label} in SHS STEM`), 200);
-                      }}
+                      onClick={() => handleSendMessage(`I want to learn about ${label} in SHS STEM`)}
                       className="group p-4 bg-white rounded-2xl border border-[#e4e4e7] hover:border-[#9956DE]/30 hover:shadow-md transition-all text-left"
                     >
                       <div className={`w-10 h-10 bg-gradient-to-br ${color} rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>

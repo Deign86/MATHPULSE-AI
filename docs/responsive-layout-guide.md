@@ -34,7 +34,7 @@ Container sizes in use:
 
 ## Shell rules
 
-- **Bottom navigation (below `lg`).** Student: 69px on phones and 73px on the tablet layout, plus the home-indicator inset; teacher and admin bars are similar. Pages that scroll the shell's `<main>` get `pb-28 sm:pb-32` from it. Pages that scroll inside their own container (AI Chat, Modules, module detail, Avatar Studio) must clear the bar themselves: AI Chat pads by the exact bar height (`pb-[calc(4.3125rem+env(safe-area-inset-bottom))] md:pb-[calc(4.5625rem+…)]`), module lists use `pb-28 sm:pb-32 lg:pb-28`.
+- **Bottom navigation (below `lg`).** Student: 69px on phones and 73px on the tablet layout, plus the home-indicator inset; teacher and admin bars are similar. Pages that scroll the shell's `<main>` get `pb-28 sm:pb-32` from it. Pages that scroll inside their own container (AI Chat, Modules, module detail, Avatar Studio) must clear the bar themselves: for AI Chat the shell's `<main>` reserves the bar (`pb-[4.5rem] lg:pb-0`, from main) and the composer adds the home-indicator inset; module lists use `pb-28 sm:pb-32 lg:pb-28`.
 - **Floating AI tutor (`lg` and up).** A 64px button at `bottom-8 right-8`. Scrolling pages end with `lg:pb-28`, so the last row can move above it.
 - **No `backdrop-filter` on elements with `fixed` children.** A backdrop filter makes the element the containing block of its fixed descendants. The navs' tap-outside overlays (`fixed inset-0`) covered only the 64–73px bar, so a tap meant to close a menu reached the page underneath. All three bottom navs now blur through a `::before` layer instead.
 - **Dialogs.** The shared `DialogContent` (`src/components/ui/dialog.tsx`) caps itself at `100dvh - 2rem` and scrolls. Do not pass `overflow-hidden` to it, or it clips again. Custom modals use `max-h-[calc(100dvh-2rem)] overflow-y-auto`, or a flex column with a scrolling body between a fixed header and footer.
@@ -107,7 +107,6 @@ Before and after numbers come from the same harness version unless noted. Usable
 | Admin header (320px) | Page titles truncated | `text-base min-[360px]:text-lg`, `line-clamp-2` | Titles wrap to 2 lines |
 | Admin Overview | Engagement chart header and side cards followed viewport breakpoints, not the space beside the sidebar | Card-level `@container` (`@xl:flex-row`); side cards 2-up from `md` | No clipped controls at 768–1440 |
 | Admin Analytics | Section tabs in a horizontal scroller; tabs past the edge hidden on phones | 3-column tab grid below `xl` with short labels | All tabs visible |
-| Admin AI Monitoring | Daily-attempts `<dl>` unstyled: one line per day, unbounded height | Day grid (1 → 5 columns) capped at 224px with its own scroll; KPIs `@4xl` | Bounded and aligned at 320–1920 |
 | Student Modules (320x568) | 117px usable (200px sticky filter bar) | Filter bar static up to 44rem tall; filter row wraps; selects capped at 11rem | 499px |
 | Student Rewards (320x568) | 199–220px usable; 4 truncated labels | Sticky bar static up to 44rem tall; metric values wrap (`text-xl sm:text-2xl`) | 499px; 0 truncations |
 | Student Dashboard (1280–1440) | Right sidebar cards truncated, leaderboard podium clipped | `xl:col-span-8 2xl:col-span-9` / `xl:col-span-4 2xl:col-span-3` | No truncation or clipping |
@@ -116,7 +115,7 @@ Before and after numbers come from the same harness version unless noted. Usable
 | Student Leaderboard (1024) | Standings list off screen (side-by-side layout at `lg`) | Split layout from `xl` | Standings reachable |
 | Student Leaderboard rank card (320–390) | "Only N XP needed to overtake …" cut to about half | Wraps to 2 lines (`line-clamp-2`) | Full message visible |
 | Avatar Studio (844x390) | Item grid 32px tall, stage overlapping the wardrobe | `short:` stage minimum 160px, wardrobe minimum height, outer area scrolls | Items area 141px, no overlap |
-| AI Chat (phones) | Message input behind the bottom nav | Padding by the exact nav height | Input clear of the nav |
+| AI Chat (phones) | Message input behind the bottom nav | Fixed on main in the same week (`pb-[4.5rem]` on the shell below `lg`); this branch's own padding was dropped in the merge so the gap is not doubled | Input clear of the nav |
 | Assessment (320–844) | Results dialog cut off at 844x390; tall questions and the results overlay centred above the scroll start; score row clipped | `justify-center-safe` / `items-center-safe`, footer safe-area padding, title wraps | Dialog fits or scrolls; nothing clipped |
 | Settings (320) | Daily XP goal buttons 4-up and cramped | 2-up below `@md` | 2-up |
 | Sign-in (844x390) | Page and card both scrolled (double scroll) | Card height capped to the viewport minus its padding (`max-h-[calc(100dvh-…)]`) | Only the card scrolls |

@@ -16,7 +16,7 @@ FastAPI backend entry point: initializes Firebase/Firestore, authentication, mid
 4. Data paths read/write Firestore and model/RAG providers; async generation stores task state for `/api/tasks/{task_id}` polling.
 
 ## Integration
-- Router modules: `rag`, `admin_model`, `admin`, `curriculum`, `diagnostic`, `video`, `quiz_battle`, `teacher_materials`, `class_records`, `risk`, `tutor_checkin`, `practice`, `try_it_yourself`, `ai_monitoring`, `class_analytics`, `intervention`, `pipeline`, `deepseek_rag`, `at_risk_resolution`, `fun_modules`, `jev`.
+- Router modules: `rag`, `admin_model`, `admin`, `curriculum`, `diagnostic`, `video`, `quiz_battle`, `teacher_materials`, `class_records`, `risk`, `tutor_checkin`, `practice`, `try_it_yourself`, `class_analytics`, `intervention`, `pipeline`, `deepseek_rag`, `at_risk_resolution`, `fun_modules`, `jev`.
 - Core routes include `/api/chat`, `/api/chat/stream`, `/api/verify-solution`, `/api/predict-risk`, `/api/learning-path`, `/api/lesson/generate`, `/api/quiz/generate`, account import, class-record upload, admin users, analytics, and `/api/automation/*`.
 - Firebase Auth token claims/Firestore `users` provide identity and role data. Other directly used collections include `diagnosticResults`, `classRecordImports`, `normalizedClassRecords`, `classrooms`, `managedStudents`, `riskRefreshEvents`, `riskRefreshJobs`, `riskRefreshStats`, and `classSectionOwnership`.
 - Uses `middleware.rate_limiter`, `config.models.yaml`/`config.ai_pricing.py`, `services.*`, `rag.*`, and top-level `analytics.py`/`automation_engine.py`.

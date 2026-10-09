@@ -36,6 +36,22 @@ describe('MathText spacing (S7)', () => {
     expect(container.querySelector('.katex-html')?.textContent).not.toContain('_');
   });
 
+  it('treats dollar amounts as currency, not math delimiters', () => {
+    const out = renderedText('A business earns a fixed profit of $500 per week plus an additional $20 for each item sold.');
+    expect(out).toBe('A business earns a fixed profit of $500 per week plus an additional $20 for each item sold.');
+  });
+
+  it('still renders real $...$ math next to a currency amount', () => {
+    const { container } = render(<MathText>{'It costs $500 per week plus $20 each, so solve $x^2 = 4$'}</MathText>);
+    expect(container.textContent).toContain('$500 per week plus $20 each');
+    expect(container.querySelector('.katex')).not.toBeNull();
+  });
+
+  it('keeps LaTeX with \\text{} words as math', () => {
+    const { container } = render(<MathText>{'$\\text{total cost} = 5x$'}</MathText>);
+    expect(container.querySelector('.katex')).not.toBeNull();
+  });
+
   it('renders plain prose without math untouched', () => {
     expect(renderedText('What is the mean of 4, 7, and 12?')).toBe('What is the mean of 4, 7, and 12?');
   });

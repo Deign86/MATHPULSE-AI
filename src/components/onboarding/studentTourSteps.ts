@@ -97,10 +97,9 @@ const quizBattle: TourPage = {
 const leaderboard: TourPage = {
   tab: 'Leaderboard',
   label: 'Leaderboard',
-  overview: { tab: 'Leaderboard', title: 'Leaderboard', description: 'See how your XP ranks against your section, daily, weekly or all time. On desktop it is Leadership Board; on a phone, it is in the battle menu.', target: '[data-tour-nav="Leaderboard"]', menu: 'Leaderboard' },
+  overview: { tab: 'Leaderboard', title: 'Leaderboard', description: 'See how your all-time XP ranks against your section. On desktop it is Leadership Board; on a phone, it is in the battle menu.', target: '[data-tour-nav="Leaderboard"]', menu: 'Leaderboard' },
   steps: [
-    { tab: 'Leaderboard', title: 'Time period', description: 'Switch between Daily, Weekly and All Time rankings.', target: at('leaderboard-period') },
-    { tab: 'Leaderboard', title: 'Top three', description: 'The top three learners in this period. Tap a learner to see their profile.', target: at('leaderboard-podium') },
+    { tab: 'Leaderboard', title: 'Top three', description: 'The top three learners. Tap a learner to see their profile.', target: at('leaderboard-podium') },
     { tab: 'Leaderboard', title: 'Your rank', description: 'Your current rank and how much XP you need to pass the learner ahead of you. Battle takes you straight to Quiz Battle.', target: at('leaderboard-rank') },
     { tab: 'Leaderboard', title: 'Class standings', description: 'Everyone else in your section, with your row marked "You". The buttons below go to Quiz Battle and Modules to earn more XP.', target: at('leaderboard-standings') },
   ],

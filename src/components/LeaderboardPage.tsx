@@ -37,11 +37,6 @@ interface LeaderboardPageProps {
   onNavigate?: (tab: string) => void;
 }
 
-type TimeFilter = 'daily' | 'weekly' | 'all';
-
-// SAFETY: these literals are exactly the TimeFilter members rendered by the segmented control.
-const TIME_FILTERS: TimeFilter[] = ['daily', 'weekly', 'all'];
-
 const formatXP = (xp: number): string => {
   if (xp >= 1000) {
     const k = xp / 1000;
@@ -54,6 +49,16 @@ const getFirstName = (fullName: string | undefined): string => {
   if (!fullName) return '---';
   const parts = fullName.trim().split(/\s+/);
   return parts[0] || fullName;
+};
+
+export const rankBarMessage = (
+  yourRank: number,
+  rival: { name: string; xpGap: number } | null,
+  listedCount: number,
+): string => {
+  if (yourRank === 1) return 'You hold the #1 rank! Keep mastering drills!';
+  if (rival) return `Only ${rival.xpGap} XP needed to overtake ${rival.name}!`;
+  return `You're outside the top ${listedCount}. Keep mastering drills to climb in!`;
 };
 
 const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
@@ -70,8 +75,6 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
   // SAFETY: trusted internal value already conforms to the asserted type.
   const studentProfile = userProfile as StudentProfile;
   const { leaderboard: leaderboardAccess, loading: featureAccessLoading } = useFeatureAccess(currentUser?.uid || null);
-  const [activeView] = useState<'school' | 'section'>('section');
-  const [timeFilter, setTimeFilter] = useState<TimeFilter>('weekly');
   const [selectedStudent, setSelectedStudent] = useState<LeaderboardStudent | null>(null);
   const [leaderboardLoading, setLeaderboardLoading] = useState(true);
   const [leaderboardError, setLeaderboardError] = useState<string | null>(null);
@@ -129,8 +132,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
     setLeaderboardLoading(true);
     setLeaderboardError(null);
     try {
-      const mappedFilter: 'all' | 'week' = timeFilter === 'all' ? 'all' : 'week';
-      const entries = await getLeaderboard(currentUser.uid, false, mappedFilter, 25);
+      const entries = await getLeaderboard(currentUser.uid, false, 'all', 25);
 
       if (!entries || entries.length === 0) {
         setStudents([]);
@@ -150,7 +152,7 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
           entry.userId === currentUser.uid
             ? selectDisplayXP(studentProfile?.totalXP, studentProfile?.currentXP)
             : entry.xp,
-        section: myClassSection || 'Grade 11 - STEM A',
+        section: entry.userId === currentUser.uid ? myClassSection : '',
         rank: {
           global: entry.rank,
           section: entry.rank,
@@ -167,27 +169,15 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
     } finally {
       setLeaderboardLoading(false);
     }
-  }, [currentUser, myClassSection, timeFilter, currentUserPhoto]);
+  }, [currentUser, myClassSection, currentUserPhoto]);
 
   useEffect(() => {
     loadLeaderboard();
   }, [loadLeaderboard]);
 
-  const getFilteredStudents = () => {
-    let filtered = students;
-    if (activeView === 'section') {
-      const mySection = myClassSection || '';
-      if (mySection) {
-        filtered = filtered.filter((s) => s.section === mySection);
-      }
-    }
-
-    // Strict score-descending order (issue #158): sort by XP, never by stale
-    // rank labels, and never sort the state array in place.
-    return sortByXpDesc(filtered);
-  };
-
-  const filteredStudents = getFilteredStudents();
+  // Strict score-descending order (issue #158): sort by XP, never by stale
+  // rank labels, and never sort the state array in place.
+  const filteredStudents = sortByXpDesc(students);
 
   const youStudent = filteredStudents.find((s) => s.isYou);
   const yourRank = youStudent?.rank.section || (filteredStudents.length + 1);
@@ -423,23 +413,10 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
               Leaderboard
             </h1>
 
-            {/* 3. Daily / Weekly / All Time Capsule Pill (Centered below title) */}
-            <div className="bg-white/50 backdrop-blur-xl rounded-full p-1 flex gap-1 shadow-sm border border-white/70" data-tour="leaderboard-period">
-              {TIME_FILTERS.map((mode) => (
-                <button
-                  key={mode}
-                  type="button"
-                  onClick={() => setTimeFilter(mode)}
-                  aria-label={`Show ${mode === 'all' ? 'All Time' : mode} leaderboard`}
-                  className={`px-4 py-1.5 pointer-coarse:min-h-11 rounded-full text-xs font-bold transition-all capitalize inline-flex justify-center items-center cursor-pointer ${
-                    timeFilter === mode
-                      ? 'bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-md'
-                      : 'text-purple-950/80 hover:text-purple-950 hover:bg-white/30'
-                  }`}
-                >
-                  {mode === 'all' ? 'All Time' : mode}
-                </button>
-              ))}
+            <div className="bg-white/50 backdrop-blur-xl rounded-full p-1 flex shadow-sm border border-white/70">
+              <span className="px-4 py-1.5 rounded-full text-xs font-bold bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white shadow-md">
+                All Time
+              </span>
             </div>
           </div>
 
@@ -656,9 +633,11 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                 #{yourRank}
               </span>
               <p className="text-xs font-bold leading-snug line-clamp-2">
-                {rivalStudent
-                  ? `Only ${rivalXpGap} XP needed to overtake ${rivalStudent.name}!`
-                  : 'You hold the #1 rank! Keep mastering drills!'}
+                {rankBarMessage(
+                  yourRank,
+                  rivalStudent ? { name: rivalStudent.name, xpGap: rivalXpGap } : null,
+                  filteredStudents.length,
+                )}
               </p>
             </div>
             <button
@@ -690,10 +669,10 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                 </div>
                 <div>
                   <h3 className="font-display font-black text-slate-900 dark:text-white text-base leading-snug">
-                    Class Standings
+                    School Standings
                   </h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
-                    {myClassSection || 'Senior High STEM'}
+                    {studentProfile?.school || 'Senior High STEM'}
                   </p>
                 </div>
               </div>
@@ -754,10 +733,14 @@ const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
                         <span className="text-[10px] text-slate-500 dark:text-slate-400">
                           Lv {student.level}
                         </span>
-                        <span className="text-[9px] text-slate-300 dark:text-slate-600">•</span>
-                        <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
-                          {student.section}
-                        </span>
+                        {student.section && (
+                          <>
+                            <span className="text-[9px] text-slate-300 dark:text-slate-600">•</span>
+                            <span className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                              {student.section}
+                            </span>
+                          </>
+                        )}
                       </div>
                     </div>
 

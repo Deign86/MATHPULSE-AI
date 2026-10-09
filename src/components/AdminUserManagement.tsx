@@ -896,6 +896,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
   ] as const;
 
   const hasActiveFilters = searchQuery || roleFilter !== 'All Roles' || statusFilter !== 'All Status' || sectionFilter !== 'All Sections';
+  const roleFilterLabel = roleFilter === 'Admin' ? 'Administrator' : roleFilter === 'Teacher' ? 'Educator' : roleFilter;
 
   return (
     <div className={`space-y-5 sm:space-y-6 max-w-[1600px] mx-auto min-w-0 pt-4 sm:pt-6 animate-in fade-in duration-300 ${selectedCount > 0 ? 'pb-72 sm:pb-40 xl:pb-24' : 'pb-6'}`}>
@@ -1074,7 +1075,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                 onValueChange={(value) => { setRoleFilter(value); setCurrentPage(1); clearSelection(); }}
               >
                 <SelectTrigger className="h-10 w-[125px] rounded-xl bg-slate-50/70 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-3 shrink-0 shadow-none hover:border-purple-300 dark:hover:border-purple-600 focus:ring-1 focus:ring-purple-400 transition-all">
-                  <span className="truncate">{roleFilter === 'All Roles' ? 'All Roles' : roleFilter}</span>
+                  <span className="truncate">{roleFilterLabel}</span>
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
                   <SelectItem value="All Roles" className="text-xs font-medium">All Roles</SelectItem>
@@ -1135,7 +1136,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                     onValueChange={(value) => { setRoleFilter(value); setCurrentPage(1); clearSelection(); }}
                   >
                     <SelectTrigger className="h-9 w-full rounded-xl bg-slate-50 dark:bg-slate-900/60 border-slate-200/80 dark:border-slate-700/60 text-xs font-bold text-slate-700 dark:text-slate-200 px-2.5 shadow-none">
-                      <span className="truncate">{roleFilter === 'All Roles' ? 'All Roles' : roleFilter}</span>
+                      <span className="truncate">{roleFilterLabel}</span>
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700">
                       <SelectItem value="All Roles" className="text-xs font-medium">All Roles</SelectItem>
@@ -1192,7 +1193,7 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
               )}
               {roleFilter !== 'All Roles' && (
                 <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-violet-50 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 text-[10px] sm:text-[11px] font-bold border border-violet-200/70 dark:border-violet-900/60 shadow-xs">
-                  Role: {roleFilter}
+                  Role: {roleFilterLabel}
                   <button type="button" onClick={() => { setRoleFilter('All Roles'); setCurrentPage(1); }} className="text-violet-400 hover:text-violet-700 ml-0.5 cursor-pointer"><X size={10} /></button>
                 </span>
               )}
@@ -1675,6 +1676,9 @@ const AdminUserManagement: React.FC<AdminUserManagementProps> = ({
                             setSearchQuery('');
                             setRoleFilter('All Roles');
                             setStatusFilter('All Status');
+                            setSectionFilter('All Sections');
+                            setCurrentPage(1);
+                            clearSelection();
                           }}
                         >
                           Reset Filters

@@ -1518,6 +1518,55 @@ function extractTaskErrorMessage(cause: unknown): string {
   return String(cause);
 }
 
+/** Raised by waitForTaskResult when a task ends failed/cancelled; keeps the backend error code. */
+export class AsyncTaskFailedError extends Error {
+  public readonly code: string | null;
+
+  constructor(cause: AsyncTaskStatusResponse['error']) {
+    super(extractTaskErrorMessage(cause));
+    this.name = 'AsyncTaskFailedError';
+    // SAFETY: failure envelopes are untyped JSON; only the string code field is read.
+    const maybeCode = isObj(cause) ? (cause as { code?: string }).code : undefined;
+    this.code = isString(maybeCode) ? maybeCode : null;
+  }
+}
+
+/** Contract C3: a task lost to a server restart (`interrupted`) or unknown to the server (404) can be resubmitted. */
+function isResubmittableTaskFailure(err: Error): boolean {
+  if (err instanceof AsyncTaskFailedError) return err.code === 'interrupted';
+  return err instanceof ApiError && err.status === 404;
+}
+
+/**
+ * Contract C3: submit an async generation job and poll it. Returns null only when the submit itself
+ * fails (async disabled / network error before a taskId exists) so the caller may use the sync endpoint.
+ * Once a taskId exists the sync endpoint is never used; an interrupted or 404 task is resubmitted once.
+ */
+async function runAsyncGenerationTask(
+  submit: () => Promise<AsyncTaskSubmitResponse>,
+  waitOptions: AsyncTaskWaitOptions,
+  onTaskCreated?: (taskId: string) => void,
+): Promise<AsyncTaskStatusResponse | null> {
+  let submitted: AsyncTaskSubmitResponse;
+  try {
+    submitted = await submit();
+  } catch (submitErr) {
+    console.warn('[apiService] Async generation submit failed, using sync endpoint:', submitErr);
+    return null;
+  }
+
+  for (let attempt = 0; ; attempt += 1) {
+    onTaskCreated?.(submitted.taskId);
+    try {
+      return await apiService.waitForTaskResult(submitted.taskId, waitOptions);
+    } catch (pollErr) {
+      if (attempt > 0 || !(pollErr instanceof Error) || !isResubmittableTaskFailure(pollErr)) throw pollErr;
+      console.warn('[apiService] Async generation task was lost, resubmitting once:', pollErr);
+    }
+    submitted = await submit();
+  }
+}
+
 // ─── Public API ──────────────────────────────────────────────
 
 export const apiService = {
@@ -2409,12 +2458,11 @@ export const apiService = {
     };
 
     if (ASYNC_GENERATION_ENABLED) {
-      try {
-        const submitted = await apiService.submitLessonPlanAsync(effectiveRequest);
-        const task = await apiService.waitForTaskResult(submitted.taskId, {
-          timeoutMs: 240_000,
-          pollIntervalMs: 1_500,
-        });
+      const task = await runAsyncGenerationTask(
+        () => apiService.submitLessonPlanAsync(effectiveRequest),
+        { timeoutMs: 240_000, pollIntervalMs: 1_500 },
+      );
+      if (task) {
         const payload = task.result;
         if (!isObj(payload)) {
           throw new Error('Lesson generation completed without a valid result payload.');
@@ -2422,8 +2470,6 @@ export const apiService = {
         const taskResult: object = payload;
         // SAFETY: async lesson-plan task payloads mirror the synchronous LessonPlanResponse contract.
         return taskResult as LessonPlanResponse;
-      } catch (asyncErr) {
-        console.warn('[apiService] Async lesson generation failed or unavailable, falling back to sync:', asyncErr);
       }
     }
 
@@ -2455,14 +2501,12 @@ export const apiService = {
     };
 
     if (ASYNC_GENERATION_ENABLED) {
-      try {
-        const submitted = await apiService.submitQuizAsync(effectiveRequest);
-        options?.onTaskCreated?.(submitted.taskId);
-        const task = await apiService.waitForTaskResult(submitted.taskId, {
-          timeoutMs: 240_000,
-          pollIntervalMs: 1_500,
-          onProgress: options?.onProgress,
-        });
+      const task = await runAsyncGenerationTask(
+        () => apiService.submitQuizAsync(effectiveRequest),
+        { timeoutMs: 240_000, pollIntervalMs: 1_500, onProgress: options?.onProgress },
+        options?.onTaskCreated,
+      );
+      if (task) {
         const payload = task.result;
         if (!isObj(payload)) {
           throw new Error('Quiz generation completed without a valid result payload.');
@@ -2471,8 +2515,6 @@ export const apiService = {
           throw new Error('Invalid quiz generation response from async task payload.');
         }
         return payload;
-      } catch (asyncErr) {
-        console.warn('[apiService] Async quiz generation failed or unavailable, falling back to sync:', asyncErr);
       }
     }
 
@@ -2573,7 +2615,7 @@ export const apiService = {
         return status;
       }
       if (status.status === 'failed' || status.status === 'cancelled') {
-        throw new Error(extractTaskErrorMessage(status.error));
+        throw new AsyncTaskFailedError(status.error);
       }
       await sleep(pollIntervalMs);
     }

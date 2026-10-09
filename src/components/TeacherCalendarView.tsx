@@ -203,6 +203,7 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
   });
 
   const [hiddenScheduleIds, setHiddenScheduleIds] = useState<Set<string>>(new Set());
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
 
   // Editor Modal State
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -322,7 +323,9 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
 
   const openAdd = (day: Date) => {
     const key = toDateKey(day);
+    setError('');
     setEditingEventId(null);
+    setEditingScheduleId(null);
     setFormTitle('');
     setFormDescription('');
     setFormClassId(classes?.length === 1 ? classes[0].id : '');
@@ -334,10 +337,12 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
   };
 
   const openEdit = (ev: CalendarEvent) => {
+    setError('');
     if (ev.id.startsWith('schedule-')) {
-      setHiddenScheduleIds(prev => new Set(prev).add(ev.id));
+      setEditingScheduleId(ev.id);
       setEditingEventId(null);
     } else {
+      setEditingScheduleId(null);
       setEditingEventId(ev.id);
     }
     setFormTitle(ev.title);
@@ -412,6 +417,10 @@ const TeacherCalendarView: React.FC<TeacherCalendarViewProps> = ({
         setEvents(prev => [...prev, { id: optimisticId, userId: uid, createdAt: new Date(), ...evData }]);
         const savedEvent = await createCalendarEvent(uid, evData);
         setEvents(prev => prev.map(event => event.id === optimisticId ? savedEvent : event));
+        if (editingScheduleId) {
+          setHiddenScheduleIds(prev => new Set(prev).add(editingScheduleId));
+          setEditingScheduleId(null);
+        }
       }
       setIsAddOpen(false);
     } catch (err) {

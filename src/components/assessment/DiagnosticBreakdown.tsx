@@ -225,15 +225,16 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
       sessionStorage.setItem('mathpulse_practice_topic', topicName);
     }
     sessionStorage.setItem('mathpulse_modules_tab', 'practice');
-    window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
+    // onClose may reset the tab; dispatch afterwards so Modules is the last tab update in this batch.
     onClose();
+    window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
   };
 
   const handleOpenLesson = (topicName: string) => {
     sessionStorage.setItem('mathpulse_lesson_topic', topicName);
     sessionStorage.setItem('mathpulse_modules_tab', 'recommended');
-    window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
     onClose();
+    window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
   };
 
   const totalCorrect = responses.filter(r => r.is_correct).length;

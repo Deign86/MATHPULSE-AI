@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle, LogOut, Trash2, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -69,6 +69,17 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
   };
 
   const colors = getColorClasses();
+  const titleId = useId();
+  const messageId = useId();
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [isOpen, onClose]);
 
   const handleConfirm = async () => {
     try {
@@ -98,6 +109,10 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
               exit={{ opacity: 0, scale: 0.95, y: 16 }}
               transition={{ type: 'spring', damping: 26, stiffness: 320 }}
               onClick={(e) => e.stopPropagation()}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby={titleId}
+              aria-describedby={messageId}
               className="relative my-auto bg-white dark:bg-slate-900 rounded-[28px] sm:rounded-3xl shadow-2xl w-[calc(100%-1rem)] max-w-[340px] sm:max-w-md max-h-[90dvh] overflow-y-auto border border-slate-200/80 dark:border-slate-800"
             >
               {/* Close Button */}
@@ -122,12 +137,12 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
                 </motion.div>
 
                 {/* Title */}
-                <h2 className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white mb-1.5 sm:mb-2 tracking-tight">
+                <h2 id={titleId} className="text-lg sm:text-xl font-display font-black text-slate-900 dark:text-white mb-1.5 sm:mb-2 tracking-tight">
                   {title}
                 </h2>
 
                 {/* Message */}
-                <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mb-5 sm:mb-6 leading-relaxed">
+                <p id={messageId} className="text-xs sm:text-sm text-slate-600 dark:text-slate-300 mb-5 sm:mb-6 leading-relaxed">
                   {message}
                 </p>
 

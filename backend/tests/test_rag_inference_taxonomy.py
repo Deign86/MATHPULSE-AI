@@ -32,8 +32,11 @@ os.environ["INFERENCE_INTERACTIVE_MAX_RETRIES"] = "1"
 os.environ["INFERENCE_BACKOFF_SEC"] = "0"
 os.environ["INFERENCE_BACKGROUND_BACKOFF_SEC"] = "0"
 
+import json
+
 import main as main_module
 from main import app
+from routes import rag_routes
 
 # We hit the HTTP endpoint via FastAPI TestClient (following test_api.py / test_audit_remediation.py).
 # We authenticate with a teacher mock token and bypass vectorstore retrieval with minimal mock chunks.
@@ -69,8 +72,37 @@ def _setup_rag_mocks():
     ), patch(
         "time.sleep",
         return_value=None,
+    ), patch(
+        "routes.rag_routes._read_student_lesson",
+        return_value=None,
+    ), patch(
+        "routes.rag_routes._load_learner_profile",
+        return_value="",
     ):
+        rag_routes._lesson_memory.clear()
+        rag_routes._retrieval_memory.clear()
         yield
+        rag_routes._lesson_memory.clear()
+        rag_routes._retrieval_memory.clear()
+
+
+def _deepseek_failing_with(error: Exception) -> MagicMock:
+    """One mock for both the streamed reasoner call (rag_routes seam) and the chat fallback (inference client)."""
+    mock_ds = MagicMock()
+    mock_ds.with_options.return_value = mock_ds
+    mock_ds.chat.completions.create.side_effect = error
+    return mock_ds
+
+
+def _post_both(mock_ds: MagicMock) -> tuple:
+    """POST /api/rag/lesson and /api/rag/lesson/stream; return (plain response, terminal SSE event)."""
+    with patch("services.inference_client.get_deepseek_client", return_value=mock_ds), \
+         patch("routes.rag_routes.get_deepseek_client", return_value=mock_ds):
+        response = client.post("/api/rag/lesson", json=LESSON_PAYLOAD)
+        streamed = client.post("/api/rag/lesson/stream", json=LESSON_PAYLOAD)
+    blocks = [b for b in streamed.text.replace("\r\n", "\n").split("\n\n") if b.startswith("event:")]
+    event_line, data_line = blocks[-1].split("\n", 1)
+    return response, (event_line[len("event:"):].strip(), json.loads(data_line[len("data:"):].strip()))
 
 
 def _extract_error(response_json: dict) -> str | None:
@@ -94,41 +126,35 @@ class TestRagInferenceTaxonomy:
         )
         api_error_401.status_code = 401
 
-        mock_ds = MagicMock()
-        mock_ds.chat.completions.create.side_effect = api_error_401
-
-        with patch("services.inference_client.get_deepseek_client", return_value=mock_ds):
-            response = client.post("/api/rag/lesson", json=LESSON_PAYLOAD)
+        response, (event, data) = _post_both(_deepseek_failing_with(api_error_401))
 
         assert response.status_code == 502
         body = response.json()
         assert _extract_error(body) == "inference_auth_failed"
+        assert event == "error"
+        assert data["status"] == 502 and data["detail"]["error"] == "inference_auth_failed"
 
     def test_rag_lesson_inference_connection_failed_maps_to_taxonomy(self):
         """(b) APIConnectionError should map to 502 with error='inference_connection_failed'."""
         req = httpx.Request("POST", "https://api.deepseek.com")
         conn_error = openai.APIConnectionError(request=req)
 
-        mock_ds = MagicMock()
-        mock_ds.chat.completions.create.side_effect = conn_error
-
-        with patch("services.inference_client.get_deepseek_client", return_value=mock_ds):
-            response = client.post("/api/rag/lesson", json=LESSON_PAYLOAD)
+        response, (event, data) = _post_both(_deepseek_failing_with(conn_error))
 
         assert response.status_code == 502
         body = response.json()
         assert _extract_error(body) == "inference_connection_failed"
+        assert event == "error"
+        assert data["status"] == 502 and data["detail"]["error"] == "inference_connection_failed"
 
     def test_rag_lesson_inference_generic_exception_fallback(self):
         """(c) Generic Exception should map to 502 with error='inference_failed'."""
         generic_error = RuntimeError("Unexpected model engine crash")
 
-        mock_ds = MagicMock()
-        mock_ds.chat.completions.create.side_effect = generic_error
-
-        with patch("services.inference_client.get_deepseek_client", return_value=mock_ds):
-            response = client.post("/api/rag/lesson", json=LESSON_PAYLOAD)
+        response, (event, data) = _post_both(_deepseek_failing_with(generic_error))
 
         assert response.status_code == 502
         body = response.json()
         assert _extract_error(body) == "inference_failed"
+        assert event == "error"
+        assert data["status"] == 502 and data["detail"]["error"] == "inference_failed"

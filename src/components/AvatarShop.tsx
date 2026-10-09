@@ -272,15 +272,19 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
       const isOwned = ownedItems.includes(id);
       const isLocked = Boolean(((item.price && item.price > 0) || item.isReward) && !isOwned);
 
-      if (isPreviewActive && previewTimeoutRef.current) {
-        clearTimeout(previewTimeoutRef.current);
+      const previewTimer = isPreviewActive ? previewTimeoutRef.current : null;
+      const current = previewTimer ? preEquipRef.current : equipped;
+      if (previewTimer) {
+        clearTimeout(previewTimer);
+        previewTimeoutRef.current = null;
+        setPreviewCountdown(0);
         setIsPreviewActive(false);
         isPreviewActiveRef.current = false;
-        setEquipped(preEquipRef.current);
+        setEquipped(current);
       }
 
       if (item.setLayers) {
-        const nextEquipped: AvatarLayers = { ...equipped };
+        const nextEquipped: AvatarLayers = { ...current };
         if (item.setLayers.top) nextEquipped.top = item.setLayers.top;
         if (item.setLayers.bottom) nextEquipped.bottom = item.setLayers.bottom;
         if (item.setLayers.shoes) nextEquipped.shoes = item.setLayers.shoes;
@@ -300,7 +304,7 @@ const AvatarShop: React.FC<AvatarShopProps> = ({
         return;
       }
 
-      let base = { ...equipped };
+      let base = { ...current };
       const setItems = inventoryItems.filter(i => i.setLayers);
       const allSetPieceIds = new Set(setItems.flatMap(s => Object.values(s.setLayers || {})));
       if (

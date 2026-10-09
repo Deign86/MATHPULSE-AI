@@ -5,7 +5,11 @@ Updated curriculum RAG with exact match retrieval and 7-section notebook output.
 from __future__ import annotations
 
 import re
+import threading
+from collections import OrderedDict
 from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 
 # Canonical retrieval-row keys: content, subject, quarter, content_domain,
 # chunk_type, source_file, storage_path, module_id, lesson_id,
@@ -292,6 +296,116 @@ def _query_embeddings_with_fallback(
     return collection, result, query_embedding
 
 
+# Per-process cache of one source file's chunks + normalized vectors. Chroma's
+# HNSW index here is missing most ids (filtered query / embedding reads raise
+# "Error finding id"), so file chunks are re-encoded; do that once per file.
+_FILE_CACHE_MAX = 64
+_file_cache: "OrderedDict[Tuple[str, ...], Tuple[List[str], List[Dict[str, Any]], Optional[np.ndarray]]]" = OrderedDict()
+_file_cache_lock = threading.Lock()
+# (collection, healthy) for the collection last probed; identity-checked so a
+# reset vectorstore singleton (new collection object) is re-probed.
+_index_health: Optional[Tuple[Any, bool]] = None
+
+
+def reset_exact_file_cache() -> None:
+    """Drop cached file vectors and the index-health verdict (tests / store swap)."""
+    global _index_health
+    with _file_cache_lock:
+        _file_cache.clear()
+        _index_health = None
+
+
+def _index_is_healthy(collection: Any, query_embedding: List[float]) -> bool:
+    """True when an unfiltered query can return every stored id (HNSW complete)."""
+    global _index_health
+    cached = _index_health
+    if cached is not None and cached[0] is collection:
+        return cached[1]
+    healthy = False
+    try:
+        total = collection.count()
+        if isinstance(total, int) and total > 0:
+            result = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=total,
+                include=["distances"],
+            )
+            healthy = len((result.get("ids") or [[]])[0]) == total
+    except Exception:
+        healthy = False
+    _index_health = (collection, healthy)
+    return healthy
+
+
+def _query_exact_file_fast(
+    collection: Any,
+    query_embedding: List[float],
+    where: Dict[str, object],
+    top_k: int,
+    storage_path: str,
+) -> List[CurriculumChunk]:
+    result = collection.query(
+        query_embeddings=[query_embedding],
+        n_results=max(1, top_k),
+        where=where,
+        include=["documents", "metadatas", "distances"],
+    )
+    documents = (result.get("documents") or [[]])[0]
+    metadatas = (result.get("metadatas") or [[]])[0]
+    distances = (result.get("distances") or [[]])[0]
+    rows: List[CurriculumChunk] = []
+    for idx, content in enumerate(documents):
+        md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
+        distance = float(distances[idx]) if idx < len(distances) else 1.0
+        rows.append(_row_from_chunk(content, md, distance, storage_path=storage_path))
+    return rows
+
+
+def _load_file_chunks(
+    collection: Any,
+    embedder: Any,
+    storage_path: str,
+) -> Tuple[List[str], List[Dict[str, Any]], Optional[np.ndarray]]:
+    cand_paths, cand_files = _normalize_storage_candidates(storage_path)
+    key = tuple(cand_paths) + ("|",) + tuple(cand_files)
+    with _file_cache_lock:
+        hit = _file_cache.get(key)
+        if hit is not None:
+            _file_cache.move_to_end(key)
+            return hit
+    payload = collection.get(
+        where={
+            "$or": [
+                {"storage_path": {"$in": cand_paths}},
+                {"source_file": {"$in": cand_files}},
+            ]
+        },
+        include=["documents", "metadatas"],
+    )
+    ids = payload.get("ids") or []
+    documents = payload.get("documents") or []
+    metadatas = payload.get("metadatas") or []
+    texts = [str(documents[i]) if i < len(documents) else "" for i in range(len(ids))]
+    mds = [metadatas[i] if i < len(metadatas) and isinstance(metadatas[i], dict) else {} for i in range(len(ids))]
+    matrix: Optional[np.ndarray] = None
+    if texts:
+        try:
+            # Encoded outside the lock: a rare duplicate encode beats serializing requests.
+            candidate = np.asarray(embedder.encode(texts, normalize_embeddings=True).tolist(), dtype=np.float32)
+            if candidate.ndim == 2 and candidate.shape[0] == len(texts):
+                matrix = candidate
+        except Exception:
+            matrix = None
+    entry = (texts, mds, matrix)
+    if matrix is not None or not texts:
+        with _file_cache_lock:
+            _file_cache[key] = entry
+            _file_cache.move_to_end(key)
+            while len(_file_cache) > _FILE_CACHE_MAX:
+                _file_cache.popitem(last=False)
+    return entry
+
+
 def _retrieve_exact_file_chunks(
     collection: Any,
     embedder: Any,
@@ -306,25 +420,30 @@ def _retrieve_exact_file_chunks(
     competency_code: str | None,
     top_k: int,
 ) -> List[CurriculumChunk]:
-    """Exact-match retrieval for one source file via collection.get (server-side
-    metadata filtering works; only id-resolving vector reads are broken)."""
-    cand_paths, cand_files = _normalize_storage_candidates(storage_path)
-    payload = collection.get(
-        where={
-            "$or": [
-                {"storage_path": {"$in": cand_paths}},
-                {"source_file": {"$in": cand_files}},
-            ]
-        },
-        include=["documents", "metadatas"],
-    )
-    ids = payload.get("ids") or []
-    documents = payload.get("documents") or []
-    metadatas = payload.get("metadatas") or []
-    kept: List[Tuple[int, Dict[str, Any]]] = []
-    for idx in range(len(ids)):
-        md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
-        if not _metadata_matches(
+    """Exact-match retrieval for one source file. Uses a server-side filtered
+    query when the HNSW index is complete (no encoding); otherwise scores the
+    file's cached chunk vectors (see _load_file_chunks)."""
+    if _index_is_healthy(collection, query_embedding):
+        try:
+            where = _to_where(
+                subject=subject,
+                quarter=quarter,
+                content_domain=content_domain,
+                chunk_type=chunk_type,
+                module_id=module_id,
+                lesson_id=lesson_id,
+                competency_code=competency_code,
+                storage_path=storage_path,
+            )
+            return _query_exact_file_fast(collection, query_embedding, where or {}, top_k, storage_path)
+        except Exception:
+            pass  # fall back to the cached-encode path
+
+    texts, metadatas, matrix = _load_file_chunks(collection, embedder, storage_path)
+    kept = [
+        idx
+        for idx, md in enumerate(metadatas)
+        if _metadata_matches(
             md,
             subject=subject,
             quarter=quarter,
@@ -334,22 +453,20 @@ def _retrieve_exact_file_chunks(
             lesson_id=lesson_id,
             competency_code=competency_code,
             storage_path=storage_path,
-        ):
-            continue
-        kept.append((idx, md))
+        )
+    ]
     rows: List[CurriculumChunk] = []
     if kept:
-        texts = [str(documents[idx]) if idx < len(documents) else "" for idx, _ in kept]
-        try:
-            vectors = embedder.encode(texts, normalize_embeddings=True).tolist()
-        except Exception:
-            vectors = [None] * len(texts)
-        for (idx, md), text, vec in zip(kept, texts, vectors):
+        distances: List[float] = [1.0] * len(kept)
+        if matrix is not None:
             try:
-                distance = _cosine_distance(list(vec), query_embedding) if vec is not None else 1.0
+                query_vec = np.asarray(query_embedding, dtype=np.float32)
+                sims = matrix[kept] @ query_vec
+                distances = [max(0.0, 1.0 - float(sim)) for sim in sims]
             except (TypeError, ValueError):
-                distance = 1.0
-            rows.append(_row_from_chunk(text, md, distance, storage_path=storage_path))
+                pass
+        for idx, distance in zip(kept, distances):
+            rows.append(_row_from_chunk(texts[idx], metadatas[idx], distance, storage_path=storage_path))
     rows.sort(key=lambda row: row.get("score", 0.0), reverse=True)
     return rows[: max(1, top_k)]
 
@@ -585,14 +702,31 @@ def retrieve_lesson_pdf_context(
     return general_chunks, "general"
 
 
+_MAX_EXCERPT_CHARS = 1200
+_MAX_CONTEXT_CHARS = 9000
+_TRUNCATED = "…[truncated]"
+
+
 def format_retrieved_chunks(curriculum_chunks: list[dict]) -> str:
+    """Numbered excerpt list for prompts; each excerpt and the total are capped."""
     refs = []
+    used = 0
     for i, chunk in enumerate(curriculum_chunks, start=1):
-        refs.append(
+        content = str(chunk.get("content", "") or "")
+        if len(content) > _MAX_EXCERPT_CHARS:
+            content = content[:_MAX_EXCERPT_CHARS].rstrip() + _TRUNCATED
+        entry = (
             f"{i}. [{chunk.get('source_file')} p.{chunk.get('page')}] "
             f"({chunk.get('content_domain')}/{chunk.get('chunk_type')}) score={chunk.get('score')}\n"
-            f"   Excerpt: {chunk.get('content', '')}"
+            f"   Excerpt: {content}"
         )
+        remaining = _MAX_CONTEXT_CHARS - used
+        if len(entry) > remaining:
+            if remaining > 200:
+                refs.append(entry[:remaining].rstrip() + _TRUNCATED)
+            break
+        refs.append(entry)
+        used += len(entry) + 1
     return "\n".join(refs) if refs else "No curriculum context retrieved."
 
 
@@ -643,15 +777,21 @@ def build_lesson_prompt(
     module_unit: Optional[str],
     curriculum_chunks: list[dict],
     competency_code: Optional[str] = None,
+    learner_profile: Optional[str] = None,
 ) -> str:
     refs_text = format_retrieved_chunks(curriculum_chunks)
-    organized = organize_chunks_by_section(curriculum_chunks)
+    profile_text = (learner_profile or "").strip() or (
+        "Grade 11 Senior High School STEM student (DepEd). No individual learning data is available."
+    )
 
     return (
-        "You are a DepEd-aligned Grade 11 mathematics instructional designer.\n"
-        "Generate a lesson in JSON format. Use ONLY the retrieved curriculum evidence below.\n"
+        "You are a DepEd-aligned Grade 11 mathematics instructional designer writing for Filipino "
+        "Senior High School STEM students.\n"
+        "Generate a lesson in JSON format. Use ONLY the retrieved curriculum evidence below for every "
+        "definition, formula, rule and fact.\n"
         "IMPORTANT: Write EVERYTHING in English. Do NOT use Tagalog, Filipino, or any other language.\n"
-        "Do NOT invent content. Do NOT add generic motivational text. All content must be grounded in the retrieved excerpts.\n\n"
+        "Do NOT invent curriculum content. Do NOT add generic motivational text. Personalize presentation, "
+        "pacing and scaffolding for the learner, never the mathematics itself.\n\n"
         f"Lesson title: {lesson_title}\n"
         f"Competency code: {competency_code or 'n/a'}\n"
         f"Curriculum competency: {competency}\n"
@@ -662,27 +802,48 @@ def build_lesson_prompt(
         f"Module/unit: {module_unit or 'n/a'}\n\n"
         "[CURRICULUM CONTEXT]\n"
         f"{refs_text}\n\n"
+        "[LEARNER PROFILE]\n"
+        f"{profile_text}\n\n"
+        "Adapt the lesson to this learner:\n"
+        "- Pitch explanations and example difficulty to the learner's mastery level and pace.\n"
+        "- For each identified gap or weak prerequisite, add a brief refresher (1-3 sentences) where it is first needed.\n"
+        "- Aim worked examples and important notes at the learner's known mistake patterns.\n"
+        "- Order practice problems from the learner's current level upward.\n\n"
         "Return ONLY valid JSON with this exact structure. All 7 sections are required:\n"
         "{\n"
         '  "sections": [\n'
-        '    {"type": "introduction",    "title": "Introduction",       "content": "..."},\n'
-        '    {"type": "key_concepts",    "title": "Key Concepts",      "content": "...", "callouts": [{"type":"important|ti..."}]\n},'
-        '    {"type": "video",           "title": "Video Lesson",      "content": "...", "videoId": "", "videoTitle": "", "videoChannel": "", "embedUrl": "", "thumbnailUrl": ""},\n'
-        '    {"type": "worked_examples",  "title": "Worked Examples",    "examples": [{"problem":"...","steps":["Step 1: ...","Step 2: ..."],"answer":"..."}]},\n'
-        '    {"type": "important_notes",  "title": "Important Notes",   "bulletPoints": ["...","..."]},\n'
-        '    {"type": "try_it_yourself", "title": "Try It Yourself",   "practiceProblems": [{"question":"...","solution":"..."}]},\n'
-        '    {"type": "summary",         "title": "Summary",           "content": "..."}\n'
+        '    {"type": "introduction",    "title": "Introduction",    "content": "..."},\n'
+        '    {"type": "key_concepts",    "title": "Key Concepts",    "content": "...", "callouts": [{"type": "warning", "text": "..."}]},\n'
+        '    {"type": "video",           "title": "Video Lesson",    "content": "...", "videoId": "", "videoTitle": "", "videoChannel": "", "embedUrl": "", "thumbnailUrl": ""},\n'
+        '    {"type": "worked_examples", "title": "Worked Examples", "examples": [{"problem": "...", "steps": ["Step 1: ...", "Step 2: ...", "Step 3: ..."], "answer": "..."}]},\n'
+        '    {"type": "important_notes", "title": "Important Notes", "bulletPoints": ["...", "..."]},\n'
+        '    {"type": "try_it_yourself", "title": "Try It Yourself", "practiceProblems": [{"question": "...", "solution": "..."}]},\n'
+        '    {"type": "summary",         "title": "Summary",         "content": "..."}\n'
         "  ],\n"
         '  "needsReview": false\n'
         "}\n\n"
-        "Rules:\n"
-        "- content in introduction, key_concepts, important_notes, summary: use paragraph/bullet text grounded in retrieved chunks\n"
-        "- examples must reflect actual content from the retrieved curriculum (real formulas, real contexts)\n"
-        "- practiceProblems should be derivable from worked examples\n"
-        "- callouts: type is 'important', 'tip', or 'warning'\n"
-        "- video section: content is a brief sentence, leave videoId empty (will be filled by backend)\n"
-        "- Do not use placeholder text like 'placeholder' or 'example text'\n"
-        "- Do not fabricate worked examples - use actual curriculum content\n"
+        "Section requirements:\n"
+        "- introduction: at least 450 characters. Open with 2-4 clear learning objectives tied to the competency "
+        "(\"By the end of this lesson, you will be able to ...\"), then say why the topic matters.\n"
+        "- key_concepts: at least 700 characters. Precise definitions and every relevant formula from the curriculum "
+        "context, each formula written in LaTeX inside $...$ (inline) or $$...$$ (display). callouts: at least 2, "
+        "including one of type 'warning' that names a common misconception and corrects it. Callout type is "
+        "'important', 'tip', or 'warning'.\n"
+        "- video: content is one brief sentence; leave videoId and the other video fields empty (filled by the backend).\n"
+        "- worked_examples: at least 3 examples of increasing difficulty. Each has a problem, at least 3 numbered steps "
+        "(\"Step 1: ...\") that explain the reasoning, and a final answer. When the topic allows, at least one example "
+        "uses a relatable Philippine context (amounts in pesos, local places, jeepney fares, sari-sari store, school events).\n"
+        "- important_notes: at least 4 bulletPoints, including common mistakes to avoid and exam tips.\n"
+        "- try_it_yourself: at least 5 practiceProblems ordered from easy to challenging, each with a complete "
+        "step-by-step worked solution.\n"
+        "- summary: at least 300 characters of key takeaways that restate the main formulas and ideas.\n\n"
+        "Formatting rules:\n"
+        "- All math uses LaTeX in $...$; inside JSON strings every backslash must be escaped (write \\\\frac, \\\\sqrt, \\\\times).\n"
+        "- Plain text and Markdown only inside strings; no HTML.\n"
+        "- Keep the whole JSON between about 1,800 and 2,600 words so it is complete and never cut off.\n"
+        "- Examples and practice problems must use the curriculum's real formulas and methods; do not fabricate facts, "
+        "data or definitions that are not in the curriculum context.\n"
+        "- Do not use placeholder text like 'placeholder', 'example text' or '...'.\n"
     )
 
 

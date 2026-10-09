@@ -52,7 +52,6 @@ MathPulse AI — installable, repo-owned PWA for AI-powered mathematics tutoring
 | `config/` | Repo-level model defaults + routing metadata. | [View Map](config/codemap.md) |
 | `src/components/` | Page-level, learning, dashboard, shared feature components. | [View Map](src/components/codemap.md) |
 | `src/components/admin/` | Admin panels, profile/settings, subject/class management. | [View Map](src/components/admin/codemap.md) |
-| `src/components/admin/ai-monitoring/` | AI monitoring cards, rankings, pricing, system details. | [View Map](src/components/admin/ai-monitoring/codemap.md) |
 | `src/components/assessment/` | Assessment, question, progress, feedback, diagnostic components. | [View Map](src/components/assessment/codemap.md) |
 | `src/components/battle/` | Quiz Battle display (page-owned RTDB state). | [View Map](src/components/battle/codemap.md) |
 | `src/components/intervention/` | Intervention video lesson step. | [View Map](src/components/intervention/codemap.md) |
@@ -62,7 +61,6 @@ MathPulse AI — installable, repo-owned PWA for AI-powered mathematics tutoring
 | `src/components/teacher/` | Teacher profile, settings, ID-card components. | [View Map](src/components/teacher/codemap.md) |
 | `src/components/ui/` | Shared UI primitives. | [View Map](src/components/ui/codemap.md) |
 | `src/pages/` | Page-level experiences; diagnostic assessment flow. | [View Map](src/pages/codemap.md) |
-| `src/pages/admin/` | Admin operations incl. AI monitoring. | [View Map](src/pages/admin/codemap.md) |
 | `src/pages/teacher/` | Teacher dashboards; live at-risk monitoring. | [View Map](src/pages/teacher/codemap.md) |
 | `src/features/` | Feature modules (imports, notifications). | [View Map](src/features/codemap.md) |
 | `src/features/DataImport/` | Teacher class-record + course-material upload workflow. | [View Map](src/features/DataImport/codemap.md) |

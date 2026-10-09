@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import main
-from routes import deepseek_rag_routes, jev_routes
+from routes import deepseek_rag_routes, jev_routes, rag_routes
 from services import jev_client
 
 
@@ -123,14 +123,21 @@ LESSON_PAYLOAD = {
 
 
 def _generated_lesson() -> str:
+    # Rich enough to pass the lesson richness validator, so only the Jev check decides the outcome.
     sections = [
-        {"type": "introduction", "content": "Generated introduction hallucination."},
-        {"type": "key_concepts", "content": "Generated concepts hallucination."},
+        {"type": "introduction", "content": "Generated introduction hallucination. " * 12},
+        {"type": "key_concepts", "content": "Generated concepts hallucination. " * 20,
+         "callouts": [{"type": "warning", "text": "Generated misconception."}]},
         {"type": "video", "content": "Generated video description."},
-        {"type": "worked_examples", "examples": [{"problem": "Generated example hallucination."}]},
-        {"type": "important_notes", "bulletPoints": ["Generated note hallucination."]},
-        {"type": "try_it_yourself", "practiceProblems": [{"question": "Generated practice hallucination."}]},
-        {"type": "summary", "content": "Generated summary hallucination."},
+        {"type": "worked_examples", "examples": [
+            {"problem": f"Generated example hallucination {i}.", "steps": ["Step 1", "Step 2", "Step 3"], "answer": "x"}
+            for i in range(3)
+        ]},
+        {"type": "important_notes", "bulletPoints": [f"Generated note hallucination {i}." for i in range(4)]},
+        {"type": "try_it_yourself", "practiceProblems": [
+            {"question": f"Generated practice hallucination {i}.", "solution": "Generated solution."} for i in range(5)
+        ]},
+        {"type": "summary", "content": "Generated summary hallucination. " * 9},
     ]
     return json.dumps({"sections": sections})
 
@@ -145,7 +152,7 @@ def rag_client() -> TestClient:
         "routes.rag_routes.retrieve_lesson_pdf_context",
         return_value=(CHUNKS, "exact_file"),
     ), patch(
-        "routes.rag_routes._generate_text",
+        "routes.rag_routes._stream_reasoner_lesson",
         return_value=_generated_lesson(),
     ), patch(
         "routes.rag_routes._fetch_youtube_videos",
@@ -153,8 +160,21 @@ def rag_client() -> TestClient:
     ), patch(
         "routes.rag_routes._log_rag_usage",
         return_value=None,
+    ), patch(
+        "routes.rag_routes._read_student_lesson",
+        return_value=None,
+    ), patch(
+        "routes.rag_routes._write_student_lesson",
+        return_value=None,
+    ), patch(
+        "routes.rag_routes._load_learner_profile",
+        return_value="",
     ):
+        rag_routes._lesson_memory.clear()
+        rag_routes._retrieval_memory.clear()
         yield TestClient(main.app, headers={"Authorization": "Bearer mock_token_teacher_T"})
+        rag_routes._lesson_memory.clear()
+        rag_routes._retrieval_memory.clear()
 
 
 def test_rag_lesson_with_jev_verification(

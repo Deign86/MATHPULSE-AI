@@ -315,12 +315,6 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
             <span className="text-[11px] font-bold text-emerald-100">
               Lesson Progress
             </span>
-            <span className="text-[11px] font-bold text-white bg-black/20 backdrop-blur-md px-2.5 py-0.5 rounded-full tabular-nums border border-white/20 whitespace-nowrap">
-              2 of 5 Lessons
-            </span>
-          </div>
-          <div className="h-2 w-full bg-black/25 rounded-full overflow-hidden shadow-inner">
-            <div className="h-full bg-white rounded-full w-[40%] shadow-[0_0_8px_rgba(255,255,255,0.7)] transition-all duration-500" />
           </div>
         </div>
       </motion.div>
@@ -370,7 +364,7 @@ const RightSidebar: React.FC<RightSidebarProps> = ({
               Streak
             </span>
             <span className="block text-base sm:text-lg font-display font-black text-slate-900 dark:text-white tabular-nums leading-tight mt-1">
-              {currentStreak} Days
+              {currentStreak} {currentStreak === 1 ? 'Day' : 'Days'}
             </span>
           </div>
         </motion.button>

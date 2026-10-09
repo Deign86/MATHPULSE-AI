@@ -1014,6 +1014,8 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
     if (activeTab === 'bank') loadBankQuizzes();
   }, [activeTab, loadBankQuizzes]);
 
+  const [pendingDeleteQuizId, setPendingDeleteQuizId] = useState<string | null>(null);
+
   const handleDeleteBankQuiz = async (quizId: string) => {
     try {
       await deleteGeneratedQuiz(quizId);
@@ -1421,7 +1423,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                           <Send size={13} /> Assign
                         </button>
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteBankQuiz(q.id); }}
+                          onClick={(e) => { e.stopPropagation(); setPendingDeleteQuizId(q.id); }}
                           className="flex items-center gap-1 sm:gap-1.5 text-xs sm:text-[13px] font-semibold text-rose-500 hover:text-rose-700 transition-colors ml-auto opacity-60 group-hover:opacity-100"
                         >
                           <Trash2 size={13} /> Delete
@@ -1594,7 +1596,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 <div className="p-3.5 sm:p-5 flex flex-col md:flex-row gap-3 sm:gap-6">
                   <div className="flex-1 group">
                     <label htmlFor="quiz-title" className="text-xs sm:text-[13px] font-semibold text-[#1e293b] mb-1.5 block">Quiz title</label>
-                    <input id="quiz-title" value={quizTitle} onChange={(event) => setQuizTitle(event.target.value)} placeholder="Enter a title (optional)" className="w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] rounded-xl px-3.5 py-2.5 h-[40px] sm:h-[42px]" />
+                    <input id="quiz-title" type="text" value={quizTitle} maxLength={120} onChange={(event) => setQuizTitle(event.target.value)} placeholder="Enter a title (optional)" className="w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] rounded-xl px-3.5 py-2.5 h-[40px] sm:h-[42px]" />
                   </div>
                   {/* Grade Level */}
                   <div className="flex-1 group">
@@ -1612,18 +1614,6 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       </select>
                       <ChevronDown size={15} className="text-[#64748b] absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                     </div>
-                  </div>
-                  <div className="flex-1 group">
-                    <label htmlFor="quiz-title" className="text-xs sm:text-[13px] font-semibold text-[#1e293b] mb-1.5 block">Quiz title</label>
-                    <input
-                      id="quiz-title"
-                      type="text"
-                      value={quizTitle}
-                      maxLength={120}
-                      onChange={(event) => setQuizTitle(event.target.value)}
-                      placeholder="Optional title"
-                      className="w-full bg-white border border-[#e2e8f0] text-[#475569] text-xs sm:text-[13px] rounded-xl px-3.5 py-2 sm:py-2.5 h-[40px] sm:h-[42px]"
-                    />
                   </div>
                   {/* Question Counter */}
                   <div className="flex-1 group">
@@ -1886,9 +1876,9 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                           <motion.div animate={{ width: `${pct}%` }} className={`h-full rounded-full transition-all duration-500 ease-out ${colorMap[level]}`} />
                         </div>
                         <div className={`flex items-center bg-white border border-[#e2e8f0] rounded-xl shadow-xs overflow-hidden p-0.5 w-24 sm:w-28 h-8 sm:h-10 transition-colors ${borderMap[level]}`}>
-                          <button onClick={() => adjustDifficulty(level, -5)} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
+                          <button onClick={() => adjustDifficulty(level, -5)} aria-label={`Decrease ${level} share`} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Minus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
                           <input type="text" value={`${pct}%`} readOnly className="flex-1 text-center font-bold text-xs sm:text-[14px] text-[#1e293b] border-none outline-none focus:ring-0 w-full p-0 pointer-events-none" />
-                          <button onClick={() => adjustDifficulty(level, 5)} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
+                          <button onClick={() => adjustDifficulty(level, 5)} aria-label={`Increase ${level} share`} className={`w-7 sm:w-8 h-full flex items-center justify-center text-[#64748b] hover:bg-slate-50 hover:${hoverColorMap[level]} rounded-lg transition-colors`}><Plus className="w-3 h-3 sm:w-3.5 sm:h-3.5" /></button>
                         </div>
                       </div>
                     );
@@ -2171,7 +2161,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                     <>
                       <button
                         type="button"
-                        onClick={() => { setActiveTab('bank'); setViewingBankQuizId(null); }}
+                        onClick={() => { setActiveTab('bank'); setStep('setup'); setQuizResult(null); setPreviewResult(null); setSavedQuizId(null); setViewingBankQuizId(null); }}
                         className="bg-white hover:bg-slate-50 border border-slate-200 text-[#475569] text-xs sm:text-[13px] font-semibold rounded-xl sm:rounded-full px-4 sm:px-5 py-2 sm:py-2.5 shadow-xs transition-transform hover:scale-[1.02] cursor-pointer"
                       >
                         Back to Quiz Bank
@@ -2269,6 +2259,17 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
         cancelText="Stay"
         type="warning"
         icon="warning"
+      />
+
+      <ConfirmModal
+        isOpen={pendingDeleteQuizId !== null}
+        onClose={() => setPendingDeleteQuizId(null)}
+        onConfirm={() => pendingDeleteQuizId ? handleDeleteBankQuiz(pendingDeleteQuizId) : undefined}
+        title="Delete this quiz?"
+        message="The saved quiz will be removed from your Quiz Bank. This cannot be undone."
+        confirmText="Delete"
+        type="danger"
+        icon="delete"
       />
 
       {/* ═══ ASSIGN STUDENT MODAL ═══ */}

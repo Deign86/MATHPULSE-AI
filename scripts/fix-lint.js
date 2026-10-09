@@ -5,9 +5,6 @@ const fixes = [
   // App.tsx
   { file: 'src/App.tsx', from: 'import { AlertTriangle, ArrowRight, Calculator, Crown, Flame, Menu, Zap }', to: 'import { ArrowRight, Calculator, Crown, Flame, Menu, Zap }' },
   
-  // AdminAIMonitoring.tsx
-  { file: 'src/components/AdminAIMonitoring.tsx', from: ', resolveHealthStatus', to: '' },
-  
   // AdminDashboard.tsx  
   { file: 'src/components/AdminDashboard.tsx', from: ', motion', to: '' },
   

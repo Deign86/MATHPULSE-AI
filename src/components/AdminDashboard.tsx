@@ -49,7 +49,6 @@ import AdminAuditLog from './AdminAuditLog';
 import AdminRagManager from './AdminRagManager';
 import AdminUserManagement from './AdminUserManagement';
 import AdminAnalytics from './AdminAnalytics';
-import AIMonitoringPage from '../pages/admin/AIMonitoringPage';
 import AdminSubjects from './admin/AdminSubjects';
 import AdminClassManagement from './admin/AdminClassManagement';
 import SubjectsHelpModal from './admin/SubjectsHelpModal';
@@ -138,7 +137,6 @@ const ADMIN_TABS = [
   'Content',
   'RAG Manager',
   'Analytics',
-  'AI Monitoring',
   'Audit Log',
   'Profile',
   'Settings',
@@ -176,7 +174,6 @@ const ADMIN_TAB_META: Record<AdminTab, { title: string; subtitle: string }> = {
     subtitle: 'Inspect, re-ingest, and verify curriculum knowledge sources.',
   },
   Analytics: { title: 'Analytics', subtitle: 'Detailed system performance metrics.' },
-  'AI Monitoring': { title: 'AI Monitoring', subtitle: 'Platform AI usage and system health.' },
   'Audit Log': { title: 'Audit Log', subtitle: 'Monitor system activity and security.' },
   Profile: {
     title: 'Executive Profile',
@@ -1352,8 +1349,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
               sidebarCollapsed={sidebarCollapsed}
             />
           )}
-          {activeTab === 'Analytics' && <AdminAnalytics />}
-          {activeTab === 'AI Monitoring' && <AIMonitoringPage />}
+          {activeTab === 'Analytics' && <AdminAnalytics onManageSections={() => handleTabChange('Class Management')} />}
           {activeTab === 'Class Management' && <AdminClassManagement />}
           
           {(activeTab === 'Curriculum Control' || activeTab === 'Subjects') && <AdminSubjects />}

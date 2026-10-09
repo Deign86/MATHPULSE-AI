@@ -221,7 +221,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 md:gap-6 items-end">
               {/* Storage Path Input */}
               <div className="md:col-span-6 group">
-                <label className="font-body text-xs sm:text-[13px] font-bold text-[#1e293b] mb-1.5 sm:mb-2 block group-hover:text-[#a855f7] transition-colors">
+                <label htmlFor="question-bank-storage-path" className="font-body text-xs sm:text-[13px] font-bold text-[#1e293b] mb-1.5 sm:mb-2 block group-hover:text-[#a855f7] transition-colors">
                   Firebase Storage Path
                 </label>
                 <div className="relative">
@@ -229,6 +229,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                     <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#94a3b8] group-hover:text-[#a855f7] transition-colors" />
                   </div>
                   <input
+                    id="question-bank-storage-path"
                     type="text"
                     placeholder="quiz_pdfs/grade_11/gen_math_q1.pdf"
                     value={storagePath}
@@ -240,10 +241,11 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
 
               {/* Grade Level Input */}
               <div className="md:col-span-2 group">
-                <label className="font-body text-xs sm:text-[13px] font-bold text-[#1e293b] mb-1.5 sm:mb-2 block group-hover:text-[#a855f7] transition-colors">
+                <label htmlFor="question-bank-grade-level" className="font-body text-xs sm:text-[13px] font-bold text-[#1e293b] mb-1.5 sm:mb-2 block group-hover:text-[#a855f7] transition-colors">
                   Grade Level
                 </label>
                 <input
+                  id="question-bank-grade-level"
                   type="number"
                   placeholder="11"
                   min={7}
@@ -256,7 +258,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
 
               {/* Topic Slug Input */}
               <div className="md:col-span-4 group">
-                <label className="font-body text-xs sm:text-[13px] font-bold text-[#1e293b] mb-1.5 sm:mb-2 block group-hover:text-[#a855f7] transition-colors">
+                <label htmlFor="question-bank-topic" className="font-body text-xs sm:text-[13px] font-bold text-[#1e293b] mb-1.5 sm:mb-2 block group-hover:text-[#a855f7] transition-colors">
                   Topic Slug
                 </label>
                 <div className="relative">
@@ -264,6 +266,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                     <BookOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#94a3b8] group-hover:text-[#a855f7] transition-colors" />
                   </div>
                   <input
+                    id="question-bank-topic"
                     type="text"
                     placeholder="general_mathematics"
                     value={topic}
@@ -446,6 +449,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
             <button
               onClick={fetchQuestions}
               disabled={questionsLoading}
+              aria-label="Refresh question bank"
               className="w-7 h-7 sm:w-8 sm:h-8 pointer-coarse:w-11 pointer-coarse:h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center text-[#64748b] hover:text-[#9333ea] hover:border-purple-200 shadow-sm transition-all hover:scale-105 active:scale-95 disabled:opacity-50"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${questionsLoading ? 'animate-spin' : ''}`} />

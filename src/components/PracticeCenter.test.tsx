@@ -30,9 +30,41 @@ vi.spyOn(practiceServiceNs, 'generatePracticeSession').mockResolvedValue({
   generated_at: '2026-01-01T00:00:00Z',
 });
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  sessionStorage.clear();
+});
 
 describe('PracticeCenter', () => {
+  it('focuses on the practice topic hint left by Grades or the Diagnostic Breakdown', async () => {
+    sessionStorage.setItem('mathpulse_practice_topic', 'Functions');
+    render(<PracticeCenter userId="user-1" />);
+
+    expect(await screen.findByText('Patterns and Real-Life Relationships')).toBeInTheDocument();
+    expect(screen.queryByText('Systems of Linear Equations and Matrices')).not.toBeInTheDocument();
+    expect(sessionStorage.getItem('mathpulse_practice_topic')).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear focus on Functions' }));
+    expect(await screen.findByText('Systems of Linear Equations and Matrices')).toBeInTheDocument();
+  });
+
+  it('preselects the subject when the hint names one', async () => {
+    sessionStorage.setItem('mathpulse_practice_subject', 'General Mathematics');
+    render(<PracticeCenter userId="user-1" />);
+
+    expect(await screen.findByText('Functions as Mathematical Models')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toHaveValue('General Mathematics');
+    expect(screen.queryByRole('button', { name: /Clear focus/ })).not.toBeInTheDocument();
+  });
+
+  it('ignores a hint that matches no topic', async () => {
+    sessionStorage.setItem('mathpulse_practice_topic', 'Review your notes before the next quiz');
+    render(<PracticeCenter userId="user-1" />);
+
+    expect(await screen.findByText('Functions as Mathematical Models')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Clear focus/ })).not.toBeInTheDocument();
+  });
+
   it('renders topic cards from curriculum', async () => {
     render(<PracticeCenter userId="user-1" />);
     expect(await screen.findByText('Functions as Mathematical Models')).toBeInTheDocument();
