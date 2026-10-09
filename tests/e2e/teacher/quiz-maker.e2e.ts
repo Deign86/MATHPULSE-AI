@@ -27,6 +27,7 @@ describe('teacher AI quiz maker', { tags: ['teacher', 'quiz-maker'] }, () => {
     const draft = main.getByRole('button').filter({ hasText: title });
     if ((await draft.count()) > 0) {
       await draft.getByRole('button', 'Delete').tap();
+      await screen.getByRole('alertdialog').getByRole('button', 'Delete').tap();
       await expect(draft).toHaveCount(0);
     }
   });
@@ -204,7 +205,7 @@ describe('teacher AI quiz maker', { tags: ['teacher', 'quiz-maker'] }, () => {
       const card = main.getByRole('button').filter({ hasText: title });
       await expect(card).toBeVisible({ timeout: 30_000 });
       await expect(card.getByText('draft')).toBeVisible();
-      await expect(card.getByText(/^\d+ questions$/)).toBeVisible();
+      await expect(card.getByText(/^\s*\d+ questions$/)).toBeVisible();
 
       await main.getByRole('button', 'Published').tap();
       await expect(card).toHaveCount(0);
@@ -221,6 +222,8 @@ describe('teacher AI quiz maker', { tags: ['teacher', 'quiz-maker'] }, () => {
       await expect(screen.getByText('Try It Yourself!')).toBeHidden();
 
       await card.getByRole('button', 'Delete').tap();
+      await expect(screen.getByRole('alertdialog', 'Delete this quiz?')).toBeVisible();
+      await screen.getByRole('alertdialog').getByRole('button', 'Delete').tap();
       await expect(screen.getByText('Quiz deleted')).toBeVisible();
       await expect(card).toHaveCount(0);
 
@@ -250,8 +253,8 @@ describe('teacher AI quiz maker', { tags: ['teacher', 'quiz-maker'] }, () => {
     await expect.poll(async () => (await view.count()) + (await empty.count()), { timeout: 30_000 }).toBeGreaterThan(0);
     const total = await view.count();
     await expect(main.getByText(quizStatus)).toHaveCount(total);
-    await expect(main.getByText(/^\d+ questions$/)).toHaveCount(total);
-    await expect(main.getByText(/^\S+ pts$/)).toHaveCount(total);
+    await expect(main.getByText(/^\s*\d+ questions$/)).toHaveCount(total);
+    await expect(main.getByText(/^\s*\S+ pts$/)).toHaveCount(total);
 
     for (const [chip, status] of bankFilters) {
       await main.getByRole('button', chip).tap();

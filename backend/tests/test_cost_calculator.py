@@ -1,5 +1,5 @@
 # backend/tests/test_cost_calculator.py
-"""Tests for services/cost_calculator.py covering promo active, promo expired, V4 Flash, and edge cases."""
+"""Tests for services/cost_calculator.py covering promo active, promo expired, Flash, and edge cases."""
 import sys
 import os
 from unittest.mock import patch
@@ -69,22 +69,22 @@ class TestCalculateFeatureCostPromoExpired:
 
 
 class TestCalculateFeatureCostFlash:
-    """Tests for deepseek-v4-flash (no promotional pricing)."""
+    """Tests for deepseek-flash (no promotional pricing)."""
 
     def test_flash_pricing(self):
         result = calculate_feature_cost(
-            "deepseek-v4-flash",
+            "deepseek-flash",
             cache_hit_tokens=1_000_000,
             cache_miss_tokens=1_000_000,
             output_tokens=1_000_000,
         )
         assert result["is_promotional"] is False
-        assert result["cache_hit_cost"] == round(0.0028, 6)
-        assert result["cache_miss_cost"] == round(0.14, 6)
-        assert result["output_cost"] == round(0.28, 6)
+        assert result["cache_hit_cost"] == round(0.006, 6)
+        assert result["cache_miss_cost"] == round(0.3, 6)
+        assert result["output_cost"] == round(1.2, 6)
 
     def test_flash_zero_tokens(self):
-        result = calculate_feature_cost("deepseek-v4-flash", 0, 0, 0)
+        result = calculate_feature_cost("deepseek-flash", 0, 0, 0)
         assert result["total_usd"] == 0.0
 
 
@@ -93,12 +93,12 @@ class TestCalculateFullPriceCost:
 
     def test_full_price_v4_pro(self):
         cost = calculate_full_price_cost("deepseek-v4-pro", 1_000_000, 1_000_000, 1_000_000)
-        expected = 0.0145 + 1.74 + 3.48
+        expected = 0.044 + 1.32 + 3.96
         assert abs(cost - expected) < 1e-5
 
     def test_full_price_flash(self):
-        cost = calculate_full_price_cost("deepseek-v4-flash", 1_000_000, 1_000_000, 1_000_000)
-        expected = 0.0028 + 0.14 + 0.28
+        cost = calculate_full_price_cost("deepseek-flash", 1_000_000, 1_000_000, 1_000_000)
+        expected = 0.006 + 0.3 + 1.2
         assert abs(cost - expected) < 1e-5
 
 

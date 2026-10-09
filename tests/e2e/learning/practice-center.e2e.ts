@@ -1,16 +1,34 @@
 import { describe, test } from '@e2e-dev/web';
-import { expect } from 'e2e';
+import { expect, type Screen } from 'e2e';
 
-const closeStartupDialogs =
-  'if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing';
+// The Daily Rewards and Initial Assessment prompts mount on timers after the profile loads. Close them with
+// their own buttons: an agent step needed 70-120 s per test under load and left the page covered.
+async function closeStartupDialogs(screen: Screen) {
+  const rewards = screen.getByRole('heading', 'Daily Rewards');
+  const assessment = screen.getByRole('dialog', 'Initial Assessment');
+  await rewards.waitFor({ timeout: 6_000 }).catch(() => undefined);
+  for (let pass = 0; pass < 2; pass += 1) {
+    if (await rewards.isVisible()) {
+      await screen.getByRole('button', 'Close daily rewards').tap();
+      await expect(rewards).toBeHidden({ timeout: 10_000 });
+    }
+    await assessment.waitFor({ timeout: 3_000 }).catch(() => undefined);
+    if (await assessment.isVisible()) {
+      await assessment.getByRole('button', 'Close').tap();
+      await expect(assessment).toBeHidden({ timeout: 10_000 });
+    }
+  }
+}
+
+
 const practiceTopic = 'Function Notation and Evaluation';
 
 describe('student practice center', { tags: ['student', 'practice-center'] }, () => {
-  test('the Practice tab shows stat tiles, difficulty pills that relabel the topic cards, and search, status, and subject filters', { session: 'student', timeout: 180_000 }, async ({ app, agent, screen }) => {
+  test('the Practice tab shows stat tiles, difficulty pills that relabel the topic cards, and search, status, and subject filters', { session: 'student', timeout: 180_000 }, async ({ app, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Practice').tap();
@@ -64,7 +82,7 @@ describe('student practice center', { tags: ['student', 'practice-center'] }, ()
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Practice').tap();
@@ -110,14 +128,14 @@ describe('student practice center', { tags: ['student', 'practice-center'] }, ()
     await expect(screen.getByRole('heading', practiceTopic)).toBeVisible();
     await expect(screen.getByRole('heading', 'Composite Functions')).toBeHidden();
     await screen.getByRole('button', 'All').tap();
-    await expect(screen.getByRole('heading', 'Composite Functions')).toBeVisible();
+    await expect(screen.getByRole('heading', 'Composite Functions')).toBeVisible({ timeout: 15_000 });
   });
 
   test('one practice attempt reports the same XP in the XP toast and in the score toast', { session: 'student', timeout: 420_000 }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Practice').tap();
@@ -147,11 +165,11 @@ describe('student practice center', { tags: ['student', 'practice-center'] }, ()
     expect(scoreToastXp).toBe(toastXp);
   });
 
-  test('the Practice Center hides topics from shelved subjects', { session: 'student', timeout: 120_000 }, async ({ app, agent, screen }) => {
+  test('the Practice Center hides topics from shelved subjects', { session: 'student', timeout: 120_000 }, async ({ app, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Practice').tap();

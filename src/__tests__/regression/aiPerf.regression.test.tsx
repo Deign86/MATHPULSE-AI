@@ -186,7 +186,7 @@ function lessonFor(title: string): RagLessonResponse {
     retrievalBand: 'high',
     needsReview: false,
     sources: [],
-    activeModel: 'deepseek-reasoner',
+    activeModel: 'deepseek-v4-pro',
   };
 }
 

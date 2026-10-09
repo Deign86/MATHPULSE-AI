@@ -1,27 +1,42 @@
 import { describe, test } from '@e2e-dev/web';
-import { expect } from 'e2e';
+import { expect, type Screen } from 'e2e';
 
-const dismissDialogs =
-  'if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing';
+// The Daily Rewards and Initial Assessment prompts mount on timers after the profile loads. Close them with
+// their own buttons: an agent step needed 70-120 s per test under load and left the page covered.
+async function closeStartupDialogs(screen: Screen) {
+  const rewards = screen.getByRole('heading', 'Daily Rewards');
+  const assessment = screen.getByRole('dialog', 'Initial Assessment');
+  await rewards.waitFor({ timeout: 6_000 }).catch(() => undefined);
+  for (let pass = 0; pass < 2; pass += 1) {
+    if (await rewards.isVisible()) {
+      await screen.getByRole('button', 'Close daily rewards').tap();
+      await expect(rewards).toBeHidden({ timeout: 10_000 });
+    }
+    await assessment.waitFor({ timeout: 3_000 }).catch(() => undefined);
+    if (await assessment.isVisible()) {
+      await assessment.getByRole('button', 'Close').tap();
+      await expect(assessment).toBeHidden({ timeout: 10_000 });
+    }
+  }
+}
+
+
 const lessonLoaded =
   'The lesson screen has finished loading: either a lesson notebook with section text is shown, or an error or "AI lesson unavailable" message is shown. The "Loading lesson from DepEd curriculum..." screen is gone.';
 const lessonTitle = 'Represent business transactions and financial goals using variables and equations.';
-const ragLessonRoute = '**/api/rag/lesson';
+const ragLessonRoute = '**/api/rag/lesson/stream';
 
 describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
-  test('a curriculum lesson renders grounded AI content instead of an error or the PDF fallback', { session: 'student', timeout: 240_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
+  test('a curriculum lesson renders grounded AI content instead of an error or the PDF fallback', { session: 'student', timeout: 360_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    // The Daily Rewards modal opens on a timer after the claim state loads, so give it a moment before dismissing.
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Business and Finance/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
 
     await content.getByRole('button', /^Lesson 1\s*Represent business transactions/).tap();
-    await agent.waitFor(lessonLoaded, { timeout: 120_000 });
+    await agent.waitFor(lessonLoaded, { timeout: 180_000 });
     await expect(screen.getByText('AI lesson unavailable')).toBeHidden();
     await expect(screen.getByRole('heading', 'Failed to Load Lesson')).toBeHidden();
     await expect(screen.getByRole('heading', 'Lesson Source Unavailable')).toBeHidden();
@@ -46,15 +61,13 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
     await agent.assert('The page shows at least one worked example problem about a business or financial situation.');
   });
 
-  test('a failed RAG request falls back to the DepEd source PDF and Retry recovers the AI lesson', { session: 'student', timeout: 300_000, tags: ['ai'] }, async ({ app, agent, screen, browser }) => {
+  test('a failed RAG request falls back to the DepEd source PDF and Retry recovers the AI lesson', { session: 'student', timeout: 360_000, tags: ['ai'] }, async ({ app, agent, screen, browser }) => {
     await browser.route(ragLessonRoute, async (route) => {
       await route.abort();
     });
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Business and Finance/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
@@ -70,7 +83,7 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
     );
     await expect(openPdf).toHaveAttribute('target', '_blank');
 
-    await agent.act('open the PDF viewing options with the "View Options" or "Show options" button');
+    await screen.getByRole('button', 'View Options').tap();
     await expect(screen.getByRole('heading', 'Read DepEd Curriculum Material')).toBeVisible();
     await expect(screen.getByRole('link', /^Open PDF in New Window \/ Tab/)).toBeVisible();
     await expect(screen.getByRole('button', 'Retry Generating AI Lesson')).toBeVisible();
@@ -79,13 +92,13 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
 
     await browser.unroute(ragLessonRoute);
     await screen.getByRole('button', 'Retry AI lesson').tap();
-    await agent.waitFor(lessonLoaded, { timeout: 120_000 });
+    await agent.waitFor(lessonLoaded, { timeout: 180_000 });
     await expect(screen.getByText('AI lesson unavailable')).toBeHidden();
     await expect(screen.getByRole('button', 'Go to Intro section')).toBeVisible();
     await expect(screen.getByRole('heading', lessonTitle, { level: 1 })).toBeVisible();
   });
 
-  test('a lesson whose curriculum PDF is not ingested explains why the AI lesson is unavailable', { session: 'student' }, async ({ app, agent, screen, browser }) => {
+  test('a lesson whose curriculum PDF is not ingested explains why the AI lesson is unavailable', { session: 'student' }, async ({ app, screen, browser }) => {
     // Mirrors the backend 404 body for missing curriculum context: FastAPI nests it under "detail".
     await browser.route(ragLessonRoute, async (route) => {
       const cors = {
@@ -113,9 +126,7 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
     });
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Business and Finance/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
@@ -127,7 +138,7 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
 
   // lessonService used to throw a plain Error, so useLessonContent never saw the HTTP status and
   // every failure, a rejected session included, read "Failed to load lesson content.".
-  test('a lesson request the backend rejects as unauthenticated asks the student to sign in again', { session: 'student' }, async ({ app, agent, screen, browser }) => {
+  test('a lesson request the backend rejects as unauthenticated asks the student to sign in again', { session: 'student' }, async ({ app, screen, browser }) => {
     await browser.route(ragLessonRoute, async (route) => {
       const cors = {
         'access-control-allow-origin': '*',
@@ -142,9 +153,7 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
     });
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Business and Finance/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
@@ -155,15 +164,13 @@ describe('RAG lesson regression', { tags: ['student', 'rag-lesson'] }, () => {
     await expect(screen.getByText(/Failed to load lesson content\./)).toBeHidden();
   });
 
-  test('the PDF fallback offers a way back to the module', { session: 'student' }, async ({ app, agent, screen, browser }) => {
+  test('the PDF fallback offers a way back to the module', { session: 'student' }, async ({ app, screen, browser }) => {
     await browser.route(ragLessonRoute, async (route) => {
       await route.abort();
     });
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Business and Finance/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();

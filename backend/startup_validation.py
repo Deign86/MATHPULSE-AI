@@ -204,13 +204,13 @@ def validate_environment() -> None:
     logger.info(f"   ✓ INFERENCE_PROVIDER: {inference_provider}")
     
     # Check model IDs
-    chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "deepseek-chat"
+    chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "deepseek-flash"
     logger.info(f"   ✓ Chat model configured: {chat_model}")
 
     chat_strict = os.getenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
     chat_hard_trigger = os.getenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
     enforce_lock_model = os.getenv("INFERENCE_ENFORCE_LOCK_MODEL", "true").strip().lower() in {"1", "true", "yes", "on"}
-    lock_model_id = os.getenv("INFERENCE_LOCK_MODEL_ID", "deepseek-chat").strip() or "deepseek-chat"
+    lock_model_id = os.getenv("INFERENCE_LOCK_MODEL_ID", "deepseek-flash").strip() or "deepseek-flash"
     logger.info(f"   ✓ INFERENCE_ENFORCE_LOCK_MODEL: {enforce_lock_model}")
     logger.info(f"   ✓ INFERENCE_LOCK_MODEL_ID: {lock_model_id}")
     model_profile = os.getenv("MODEL_PROFILE", "").strip().lower()

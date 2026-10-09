@@ -943,7 +943,7 @@ export const LoginPage: React.FC = () => {
                     <p className="text-[9px] sm:text-[10px] font-body font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-300 mb-0.5">
                       Password requirements
                     </p>
-                    <ul className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                    <ul aria-label="Password requirements" className="grid grid-cols-2 gap-x-2 gap-y-0.5">
                       {passwordRuleStates.map((rule) => (
                         <li
                           key={rule.id}

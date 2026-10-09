@@ -13,7 +13,7 @@
 
 ### Core Value Propositions:
 1. **Curriculum-First Grounding:** Built directly around the **DepEd Strengthened SHS Mathematics Curriculum** (General Mathematics, Business Mathematics, Statistics & Probability, and Pre-Calculus). Lessons and tutor responses cite real DepEd modules.
-2. **L.O.L.I. AI Math Tutor:** Logical Operations & Learning Intelligence powered by DeepSeek (`deepseek-chat` and `deepseek-reasoner`), featuring streaming math expressions rendered in KaTeX, step-by-step problem solving, and contextual curriculum retrieval (RAG).
+2. **L.O.L.I. AI Math Tutor:** Logical Operations & Learning Intelligence powered by DeepSeek (`deepseek-flash` and `deepseek-v4-pro`), featuring streaming math expressions rendered in KaTeX, step-by-step problem solving, and contextual curriculum retrieval (RAG).
 3. **Predictive At-Risk Intervention (WRI Engine):** Calculates a **Weighted Risk Index ($WRI = 0.30D + 0.40G + 0.30P$)** to detect struggling students early and automate remedial interventions.
 4. **Gamified Learning Ecosystem:** Deeply engaging mechanics including exponential level scaling, 7-day reward cycles, streak shields, lives, a layered composite avatar customizer, and 1v1 real-time multiplayer Quiz Battles.
 5. **Three Role Studios:** Purpose-built dashboards with role-based access control (RBAC) for **Students**, **Teachers**, and **Administrators**.
@@ -30,7 +30,7 @@
 │                  KaTeX (Math rendering), Framer Motion, TanStack Query                 │
 │  Mobile Native:  Capacitor 7.1 (Android APK release build)                             │
 │  Backend API:    FastAPI (Python 3.11), Uvicorn, LiteParse (PDF parser)                │
-│  AI / LLM:       DeepSeek API (deepseek-chat for tutoring, deepseek-reasoner for RAG)  │
+│  AI / LLM:       DeepSeek API (deepseek-flash for tutoring, deepseek-v4-pro for RAG)  │
 │  Vector DB:      ChromaDB (Embeddings: BAAI/bge-small-en-v1.5)                         │
 │  Cloud / DB:     Firebase Hosting, Firebase Authentication, Cloud Firestore (NoSQL),   │
 │                  Firebase Realtime Database (Live Match Sync), Cloud Functions Node 22 │

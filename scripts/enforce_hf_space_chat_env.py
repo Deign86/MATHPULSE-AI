@@ -15,13 +15,13 @@ import sys
 from huggingface_hub import HfApi
 
 DEFAULT_SPACE_ID = "Deign86/mathpulse-api-v3test"
-DEFAULT_CHAT_MODEL = "deepseek-chat"
-DEFAULT_GLOBAL_MODEL = "deepseek-chat"
+DEFAULT_CHAT_MODEL = "deepseek-flash"
+DEFAULT_GLOBAL_MODEL = "deepseek-flash"
 DEFAULT_PROVIDER = "deepseek"
 DEFAULT_CHAT_STRICT_MODEL_ONLY = "true"
 DEFAULT_CHAT_HARD_TRIGGER_ENABLED = "false"
 DEFAULT_ENFORCE_LOCK_MODEL = "false"
-DEFAULT_LOCK_MODEL_ID = "deepseek-chat"
+DEFAULT_LOCK_MODEL_ID = "deepseek-flash"
 GLOBAL_MODEL_KEY = "INFERENCE_MODEL_ID"
 TEMP_CHAT_MODEL_KEY = "INFERENCE_CHAT_MODEL_TEMP_OVERRIDE"
 

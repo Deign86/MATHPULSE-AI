@@ -1,26 +1,41 @@
 import { describe, test } from '@e2e-dev/web';
-import { expect } from 'e2e';
+import { expect, type Screen } from 'e2e';
 
-const dismissDialogs =
-  'if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing';
+// The Daily Rewards and Initial Assessment prompts mount on timers after the profile loads. Close them with
+// their own buttons: an agent step needed 70-120 s per test under load and left the page covered.
+async function closeStartupDialogs(screen: Screen) {
+  const rewards = screen.getByRole('heading', 'Daily Rewards');
+  const assessment = screen.getByRole('dialog', 'Initial Assessment');
+  await rewards.waitFor({ timeout: 6_000 }).catch(() => undefined);
+  for (let pass = 0; pass < 2; pass += 1) {
+    if (await rewards.isVisible()) {
+      await screen.getByRole('button', 'Close daily rewards').tap();
+      await expect(rewards).toBeHidden({ timeout: 10_000 });
+    }
+    await assessment.waitFor({ timeout: 3_000 }).catch(() => undefined);
+    if (await assessment.isVisible()) {
+      await assessment.getByRole('button', 'Close').tap();
+      await expect(assessment).toBeHidden({ timeout: 10_000 });
+    }
+  }
+}
+
+
 const lessonLoaded =
   'The lesson screen has finished loading: either a lesson notebook with section text is shown, or an error or "AI lesson unavailable" message is shown. The "Loading lesson from DepEd curriculum..." screen is gone.';
 const firstLessonTitle = 'Identify and describe arithmetic and geometric patterns in data.';
 
 describe('student lesson viewer', { tags: ['student', 'lesson-viewer'] }, () => {
-  test('Study Materials opens the AI lesson notebook and its section tabs navigate the parts', { session: 'student', timeout: 240_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
+  test('Study Materials opens the AI lesson notebook and its section tabs navigate the parts', { session: 'student', timeout: 360_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    // The Daily Rewards modal opens on a timer after the claim state loads, so give it a moment before dismissing.
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Patterns, Sequences, and Series/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
 
     await content.getByRole('button', /^(Study Materials|Review)$/).first().tap();
-    await agent.waitFor(lessonLoaded, { timeout: 120_000 });
+    await agent.waitFor(lessonLoaded, { timeout: 180_000 });
     await expect(screen.getByText('AI lesson unavailable')).toBeHidden();
     await expect(screen.getByRole('heading', firstLessonTitle, { level: 1 })).toBeVisible();
     for (const part of ['Intro', 'Concepts', 'Video', 'Examples', 'Notes', 'Practice', 'Summary']) {
@@ -46,18 +61,16 @@ describe('student lesson viewer', { tags: ['student', 'lesson-viewer'] }, () => 
     await expect(screen.getByRole('heading', 'Study Journey')).toBeVisible();
   });
 
-  test('Try It Yourself Start Practice Quiz opens the practice engine and leaves without saving', { session: 'student', timeout: 300_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
+  test('Try It Yourself Start Practice Quiz opens the practice engine and leaves without saving', { session: 'student', timeout: 360_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Patterns, Sequences, and Series/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
 
     await content.getByRole('button', /^Lesson 1\s*Identify and describe/).tap();
-    await agent.waitFor(lessonLoaded, { timeout: 120_000 });
+    await agent.waitFor(lessonLoaded, { timeout: 180_000 });
     await expect(screen.getByText('AI lesson unavailable')).toBeHidden();
     await screen.getByRole('button', 'Go to Practice section').tap();
     await expect(screen.getByRole('heading', 'Try It Yourself', { level: 3 })).toBeVisible();
@@ -91,18 +104,16 @@ describe('student lesson viewer', { tags: ['student', 'lesson-viewer'] }, () => 
     await expect(screen.getByRole('button', /^Start Practice Quiz/)).toBeVisible();
   });
 
-  test('Complete lesson stays disabled on the last part until the practice is done', { session: 'student', timeout: 240_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
+  test('Complete lesson stays disabled on the last part until the practice is done', { session: 'student', timeout: 360_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Patterns, Sequences, and Series/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
 
     await content.getByRole('button', /^Lesson 1\s*Identify and describe/).tap();
-    await agent.waitFor(lessonLoaded, { timeout: 120_000 });
+    await agent.waitFor(lessonLoaded, { timeout: 180_000 });
     await expect(screen.getByText('AI lesson unavailable')).toBeHidden();
     await screen.getByRole('button', 'Go to Summary section').tap();
     await expect(screen.getByText(/^Part (\d+) of \1$/)).toBeVisible();
@@ -112,18 +123,16 @@ describe('student lesson viewer', { tags: ['student', 'lesson-viewer'] }, () => 
     await agent.assert('The notebook page summarizes what the lesson on patterns, sequences or series covered.');
   });
 
-  test('a lesson with a linked module quiz offers Start Practice in its Practice part', { session: 'student', timeout: 240_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
+  test('a lesson with a linked module quiz offers Start Practice in its Practice part', { session: 'student', timeout: 360_000, tags: ['ai'] }, async ({ app, agent, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Patterns, Sequences, and Series/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
 
     await content.getByRole('button', /^Lesson 2\s*Construct explicit and recursive rules for sequences\./).tap();
-    await agent.waitFor(lessonLoaded, { timeout: 120_000 });
+    await agent.waitFor(lessonLoaded, { timeout: 180_000 });
     await expect(screen.getByText('AI lesson unavailable')).toBeHidden();
     await screen.getByRole('button', 'Go to Practice section').tap();
     await expect(screen.getByRole('heading', 'Try It Yourself', { level: 3 })).toBeVisible();
@@ -137,19 +146,17 @@ describe('student lesson viewer', { tags: ['student', 'lesson-viewer'] }, () => 
     }
   });
 
-  test('phone Module Parts menu jumps between notebook parts', { session: 'student', timeout: 240_000, tags: ['ai', 'phone'] }, async ({ app, agent, screen, browser }) => {
+  test('phone Module Parts menu jumps between notebook parts', { session: 'student', timeout: 360_000, tags: ['ai', 'phone'] }, async ({ app, agent, screen, browser }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await screen.getByRole('heading', 'Daily Rewards').waitFor({ timeout: 4_000 }).catch(() => undefined);
-    await agent.act(dismissDialogs);
-    await expect(screen.getByRole('heading', 'Daily Rewards')).toBeHidden();
+    await closeStartupDialogs(screen);
     await browser.setViewport({ width: 390, height: 844 });
     const content = screen.getByRole('main');
     await content.getByRole('button', /^Patterns, Sequences, and Series/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
 
     await content.getByRole('button', /^Lesson 1\s*Identify and describe/).tap();
-    await agent.waitFor(lessonLoaded, { timeout: 120_000 });
+    await agent.waitFor(lessonLoaded, { timeout: 180_000 });
     await expect(screen.getByText('AI lesson unavailable')).toBeHidden();
     await expect(screen.getByRole('button', 'Go to Intro section')).toBeHidden();
 

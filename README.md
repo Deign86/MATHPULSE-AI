@@ -185,8 +185,8 @@ Platform-wide command deck: active students/teachers/classes, XP event volume, a
 
 | Model | Primary use |
 | ----- | ----------- |
-| **deepseek-chat** | Global default: chat, verification, lesson/quiz generation, learning paths, daily insights, risk classification |
-| **deepseek-reasoner** | Extended reasoning for complex RAG and curriculum search tasks |
+| **deepseek-flash** | Global default: chat, verification, lesson/quiz generation, learning paths, daily insights, risk classification |
+| **deepseek-v4-pro** | Extended reasoning for complex RAG and curriculum search tasks |
 
 Runtime routing (`backend/services/inference_client.py`) dispatches with fallback chains; profiles switchable live from the admin panel. Risk also has a supervised ML path (XGBoost/RandomForest, `models/risk_classifier.joblib`, trained via `/api/predict-risk/train-model`).
 

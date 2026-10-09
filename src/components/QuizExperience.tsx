@@ -841,8 +841,9 @@ playSound('complete');
      const isNeedsWork = percentage < 50;
       const modalRoot = typeof document !== 'undefined' ? (document.getElementById('modal-root') || document.body) : null;
 
+      // m-auto centres the card yet lets a card taller than the screen scroll; items-center clipped its top and bottom buttons.
       const resultModal = (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[100] flex overflow-y-auto overscroll-contain p-4 bg-slate-900/50 backdrop-blur-sm">
           <style>{quizAnimations}</style>
           {isExcellent && <CSSConfetti />}
           {isGood && <DrawSparks viewportHeight={viewportSize.height} viewportWidth={viewportSize.width} />}
@@ -852,7 +853,7 @@ playSound('complete');
            initial={{ opacity: 0, scale: 0.8, y: 40 }}
            animate={{ opacity: 1, scale: 1, y: 0 }}
            transition={{ type: 'spring', damping: 18, stiffness: 200 }}
-           className="w-full max-w-xs sm:max-w-sm bg-white border-2 border-slate-200 shadow-[0_25px_60px_rgba(0,0,0,0.15)] rounded-[2rem] p-4 sm:p-5 text-center relative z-10"
+           className="m-auto w-full max-w-xs sm:max-w-sm bg-white border-2 border-slate-200 shadow-[0_25px_60px_rgba(0,0,0,0.15)] rounded-[2rem] p-4 sm:p-5 text-center relative z-10"
         >
             <motion.div 
               initial={{ scale: 0, rotate: -180 }}

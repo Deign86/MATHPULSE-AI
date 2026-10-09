@@ -35,18 +35,18 @@ class TestModelProfiles:
     def test_dev_uses_chat_model(self):
         dev = _MODEL_PROFILES["dev"]
         for key, value in dev.items():
-            assert "deepseek-chat" in value, f"dev/{key} = {value}, expected deepseek-chat"
+            assert "deepseek-flash" in value, f"dev/{key} = {value}, expected deepseek-flash"
 
     def test_prod_chat_is_chat_model(self):
-        assert "deepseek-chat" in _MODEL_PROFILES["prod"]["INFERENCE_CHAT_MODEL_ID"]
+        assert "deepseek-flash" in _MODEL_PROFILES["prod"]["INFERENCE_CHAT_MODEL_ID"]
 
     def test_prod_rag_is_reasoner(self):
-        assert "deepseek-reasoner" in _MODEL_PROFILES["prod"]["HF_RAG_MODEL_ID"]
+        assert "deepseek-v4-pro" in _MODEL_PROFILES["prod"]["HF_RAG_MODEL_ID"]
 
     def test_budget_uses_chat_model_everywhere(self):
         budget = _MODEL_PROFILES["budget"]
         for key, value in budget.items():
-            assert "deepseek-chat" in value, f"budget/{key} = {value}"
+            assert "deepseek-flash" in value, f"budget/{key} = {value}"
 
 
 class TestRuntimeOverrides:
@@ -60,14 +60,14 @@ class TestRuntimeOverrides:
     def test_set_profile_populates_overrides(self):
         set_runtime_model_profile("dev")
         assert inf_client._RUNTIME_PROFILE == "dev"
-        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_MODEL_ID"] == "deepseek-chat"
-        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_CHAT_MODEL_ID"] == "deepseek-chat"
+        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_MODEL_ID"] == "deepseek-flash"
+        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_CHAT_MODEL_ID"] == "deepseek-flash"
 
     def test_set_profile_replaces_all_overrides(self):
         set_runtime_model_profile("dev")
         set_runtime_model_profile("prod")
-        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_CHAT_MODEL_ID"] == "deepseek-chat"
-        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_LOCK_MODEL_ID"] == "deepseek-chat"
+        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_CHAT_MODEL_ID"] == "deepseek-flash"
+        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_LOCK_MODEL_ID"] == "deepseek-flash"
 
     def test_set_profile_unknown_raises(self):
         with pytest.raises(ValueError, match="Unknown profile"):
@@ -87,7 +87,7 @@ class TestRuntimeOverrides:
         set_runtime_model_profile("dev")
         set_runtime_model_override("HF_RAG_MODEL_ID", "custom/model")
         assert inf_client._RUNTIME_OVERRIDES["HF_RAG_MODEL_ID"] == "custom/model"
-        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_MODEL_ID"] == "deepseek-chat"
+        assert inf_client._RUNTIME_OVERRIDES["INFERENCE_MODEL_ID"] == "deepseek-flash"
 
 
 class TestGetCurrentRuntimeConfig:
@@ -124,13 +124,13 @@ class TestGetModelForTask:
     def test_returns_profile_default_for_rag(self):
         set_runtime_model_profile("prod")
         model = get_model_for_task("rag_lesson")
-        assert "deepseek-reasoner" in model
+        assert "deepseek-v4-pro" in model
 
     @patch.dict(os.environ, {"INFERENCE_ENFORCE_LOCK_MODEL": "false"})
     def test_returns_profile_default_for_chat(self):
         set_runtime_model_profile("prod")
         model = get_model_for_task("chat")
-        assert "deepseek-chat" in model
+        assert "deepseek-flash" in model
 
     @patch.dict(os.environ, {"INFERENCE_ENFORCE_LOCK_MODEL": "false"})
     def test_returns_runtime_override_for_chat(self):
@@ -142,7 +142,7 @@ class TestGetModelForTask:
     def test_enforce_qwen_overrides_task(self):
         set_runtime_model_profile("prod")
         model = get_model_for_task("rag_lesson")
-        assert "deepseek-chat" in model
+        assert "deepseek-flash" in model
 
 
 class TestIsSequentialModel:
@@ -154,20 +154,20 @@ class TestIsSequentialModel:
         reset_runtime_overrides()
 
     def test_reasoner_is_sequential(self):
-        assert is_sequential_model("deepseek-reasoner") is True
+        assert is_sequential_model("deepseek-v4-pro") is True
 
     def test_chat_is_not_sequential(self):
-        assert is_sequential_model("deepseek-chat") is False
+        assert is_sequential_model("deepseek-flash") is False
 
     def test_empty_string_checks_env(self):
         result = is_sequential_model("")
         assert result is True or result is False
 
-    @patch.dict(os.environ, {"INFERENCE_MODEL_ID": "deepseek-reasoner"})
+    @patch.dict(os.environ, {"INFERENCE_MODEL_ID": "deepseek-v4-pro"})
     def test_env_model_reasoner_is_sequential(self):
         assert is_sequential_model("") is True
 
-    @patch.dict(os.environ, {"INFERENCE_MODEL_ID": "deepseek-chat"})
+    @patch.dict(os.environ, {"INFERENCE_MODEL_ID": "deepseek-flash"})
     def test_env_model_chat_is_not_sequential(self):
         assert is_sequential_model("") is False
 
@@ -175,10 +175,10 @@ class TestIsSequentialModel:
 class TestModelSupportsThinking:
 
     def test_reasoner_supports_thinking(self):
-        assert model_supports_thinking("deepseek-reasoner") is True
+        assert model_supports_thinking("deepseek-v4-pro") is True
 
     def test_chat_does_not_support_thinking(self):
-        assert model_supports_thinking("deepseek-chat") is False
+        assert model_supports_thinking("deepseek-flash") is False
 
     def test_unknown_does_not_support_thinking(self):
         assert model_supports_thinking("meta-llama/Llama-3.1-8B-Instruct") is False

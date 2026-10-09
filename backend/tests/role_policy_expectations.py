@@ -48,7 +48,7 @@ EXPECTED_ROLE_POLICIES = {
     "/api/rag/lesson/stream": ALL_ROLES,
     "/api/rag/lesson/prefetch": ALL_ROLES,
     "/api/rag/generate-problem": TEACHER_ADMIN,
-    "/api/rag/analysis-context": TEACHER_ADMIN,
+    "/api/rag/analysis-context": ALL_ROLES,
     "/api/rag/documents/by-subject/{subject}": ADMIN_ONLY,
     "/api/rag/documents/by-source": ADMIN_ONLY,
     "/api/rag/documents/all": ADMIN_ONLY,

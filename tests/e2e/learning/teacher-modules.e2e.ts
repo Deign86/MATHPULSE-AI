@@ -1,8 +1,26 @@
 import { describe, test } from '@e2e-dev/web';
-import { expect } from 'e2e';
+import { expect, type Screen } from 'e2e';
 
-const closeStartupDialogs =
-  'if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing';
+// The Daily Rewards and Initial Assessment prompts mount on timers after the profile loads. Close them with
+// their own buttons: an agent step needed 70-120 s per test under load and left the page covered.
+async function closeStartupDialogs(screen: Screen) {
+  const rewards = screen.getByRole('heading', 'Daily Rewards');
+  const assessment = screen.getByRole('dialog', 'Initial Assessment');
+  await rewards.waitFor({ timeout: 6_000 }).catch(() => undefined);
+  for (let pass = 0; pass < 2; pass += 1) {
+    if (await rewards.isVisible()) {
+      await screen.getByRole('button', 'Close daily rewards').tap();
+      await expect(rewards).toBeHidden({ timeout: 10_000 });
+    }
+    await assessment.waitFor({ timeout: 3_000 }).catch(() => undefined);
+    if (await assessment.isVisible()) {
+      await assessment.getByRole('button', 'Close').tap();
+      await expect(assessment).toBeHidden({ timeout: 10_000 });
+    }
+  }
+}
+
+
 const noModulesReason = 'no teacher-uploaded module is assigned to the e2e student or its section, and tests may not assign one';
 const noStepsReason = 'the first teacher module has no study steps, so there is no Study Guide to open';
 const openStepQuestions =
@@ -11,11 +29,11 @@ const moduleCta = /^(Start Interactive Module|Resume at Step \d+|Review Module f
 const studyRoadmap = /^Interactive Study Roadmap \(\d+\)$/;
 
 describe('student teacher uploaded modules', { tags: ['student', 'teacher-modules'] }, () => {
-  test('the Teacher Uploaded tab shows its banner with module cards or the empty state', { session: 'student', timeout: 120_000 }, async ({ app, agent, screen }) => {
+  test('the Teacher Uploaded tab shows its banner with module cards or the empty state', { session: 'student', timeout: 120_000 }, async ({ app, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Teacher Uploaded').tap();
@@ -40,11 +58,11 @@ describe('student teacher uploaded modules', { tags: ['student', 'teacher-module
     }
   });
 
-  test('a search with no match shows No matching teacher modules and Reset Filters restores the cards', { session: 'student', timeout: 120_000 }, async ({ app, agent, screen }) => {
+  test('a search with no match shows No matching teacher modules and Reset Filters restores the cards', { session: 'student', timeout: 120_000 }, async ({ app, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Teacher Uploaded').tap();
@@ -69,7 +87,7 @@ describe('student teacher uploaded modules', { tags: ['student', 'teacher-module
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Teacher Uploaded').tap();
@@ -130,7 +148,7 @@ describe('student teacher uploaded modules', { tags: ['student', 'teacher-module
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Teacher Uploaded').tap();
@@ -166,7 +184,7 @@ describe('student teacher uploaded modules', { tags: ['student', 'teacher-module
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Teacher Uploaded').tap();
@@ -197,7 +215,7 @@ describe('student teacher uploaded modules', { tags: ['student', 'teacher-module
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', 'Teacher Uploaded').tap();
@@ -234,7 +252,7 @@ describe('student teacher uploaded modules', { tags: ['student', 'teacher-module
 
     await browser.reload();
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await screen.getByRole('button', 'Teacher Uploaded').tap();
     await screen.getByText('Open').first().tap();
     await expect(screen.getByText(progressLabel ?? '')).toBeVisible();

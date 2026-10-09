@@ -13,7 +13,7 @@ pinned: false
 FastAPI backend for the MathPulse AI educational platform.
 
 ## Models Used
-Model routing is defined in `backend/config/models.yaml` (see `AGENTS.md`). The `prod` profile uses deepseek-reasoner for RAG lessons and deepseek-chat for other tasks; the backend selects models through `services/inference_client.py`.
+Model routing is defined in `backend/config/models.yaml` (see `AGENTS.md`). The `prod` profile uses deepseek-v4-pro for RAG lessons and deepseek-flash for other tasks; the backend selects models through `services/inference_client.py`.
 
 ## API Endpoints
 - `POST /api/chat` - AI Math Tutor conversation
