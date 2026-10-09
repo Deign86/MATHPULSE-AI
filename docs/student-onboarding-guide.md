@@ -115,7 +115,7 @@ The hook receives account identity, readiness, blocking state, and an `autoStart
 Two kinds of guide share these steps:
 
 - **General guide** (first use, Settings → Replay student guide): welcome, one `overview` step per page in the order below, then the page-guide button. 12 steps.
-- **Page guides** (**?** button, Settings page list): the detailed steps below for one page. 75 steps across 10 pages (8 optional, skipped when the feature is absent for that account).
+- **Page guides** (**?** button, Settings page list): the detailed steps below for one page. 74 steps across 10 pages (8 optional, skipped when the feature is absent for that account).
 
 | Page | Features explained (`data-tour` anchor) |
 | --- | --- |
@@ -124,7 +124,7 @@ Two kinds of guide share these steps:
 | Grades & Assessment | Quarter filter and export (`grades-export`), grade summary (`grades-kpis`), AI diagnostic* (`grades-diagnostic`), subject grades chart (`grades-subjects`), subject standings (`grades-standings`), recent quizzes (`grades-history`), exam readiness (`grades-readiness`) |
 | AI Chat | New chat (`chat-new` / `chat-start`), search* (`chat-search`), conversations* (`chat-history` / `chat-recent`), messages* (`chat-messages`), quick prompts (`chat-prompts` / `chat-topics`), question input (`chat-input`) |
 | Quiz Battle | Battle modes (`battle-modes`), Hall of Fame (`hall-of-fame`), battle stats (`battle-stats`), match history (`battle-history`); setup screen: mode switch, subject, topic, difficulty, rounds, timer, public/private room*, sound, start (`battle-mode-switch`, `battle-subject`, `battle-topic`, `battle-difficulty`, `battle-rounds`, `battle-timer`, `battle-room`, `battle-sound`, `battle-start`) |
-| Leaderboard | Period toggle (`leaderboard-period`), podium (`leaderboard-podium`), your rank (`leaderboard-rank`), class standings (`leaderboard-standings`) |
+| Leaderboard | Podium (`leaderboard-podium`), your rank (`leaderboard-rank`), class standings (`leaderboard-standings`) |
 | Avatar Studio | Preview (`avatar-preview`), surprise outfit and XP (`avatar-tools`), categories (`avatar-categories`), items/buy/preview (`avatar-items`), save/reset (`avatar-save`) |
 | Rewards | Level progress (`rewards-level`), totals (`rewards-metrics`), achievements/quests/journey tabs (`rewards-tabs`), badge list (`rewards-content`) |
 | Profile | Student ID pass (`profile-id-card`), Avatar Studio shortcut (`profile-avatar`), edit/save (`profile-edit`), basic information (`profile-basic`), school and grade (`profile-school`) |

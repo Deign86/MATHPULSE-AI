@@ -415,9 +415,9 @@ export const TeacherProfilePage: React.FC<TeacherProfilePageProps> = ({
                       <Award size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
                         value={accountData.lrn || (accountData.uid ? `TCH-${accountData.uid.slice(0, 6).toUpperCase()}` : 'TCH-2025-001')}
-                        onChange={(e) => handleFieldChange('lrn', e.target.value)}
                         placeholder="TCH-2025-001"
-                        disabled={!isEditMode}
+                        readOnly
+                        disabled
                         className="pl-10 h-10 text-xs rounded-xl font-mono"
                       />
                     </div>

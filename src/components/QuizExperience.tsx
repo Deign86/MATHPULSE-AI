@@ -226,7 +226,7 @@ interface QuizExperienceProps {
   /** Called with (score percent, XP earned) when quiz session completes — used for static quizzes */
   onComplete?: (score: number, xpEarned: number) => void;
   /** Called with (quiz, answerRecords) when the user exits after completing — preferred for practice sessions */
-  onQuizEnd?: (quiz: Quiz, answers: QuizAnswerRecord[]) => void;
+  onQuizEnd?: (quiz: Quiz, answers: QuizAnswerRecord[], xpEarned: number) => void;
   studentId?: string;
   atRiskSubjects?: string[];
 }
@@ -363,10 +363,11 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   const [showRoundResult, setShowRoundResult] = useState(false);
   const { totalHintsAvailable } = useExtraHints(previewMode ? null : studentId || null);
   const [keysCount, setKeysCount] = useState(5);
+  const [extraHintsUsed, setExtraHintsUsed] = useState(0);
   const [heartsCount, setHeartsCount] = useState(15);
 
   // Augment local hint keys with extra hints from risk response system
-  const effectiveKeysCount = keysCount + totalHintsAvailable;
+  const effectiveKeysCount = keysCount + Math.max(0, totalHintsAvailable - extraHintsUsed);
   const [livesRanOutAt, setLivesRanOutAt] = useState<number | null>(null);
   const [showNoLivesModal, setShowNoLivesModal] = useState(false);
   const [nextHeartCountdown, setNextHeartCountdown] = useState(15 * 60 * 1000);
@@ -378,6 +379,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   const quizEndRef = useRef(false);
   const localOnlyRef = useRef(previewMode || quiz.completed);
   const hasRewardedAttemptRef = useRef(quiz.completed);
+  const earnedXpRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startCountdownRef = useRef<() => void>(() => {});
   const finalizeScoreRef = useRef<() => void>(() => {});
@@ -443,7 +445,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
       timerRef.current = null;
       if (showResultsRef.current && !quizEndRef.current && !localOnlyRef.current) {
         quizEndRef.current = true;
-        onQuizEndRef.current?.(quiz, answerRecordsRef.current);
+        onQuizEndRef.current?.(quiz, answerRecordsRef.current, earnedXpRef.current);
       }
     };
   }, []);
@@ -537,7 +539,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   const deliverCompletedAttempt = () => {
     if (showResultsRef.current && !localOnlyRef.current && !quizEndRef.current) {
       quizEndRef.current = true;
-      onQuizEnd?.(quiz, answerRecords);
+      onQuizEnd?.(quiz, answerRecords, earnedXpRef.current);
     }
   };
 
@@ -548,7 +550,7 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   };
 
   const handleHintUse = () => {
-    if (keysCount <= 0 || showExplanation) return;
+    if (effectiveKeysCount <= 0 || showExplanation) return;
     
     const alreadyEliminated = eliminatedByHint[currentQuestionIndex] || [];
     const wrongChoices = currentQuestion.options
@@ -562,7 +564,8 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
       ...prev,
       [currentQuestionIndex]: [...alreadyEliminated, randomWrong]
     }));
-    setKeysCount(k => Math.max(0, k - 1));
+    if (keysCount > 0) setKeysCount(k => k - 1);
+    else setExtraHintsUsed(n => n + 1);
     playSound('correct');
   };
 
@@ -726,6 +729,7 @@ const newStreak = streak + 1;
     }
 
     setTotalXP(xpEarned);
+    earnedXpRef.current = xpEarned;
 
     const timeSpent = totalTime - timeRemaining;
 
@@ -815,18 +819,23 @@ playSound('complete');
         // iframe permissions) — the quiz works identically windowed.
         console.debug('[QuizExperience] enter fullscreen denied:', err);
       });
-      setIsFullscreen(true);
     } else {
       document.exitFullscreen().catch((err) => {
         // Issue #159: see above — exiting fullscreen is best-effort.
         console.debug('[QuizExperience] exit fullscreen failed:', err);
       });
-      setIsFullscreen(false);
     }
   };
 
+  useEffect(() => {
+    const syncFullscreen = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    return () => document.removeEventListener('fullscreenchange', syncFullscreen);
+  }, []);
+
    if (showResults) {
      const percentage = Math.round((score / questions.length) * 100);
+
      const isExcellent = percentage >= 80;
      const isGood = percentage >= 50 && percentage < 80;
      const isNeedsWork = percentage < 50;
@@ -866,6 +875,9 @@ playSound('complete');
             <p className="text-slate-400 font-bold text-[10px] mb-3 uppercase tracking-widest tabular-nums">
                Quiz Complete • Score: {score}/{questions.length}
             </p>
+            {!previewMode && localOnlyRef.current && (
+              <p className="text-amber-600 font-bold text-[10px] mb-3 uppercase tracking-widest">Retake · no XP awarded</p>
+            )}
             
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -1039,7 +1051,7 @@ playSound('complete');
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 1.1, filter: 'blur(10px)' }}
             transition={{ type: 'spring', damping: 20, stiffness: 300 }}
-            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 pointer-events-none flex flex-col items-center justify-center"
+            className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[101] pointer-events-none flex flex-col items-center justify-center"
           >
             <div className="bg-white/95 backdrop-blur-xl border border-slate-200 rounded-[2rem] p-6 md:p-8 shadow-[0_30px_80px_rgba(0,0,0,0.15)] flex flex-col items-center min-w-[280px] md:min-w-[320px]">
               <img src="/mascot/modules_avatar.png" alt="Mascot" className="w-24 h-24 md:w-32 md:h-32 mb-4 drop-shadow-[0_10px_20px_rgba(0,0,0,0.15)]" />
@@ -1278,7 +1290,7 @@ playSound('complete');
                         <p className="text-sm text-slate-500 tabular-nums">Question {viewIndex + 1} Explanation</p>
                       </div>
                       <img 
-                        src={'/icons/default-module-avatar.png'} 
+                        src="/mascot/modules_avatar.png" 
                         alt="Module Avatar" 
                         className="w-12 h-12 rounded-full object-cover border-2 border-slate-200"
                       />
@@ -1323,7 +1335,7 @@ playSound('complete');
                       const eliminatedCount = (eliminatedByHint[currentQuestionIndex] || []).length;
                       const wrongChoicesCount = (currentQuestion.options || []).length - 1;
                       const allWrongEliminated = wrongChoicesCount > 0 && eliminatedCount >= wrongChoicesCount;
-                      const showNextButton = allWrongEliminated || isCurrentlyAnswered;
+                      const showNextButton = viewIndex === currentQuestionIndex && (allWrongEliminated || isCurrentlyAnswered);
                       
                       return showNextButton ? (
                         <button onClick={() => { setShowRoundResult(false); setAchievementPill(null); handleNextQuestion(); }} className="bg-orange-500 hover:bg-orange-600 text-white font-extrabold text-sm sm:text-base md:text-lg px-5 sm:px-8 py-3 sm:py-4 rounded-full flex items-center justify-center gap-2 sm:gap-3 shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all motion-reduce:transition-none w-full max-w-md mx-auto">

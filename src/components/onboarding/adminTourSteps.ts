@@ -98,19 +98,6 @@ const analytics: TourPage = {
   ],
 };
 
-const aiMonitoring: TourPage = {
-  tab: 'AI Monitoring',
-  label: 'AI Monitoring',
-  overview: { tab: 'AI Monitoring', title: 'AI Monitoring', description: 'AI cost, usage, speed and success rates. On a phone, it is in the AI menu.', target: nav('AI Monitoring'), menu: 'ai' },
-  steps: [
-    { tab: 'AI Monitoring', title: 'Directory and refresh', description: 'System Directory lists the AI services in use. Refresh recalculates the metrics.', target: at('aimon-toolbar') },
-    { tab: 'AI Monitoring', title: 'Main metrics', description: 'Spending, requests and usage for the current period.', target: at('aimon-metrics') },
-    { tab: 'AI Monitoring', title: 'Speed and success', description: 'How fast the AI responds and how often requests succeed.', target: at('aimon-speed') },
-    { tab: 'AI Monitoring', title: 'Summary', description: 'Totals for the period at a glance.', target: at('aimon-summary') },
-    { tab: 'AI Monitoring', title: 'Cost by feature', description: 'Which features use the most AI, with sorting and filters.', target: at('aimon-costs'), optional: true },
-  ],
-};
-
 const auditLog: TourPage = {
   tab: 'Audit Log',
   label: 'Audit Log',
@@ -145,7 +132,7 @@ const settings: TourPage = {
 };
 
 // Same order as the sidebar groups (Management, AI & Intelligence, Curriculum, Insights & Security) and phone menus.
-export const adminTourPages: readonly TourPage[] = [overview, users, classes, rag, aiMonitoring, curriculum, content, analytics, auditLog, profile, settings];
+export const adminTourPages: readonly TourPage[] = [overview, users, classes, rag, curriculum, content, analytics, auditLog, profile, settings];
 
 const welcome: TourStep = {
   tab: 'Overview',

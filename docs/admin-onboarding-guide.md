@@ -4,7 +4,7 @@ The admin guide reuses the shared engine (`GuidedTour`), the role-scoped hook (`
 
 ## Admin experience
 
-- **General guide (first use):** launches once on Overview when no modal is open and no create intent is pending. 13 steps: a welcome, one overview per admin page in sidebar order (Overview; User Management, Class Management; RAG Manager, AI Monitoring; Curriculum Control, Content; Analytics, Audit Log; Profile, Settings), and a closing step on the **?** button. The welcome and closing steps say that step-by-step help lives in each page's guide.
+- **General guide (first use):** launches once on Overview when no modal is open and no create intent is pending. 12 steps: a welcome, one overview per admin page in sidebar order (Overview; User Management, Class Management; RAG Manager; Curriculum Control, Content; Analytics, Audit Log; Profile, Settings), and a closing step on the **?** button. The welcome and closing steps say that step-by-step help lives in each page's guide.
 - **Page guides:** the **?** button in the admin header asks "Play the <page> guide?" (**Play guide** or **Skip**), then plays the current page's guide. Admin Settings → Admin guide lists every page guide and replays the general guide. Buttons are disabled while Settings has unsaved edits, an unsubmitted password, or a save or maintenance change in progress.
 - On phones and tablets, the guide opens the Manage, AI, Curriculum or Insights menu for navigation steps. On screens below 1280px, Overview shows one card row at a time; the guide reveals the row it explains. The Content guide shows the Upload tab, then the Inventory tab, and restores the admin's own tab afterwards.
 - First use is tracked per account and role: `mathpulse:admin-tour:v1:<uid>`.
@@ -32,7 +32,6 @@ The guide only shows screens; the overlay blocks every click. Several admin cont
 | User Management | Account counts (`users-kpis`), search/filter/add toolbar (`users-toolbar`), users list with row and bulk actions (`users-list`) |
 | Class Management | Section totals (`classes-stats`), sections and teacher assignment (`classes-sections`) |
 | RAG Manager | Totals (`rag-stats`), rebuild progress* (`rag-progress`), toolbar (`rag-toolbar`), subjects (`rag-subjects`), subject details (`rag-detail`) |
-| AI Monitoring | Directory/refresh toolbar, main metrics, speed and success, summary, cost by feature* (`aimon-*`) |
 | Curriculum Control | Totals, filters, subject list with availability switches (`subjects-*`), How it works button |
 | Content | Totals, Upload/Inventory tabs, upload form, uploaded files (`content-*`) |
 | Analytics | Range/refresh/export toolbar, key numbers, sub-tabs, outcomes (`analytics-*`) |

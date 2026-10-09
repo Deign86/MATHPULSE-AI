@@ -113,7 +113,7 @@ No install, no keys. Open the deploy and pick a demo account:
 | ------- | ------------- | -------- |
 | **Student** | `teststudent@school.edu` | Dashboard, Curriculum Modules, L.O.L.I. chat, Quiz Battle, Leaderboards |
 | **Teacher** | `testteacher@school.edu` | Class dashboard (12 students, at-risk flags), Class Analytics, AI Quiz Maker, Data Import |
-| **Admin** | `testadmin@school.edu` | Platform overview, User/Class Management, RAG Manager, AI Monitoring, Audit Log |
+| **Admin** | `testadmin@school.edu` | Platform overview, User/Class Management, RAG Manager, Audit Log |
 
 > **[Open the live app →](https://mathpulse-ai-2026.web.app)**
 >
@@ -179,7 +179,6 @@ Platform-wide command deck: active students/teachers/classes, XP event volume, a
 - **Platform Overview** — students, teachers, classes, XP events, at-risk alerts at a glance
 - **User & Class Management** — create, edit, and manage accounts across all roles
 - **Content & RAG Manager** — administer curriculum content; upload/reingest PDFs into the Chroma vector store
-- **AI Monitoring** — DeepSeek success rate, error counts, retries, per-model cost tracking; runtime profile switching (`dev` / `budget` / `prod`) without redeploys
 - **Audit Log & System Settings** — severity-tagged admin action log, feature flags, maintenance mode
 
 ### AI models (current runtime)
@@ -335,7 +334,7 @@ MATHPULSE-AI/
 
 ## 📡 API Reference
 
-The FastAPI backend exposes **64 routes** across 15+ modules (interactive docs at `/docs` or `/redoc` when running):
+The FastAPI backend exposes **61 routes** across 15+ modules (interactive docs at `/docs` or `/redoc` when running):
 
 | Route Module | Routes | Domain |
 | ------------ | ------ | ------ |
@@ -351,7 +350,6 @@ The FastAPI backend exposes **64 routes** across 15+ modules (interactive docs a
 | `diagnostic.py` | 1 | Full diagnostic + RAG analysis |
 | `risk_router.py` | 2 | Risk computation (single + batch) |
 | `quiz_generation_routes.py` | 1 | AI quiz generation |
-| `ai_monitoring.py` | 2 | DeepSeek monitoring + cost tracking |
 
 | Method | Endpoint | Description |
 | ------ | -------- | ----------- |

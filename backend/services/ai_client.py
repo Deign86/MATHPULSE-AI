@@ -39,4 +39,5 @@ def get_deepseek_client() -> OpenAI:
     return OpenAI(
         api_key=api_key,
         base_url=DEEPSEEK_BASE_URL,
+        max_retries=0,  # retries are owned by InferenceClient; SDK retries would stack under them
     )

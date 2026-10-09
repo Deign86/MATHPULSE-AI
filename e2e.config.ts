@@ -14,6 +14,8 @@ export default {
           args: ['node_modules/vite/bin/vite.js', '--host', '127.0.0.1', '--port', '5173', '--strictPort'],
           env: { VITE_API_URL: 'http://127.0.0.1:8000' },
           log: '.e2e/logs/app.log',
+          // A cold Vite start transforms the whole app on the first request, which can exceed the 60 s default.
+          startupTimeout: 180_000,
         },
       },
     },
@@ -29,6 +31,10 @@ export default {
     student: {
       username: process.env.E2E_USER_STUDENT_USERNAME ?? '',
       password: () => process.env.E2E_USER_STUDENT_PASSWORD ?? '',
+    },
+    student2: {
+      username: process.env.E2E_USER_STUDENT2_USERNAME ?? '',
+      password: () => process.env.E2E_USER_STUDENT2_PASSWORD ?? '',
     },
     teacher: {
       username: process.env.E2E_USER_TEACHER_USERNAME ?? '',

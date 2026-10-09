@@ -64,7 +64,7 @@ export interface DiagnosticResponseItem {
 
 /**
  * Generate a diagnostic assessment with retry + timeout.
- * Uses a shorter 30s per-attempt timeout with up to 2 retries (total ~90s max).
+ * One 90 s deadline covers the request and a single retry after a 5xx.
  */
 export async function generateDiagnostic(
   strand: string,
@@ -114,58 +114,44 @@ export async function generateDiagnostic(
     return message;
   };
 
-  // Retry with exponential backoff: attempt 1 (30s), attempt 2 (30s) = 60s total max
+  // One 90 s deadline (the wait the modal advertises) covers every attempt; only 5xx failures are retried.
   const MAX_ATTEMPTS = 2;
-  const ATTEMPT_TIMEOUT_MS = 30_000;
+  const TOTAL_TIMEOUT_MS = 90_000;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TOTAL_TIMEOUT_MS);
 
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), ATTEMPT_TIMEOUT_MS);
-
-    try {
+  try {
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
       const res = await attemptRequest(controller.signal);
 
       if (res.ok) {
-        clearTimeout(timeout);
         return res.json();
       }
 
-      // 4xx client errors — don't retry, throw immediately
-      if (res.status >= 400 && res.status < 500) {
-        clearTimeout(timeout);
-        const body = await res.text().catch(() => '');
-        throw new Error(parseError(res, body));
-      }
-
-      // 5xx server errors or network issues — retry if attempts remain
       const body = await res.text().catch(() => '');
       const errorMessage = parseError(res, body);
 
-      clearTimeout(timeout);
+      // 4xx client errors are not retried
+      if (res.status >= 400 && res.status < 500) {
+        throw new Error(errorMessage);
+      }
 
       if (attempt < MAX_ATTEMPTS) {
-        const backoffMs = attempt * 2_000; // 2s, 4s
+        const backoffMs = attempt * 2_000;
         console.warn(`[generateDiagnostic] attempt ${attempt} failed (${res.status}), retrying in ${backoffMs}ms...`);
         await new Promise((r) => setTimeout(r, backoffMs));
         continue;
       }
 
       throw new Error(errorMessage);
-    } catch (err) {
-      clearTimeout(timeout);
-
-      // AbortError = timeout
-      if (err instanceof DOMException && err.name === 'AbortError') {
-        if (attempt < MAX_ATTEMPTS) {
-          console.warn(`[generateDiagnostic] attempt ${attempt} timed out, retrying...`);
-          continue;
-        }
-        throw new Error('The request timed out. Please check your connection and try again.');
-      }
-
-      // Re-throw business errors (already formatted) and network errors
-      throw err;
     }
+  } catch (err) {
+    if (err instanceof DOMException && err.name === 'AbortError') {
+      throw new Error('The request timed out. Please check your connection and try again.');
+    }
+    throw err;
+  } finally {
+    clearTimeout(timeout);
   }
 
   // Should not reach here, but satisfy TypeScript

@@ -84,6 +84,7 @@ import {
   ApiError,
   apiFetch,
   fetchAnalysisCurriculumContext,
+  type DailyInsightRequest,
   type ImportedClassOverviewResponse,
   type LessonPlanResponse,
   type UploadResponse,
@@ -93,7 +94,7 @@ import {
   saveGeneratedLessonPlan,
   generateLessonPlanWithCurriculumGrounding,
 } from '../services/lessonPlanService';
-import { fetchQuizzesByTeacher } from '../services/quizService';
+import { assignQuizToStudent, fetchQuizzesByTeacher } from '../services/quizService';
 import type { GeneratedQuiz } from '../types/models';
 import type { CurriculumSource } from '../types/curriculum';
 import CurriculumSourceBadge from './CurriculumSourceBadge';
@@ -1343,44 +1344,43 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     };
   }, [currentUser]);
 
+  // The insight only depends on these fields; keying on their serialized form stops the AI call from
+  // refiring when `students` gets a new array reference with the same values (roster merges, snapshots).
+  const dailyInsightInputKey = useMemo(() => JSON.stringify(students.map((student) => ({
+    name: student.name || 'Student',
+    engagementScore: Number.isFinite(student.engagementScore) ? student.engagementScore : 0,
+    avgQuizScore: Number.isFinite(student.avgScore) ? student.avgScore : 0,
+    attendance: Number.isFinite(student.attendance) ? student.attendance : 0,
+    riskLevel: student.riskLevel || 'low',
+  }))), [students]);
+
   // Fetch AI daily insight when students data is available
   useEffect(() => {
-    if (students.length === 0) return;
+    // SAFETY: dailyInsightInputKey is JSON.stringify of the DailyInsightRequest student rows built above.
+    const studentData = JSON.parse(dailyInsightInputKey) as DailyInsightRequest['students'];
+    if (studentData.length === 0) return;
+    let active = true;
+    const highRiskCount = studentData.filter((s) => s.riskLevel === 'high').length;
+    const highRiskMessage = `${highRiskCount} students are at high risk of falling behind. Review their progress in the analytics view.`;
 
     const fetchInsight = async () => {
-      if (students.length === 0) {
-        setDailyInsight('');
-        return;
-      }
       setInsightLoading(true);
       try {
-        const studentData = students.map((student) => ({
-          name: student.name || 'Student',
-          engagementScore: Number.isFinite(student.engagementScore) ? student.engagementScore : 0,
-          avgQuizScore: Number.isFinite(student.avgScore) ? student.avgScore : 0,
-          attendance: Number.isFinite(student.attendance) ? student.attendance : 0,
-          riskLevel: student.riskLevel || 'low',
-        }));
         const { data, fromFallback } = await apiService.getDailyInsightSafe({ students: studentData });
-        if (fromFallback) {
-          const highRiskCount = students.filter((s) => s.riskLevel === 'high').length;
-          setDailyInsight(
-            highRiskCount > 0
-              ? `${highRiskCount} students are at high risk of falling behind. Review their progress in the analytics view.`
-              : data.insight,
-          );
-        } else {
-          setDailyInsight(data.insight);
-        }
+        if (!active) return;
+        setDailyInsight(fromFallback && highRiskCount > 0 ? highRiskMessage : data.insight);
       } catch {
-        setDailyInsight(`${students.filter((s) => s.riskLevel === 'high').length} students are at high risk of falling behind. Review their progress in the analytics view.`);
+        if (active) setDailyInsight(highRiskMessage);
       } finally {
-        setInsightLoading(false);
+        if (active) setInsightLoading(false);
       }
     };
 
-    fetchInsight();
-  }, [students]);
+    void fetchInsight();
+    return () => {
+      active = false;
+    };
+  }, [dailyInsightInputKey]);
 
   // Computed stats
   const totalStudents = resolvedClassCounts.totalStudents;
@@ -1781,6 +1781,8 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
     const parsed = parseClassName(classItem.classMetadata?.className || classItem.name);
     return buildClassSectionId(parsed.grade, parsed.section) || undefined;
   }, []);
+
+  const [competencyPickerOpen, setCompetencyPickerOpen] = useState(false);
 
   const handleSidebarNav = (view: View) => {
     setActiveView(view);
@@ -2241,6 +2243,30 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     </div>
                   </motion.div>
                 )}
+                {activeView === 'intervention' && !selectedStudent && (
+                  totalAtRisk === 0 ? (
+                    <ToolsPlaceholderView
+                      icon={AlertTriangle}
+                      title="No students at risk"
+                      description="No students are currently at high risk. Open My Classes to review every student."
+                    />
+                  ) : (
+                    <div className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 pb-32 sm:pb-36 lg:pb-12">
+                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                        {students
+                          .filter((candidate) => candidate.riskLevel === 'high')
+                          .map((candidate) => (
+                            <StudentCard
+                              key={buildStudentViewKey(candidate)}
+                              student={candidate}
+                              onViewStudent={handleViewStudent}
+                              onCreateAccount={handleOpenCreateAccount}
+                            />
+                          ))}
+                      </div>
+                    </div>
+                  )
+                )}
                 {activeView === 'intervention' && selectedStudent && (
                   <InterventionView
                     student={selectedStudent}
@@ -2287,23 +2313,29 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     teacherId={currentUser?.uid || ''}
                   />
                 )}
-                {activeView === 'competency' && effectiveAnalyticsClass && (
+                {activeView === 'competency' && effectiveAnalyticsClass && !competencyPickerOpen && (
                   <StudentCompetencyTable
-                    classSectionId={selectedClassSectionId}
-                    className={selectedClass?.name}
+                    classSectionId={classSectionIdFor(effectiveAnalyticsClass)}
+                    className={effectiveAnalyticsClass.name}
                     fallbackStudents={students}
-                    onBack={() => setSelectedClass(null)}
+                    onBack={() => {
+                      setSelectedClass(null);
+                      setCompetencyPickerOpen(true);
+                    }}
                     onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     insightDismissed={insightDismissed}
                     onOpenInsightModal={() => setInsightModalOpen(true)}
                   />
                 )}
-                {activeView === 'competency' && !effectiveAnalyticsClass && classes.length > 0 && (
+                {activeView === 'competency' && (!effectiveAnalyticsClass || competencyPickerOpen) && classes.length > 0 && (
                   <ClassesOverviewMenu
                     classes={managedClassesWithResolvedCounts}
                     totalStudentCount={totalStudents}
-                    onSelectClass={(cls) => setSelectedClass(cls)}
+                    onSelectClass={(cls) => {
+                      setSelectedClass(cls);
+                      setCompetencyPickerOpen(false);
+                    }}
                     onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     insightDismissed={insightDismissed}
@@ -2329,6 +2361,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     teacherName={teacherName}
                     onStudentsUpdated={(updated) => setStudents(updated)}
                     onBackToClasses={() => setActiveView('dashboard')}
+                    onSelectClass={(sectionId) => setSelectedClass(sectionId ? managedClasses.find((classItem) => classSectionIdFor(classItem) === sectionId || classItem.id === sectionId) || null : null)}
                     onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
@@ -4624,10 +4657,13 @@ const InterventionView: React.FC<{
     return 'Foundational Mathematics';
   }, [student.weakestTopic, student.struggles]);
 
+  // Keyed on content, not the array reference: roster merges hand us a new `student` object with the same
+  // struggles, which would otherwise refire the AI learning-path request below.
+  const strugglesKey = (student.struggles || []).join('\u0000');
   const effectiveStruggles = useMemo(() => {
     const valid = (student.struggles || []).filter((s) => s && s !== 'N/A' && s.trim());
     return valid.length > 0 ? valid : [effectiveWeakestTopic];
-  }, [student.struggles, effectiveWeakestTopic]);
+  }, [strugglesKey, effectiveWeakestTopic]);
 
   const [interventionPlan, setInterventionPlan] = useState<InterventionPlan | null>(null);
   const [interventionTab, setInterventionTab] = useState<'overview' | 'path' | 'lesson'>('overview');
@@ -4656,6 +4692,7 @@ const InterventionView: React.FC<{
   const [exportModalStep, setExportModalStep] = useState<'choose' | 'bank'>('choose');
   const [bankQuizzes, setBankQuizzes] = useState<GeneratedQuiz[]>([]);
   const [bankLoading, setBankLoading] = useState(false);
+  const [assigningQuizId, setAssigningQuizId] = useState<string | null>(null);
   // Drawer state
   const [showQuizDrawer, setShowQuizDrawer] = useState(false);
   const [drawerDirty, setDrawerDirty] = useState(false);  // true once quiz generation starts
@@ -4670,6 +4707,27 @@ const InterventionView: React.FC<{
   // Fetch intervention plan from backend
   const assignedUid = student.accountUid || student.id;
   const distinctIds = [...new Set([student.id, assignedUid])];
+
+  const handleAssignBankQuiz = async (quiz: GeneratedQuiz) => {
+    if (!teacherId) {
+      toast.error('Sign in to assign quizzes.');
+      return;
+    }
+    if (student.hasRegisteredAccount !== true) {
+      toast.error(`${student.name} has no account yet. Create one before assigning a quiz.`);
+      return;
+    }
+    setAssigningQuizId(quiz.id);
+    try {
+      await assignQuizToStudent(quiz.id, assignedUid, teacherId);
+      setShowExportModal(false);
+      toast.success(`"${quiz.title}" assigned to ${student.name}`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to assign quiz');
+    } finally {
+      setAssigningQuizId(null);
+    }
+  };
   useEffect(() => {
     let cancelled = false;
     setInterventionLoading(true);
@@ -4744,6 +4802,7 @@ const InterventionView: React.FC<{
   }, [lessonPlan, learningPath, gradeDraft, sectionDraft, student.id, onCacheUpdate]);
 
   useEffect(() => {
+    let active = true;
     const fetchPath = async () => {
       setPathLoading(true);
       try {
@@ -4753,9 +4812,9 @@ const InterventionView: React.FC<{
             effectiveStruggles,
             'general_math',
           );
-          setAnalysisCurriculumContext(curriculumContext);
+          if (active) setAnalysisCurriculumContext(curriculumContext);
         } catch {
-          setAnalysisCurriculumContext('');
+          if (active) setAnalysisCurriculumContext('');
         }
 
         const response = await apiService.getLearningPath({
@@ -4763,19 +4822,24 @@ const InterventionView: React.FC<{
           gradeLevel: 'High School',
           subject: 'general_math',
         });
+        if (!active) return;
         const enrichedLearningPath = curriculumContext
           ? `${response.learningPath}\n\n${curriculumContext}`
           : response.learningPath;
         setLearningPath(enrichedLearningPath);
       } catch {
+        if (!active) return;
         setLearningPath('Unable to generate learning path. Please try again later.');
         setAnalysisCurriculumContext('');
       } finally {
-        setPathLoading(false);
+        if (active) setPathLoading(false);
       }
     };
-    fetchPath();
-  }, [student, effectiveStruggles]);
+    void fetchPath();
+    return () => {
+      active = false;
+    };
+  }, [student.id, effectiveStruggles]);
 
   const generateTargetedLessonPlan = useCallback(async () => {
     setLessonLoading(true);
@@ -5269,7 +5333,7 @@ const InterventionView: React.FC<{
                       <div>
                         <label className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1 block">Grade</label>
                         <Input
-                          value="Grade 11"
+                          value={gradeDraft}
                           disabled
                           placeholder="Grade"
                           className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-xs h-9 rounded-lg px-3"
@@ -6101,13 +6165,11 @@ const InterventionView: React.FC<{
                                 </p>
                               </div>
                               <button
-                                onClick={() => {
-                                  setShowExportModal(false);
-                                  toast.success(`"${quiz.title}" selected for ${student.name}`);
-                                }}
-                                className="shrink-0 px-3 py-1.5 rounded-full bg-[#a855f7] text-white text-[11px] font-bold hover:bg-[#9333ea] transition-colors shadow-sm"
+                                onClick={() => void handleAssignBankQuiz(quiz)}
+                                disabled={assigningQuizId !== null}
+                                className="shrink-0 px-3 py-1.5 rounded-full bg-[#a855f7] text-white text-[11px] font-bold hover:bg-[#9333ea] transition-colors shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
                               >
-                                Assign
+                                {assigningQuizId === quiz.id ? 'Assigning...' : 'Assign'}
                               </button>
                             </div>
                           ))}
@@ -6228,7 +6290,7 @@ const InterventionView: React.FC<{
                 <label className="text-[11px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5 block ml-1">Grade Level</label>
                 <div className="relative">
                   <Input
-                    value="Grade 11"
+                    value={gradeDraft}
                     disabled
                     placeholder="Grade"
                     className="appearance-none w-full bg-[#f8fafc] border border-[#e2e8f0] text-[#475569] text-[13px] font-medium rounded-[14px] px-4 py-2.5 outline-none focus:border-[#a855f7] focus:ring-1 focus:ring-[#a855f7] h-auto"
@@ -7141,7 +7203,7 @@ const DashboardRightSidebar: React.FC<{
   }, [currentUser?.uid]);
 
   const getDaysInMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  const getFirstDayOfMonth = (date: Date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  const getFirstDayOfMonth = (date: Date) => (new Date(date.getFullYear(), date.getMonth(), 1).getDay() + 6) % 7;
 
   const monthLabel = () => currentDate.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
 

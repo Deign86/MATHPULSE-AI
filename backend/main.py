@@ -30,6 +30,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
 
 # Lazy import for audit_logger to prevent ModuleNotFoundError during test collection.
@@ -93,7 +94,7 @@ import httpx
 import uvicorn
 from services.inference_client import (
     InferenceRequest, create_default_client,
-    get_model_for_task, get_current_runtime_config,
+    get_model_for_task,
 )
 from services.deterministic_cache import DeterministicResponseCache
 from services.logging_utils import log_model_call
@@ -124,7 +125,6 @@ from routes.risk_router import router as risk_router
 from routes.tutor_checkin import router as tutor_checkin_router
 from routes.practice import router as practice_router
 from routes.try_it_yourself import router as try_it_yourself_router
-from routes.ai_monitoring import router as ai_monitoring_router
 from routes.class_analytics_routes import router as class_analytics_router
 from routes.intervention_routes import router as intervention_router
 from routes.pipeline_routes import router as pipeline_router
@@ -446,6 +446,8 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/lesson/generate": TEACHER_OR_ADMIN,
     "/api/lesson/generate-async": TEACHER_OR_ADMIN,
     "/api/rag/lesson": ALL_APP_ROLES,
+    "/api/rag/lesson/stream": ALL_APP_ROLES,
+    "/api/rag/lesson/prefetch": ALL_APP_ROLES,
     "/api/rag/generate-problem": TEACHER_OR_ADMIN,
     "/api/rag/analysis-context": TEACHER_OR_ADMIN,
     "/api/rag/documents/by-subject/{subject}": ADMIN_ONLY,
@@ -469,7 +471,6 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/analytics/class-insights": TEACHER_OR_ADMIN,
     "/api/analytics/refresh-cache": ADMIN_ONLY,
     "/api/testing/reset-data": ALL_APP_ROLES,
-    "/api/hf/monitoring": ADMIN_ONLY,
     "/api/dev/generate-mock-data": ADMIN_ONLY,
     "/api/analytics/config": TEACHER_OR_ADMIN,
     "/api/analytics/imported-class-overview": TEACHER_OR_ADMIN,
@@ -542,6 +543,14 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # FIX(502): Firebase init is fast (reads env vars), keep synchronous.
     _init_firebase_admin()
 
+    # asyncio.to_thread uses the loop's default executor (cpu+4 threads); long
+    # LLM calls would otherwise starve each other and the RAG/Firestore work.
+    blocking_executor = ThreadPoolExecutor(
+        max_workers=int(os.getenv("BLOCKING_IO_THREADS", "32")),
+        thread_name_prefix="blocking-io",
+    )
+    asyncio.get_running_loop().set_default_executor(blocking_executor)
+
     # FIX(502): Yield the lifespan IMMEDIATELY so Uvicorn binds port 7860 before
     # heavy model downloads can block.  HF Spaces has a ~60s startup timeout —
     # any blocking call in lifespan that exceeds it causes the reverse proxy to
@@ -560,7 +569,7 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         active_model = os.getenv("HF_MODEL_ID", "deepseek-chat")
         try:
             from rag.vectorstore_loader import get_vectorstore_health
-            health = get_vectorstore_health()
+            health = await asyncio.to_thread(get_vectorstore_health)
             logger.info(
                 "RAG vectorstore ready: %d chunks | subjects: %s | model: %s",
                 health["chunkCount"],
@@ -590,6 +599,7 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _warmup_inference_task = asyncio.create_task(_warmup_inference_client())
     _warmup_vectorstore_task = asyncio.create_task(_warmup_vectorstore())
     _warmup_deepseek_auth_task = asyncio.create_task(_warmup_deepseek_auth())
+    _interrupted_jobs_task = asyncio.create_task(asyncio.to_thread(_mark_interrupted_async_jobs))
 
     # FIX(502): Set a readiness flag so /health reports the true state without
     # triggering heavy init on every health-check ping from HF Spaces' proxy.
@@ -613,6 +623,7 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         yield
     finally:
         await _close_hf_async_http_client()
+        blocking_executor.shutdown(wait=False)
 
 
 app = FastAPI(
@@ -987,6 +998,95 @@ def _prune_async_tasks(now_ts: Optional[float] = None) -> None:
         _async_tasks.pop(task_id, None)
 
 
+_AI_JOBS_COLLECTION = "aiJobs"
+_AI_JOB_BACKEND_ID = os.getenv("SPACE_ID") or "local"
+_AI_JOB_MIRROR_FIELDS = (
+    "taskId", "taskKind", "ownerUid", "status", "createdAt", "startedAt", "completedAt",
+    "progressPercent", "progressStage", "progressMessage", "error",
+)
+# One worker keeps Firestore writes for a task in order without touching the event loop.
+_ai_job_mirror_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ai-job-mirror")
+
+
+def _write_ai_job_doc(doc: Dict[str, Any]) -> None:
+    try:
+        get_firestore_client().collection(_AI_JOBS_COLLECTION).document(doc["taskId"]).set(doc, merge=True)
+    except Exception as exc:
+        logger.warning(f"aiJobs mirror write skipped for {doc.get('taskId')}: {exc}")
+
+
+def _mirror_async_task(task_id: str) -> None:
+    """Queue a fail-open Firestore snapshot of an async task (contract C3). Never blocks the caller."""
+    with _async_tasks_lock:
+        task = _async_tasks.get(task_id)
+        if not task:
+            return
+        doc = {key: task.get(key) for key in _AI_JOB_MIRROR_FIELDS}
+        if task.get("result") is not None:
+            doc["resultJson"] = json.dumps(task["result"], default=str)
+    doc["backendId"] = _AI_JOB_BACKEND_ID
+    doc["updatedAt"] = _utc_now_iso()
+    try:
+        _ai_job_mirror_executor.submit(_write_ai_job_doc, doc)
+    except RuntimeError as exc:
+        logger.warning(f"aiJobs mirror not queued for {task_id}: {exc}")
+
+
+def _mark_interrupted_async_jobs() -> int:
+    """Fail queued/running aiJobs left behind by a previous process of THIS backend only."""
+    try:
+        db = get_firestore_client()
+        stale = (
+            db.collection(_AI_JOBS_COLLECTION)
+            .where("backendId", "==", _AI_JOB_BACKEND_ID)
+            .where("status", "in", ["queued", "running"])
+            .stream()
+        )
+        now_iso = _utc_now_iso()
+        count = 0
+        for snapshot in stale:
+            snapshot.reference.set(
+                {
+                    "status": "failed",
+                    "completedAt": now_iso,
+                    "updatedAt": now_iso,
+                    "progressStage": "failed",
+                    "error": {
+                        "code": "interrupted",
+                        "message": "Generation was interrupted by a server restart.",
+                    },
+                },
+                merge=True,
+            )
+            count += 1
+        if count:
+            logger.warning(f"Marked {count} interrupted aiJobs as failed (backendId={_AI_JOB_BACKEND_ID})")
+        return count
+    except Exception as exc:
+        logger.warning(f"aiJobs interrupted-job sweep skipped: {exc}")
+        return 0
+
+
+def _load_ai_job_doc(task_id: str) -> Optional[Dict[str, Any]]:
+    """Read a mirrored job (blocking); resultJson is parsed back into `result`."""
+    try:
+        snapshot = get_firestore_client().collection(_AI_JOBS_COLLECTION).document(task_id).get()
+    except Exception as exc:
+        logger.warning(f"aiJobs read failed for {task_id}: {exc}")
+        return None
+    if not _snapshot_exists(snapshot):
+        return None
+    doc = _snapshot_to_dict(snapshot)
+    result_json = doc.pop("resultJson", None)
+    doc["result"] = None
+    if isinstance(result_json, str) and result_json:
+        try:
+            doc["result"] = json.loads(result_json)
+        except ValueError:
+            logger.warning(f"aiJobs resultJson unparseable for {task_id}")
+    return doc
+
+
 def _create_async_task(owner_uid: str, task_kind: str, payload: Dict[str, Any]) -> str:
     task_id = f"task_{uuid.uuid4().hex[:12]}"
     with _async_tasks_lock:
@@ -1007,6 +1107,7 @@ def _create_async_task(owner_uid: str, task_kind: str, payload: Dict[str, Any]) 
             "result": None,
             "error": None,
         }
+    _mirror_async_task(task_id)
     return task_id
 
 
@@ -1016,9 +1117,17 @@ def _update_async_task(task_id: str, **updates: Any) -> None:
         if not task:
             return
         task.update(updates)
+    _mirror_async_task(task_id)
 
 
 async def _run_async_task(task_id: str, runner) -> None:
+    try:
+        await _run_async_task_inner(task_id, runner)
+    finally:
+        _mirror_async_task(task_id)
+
+
+async def _run_async_task_inner(task_id: str, runner) -> None:
     with _async_tasks_lock:
         task = _async_tasks.get(task_id)
         if not task:
@@ -1037,6 +1146,8 @@ async def _run_async_task(task_id: str, runner) -> None:
         task["progressStage"] = "running"
         task["progressMessage"] = "Background generation started."
         task["error"] = None
+
+    _mirror_async_task(task_id)
 
     try:
         payload = await runner()
@@ -1224,7 +1335,6 @@ app.include_router(risk_router)
 app.include_router(tutor_checkin_router)
 app.include_router(practice_router)
 app.include_router(try_it_yourself_router)
-app.include_router(ai_monitoring_router)
 app.include_router(class_analytics_router)
 app.include_router(intervention_router)
 app.include_router(pipeline_router)
@@ -1412,7 +1522,7 @@ def call_hf_chat_stream(
     timeout_sec = timeout or client.interactive_timeout_sec
     last_error: Optional[Exception] = None
 
-    ds_client = get_deepseek_client()
+    ds_client = get_deepseek_client().with_options(max_retries=1)
 
     for fallback_depth, model_name in enumerate(model_chain):
         start = time.perf_counter()
@@ -2840,7 +2950,8 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
                 logger.debug(f"Failed to inject student profile into chat: {ctx_err}")
         
         try:
-            curriculum_chunks = retrieve_curriculum_context(
+            curriculum_chunks = await asyncio.to_thread(
+                retrieve_curriculum_context,
                 query=request.message[:200],
                 top_k=2,
             )
@@ -3207,7 +3318,7 @@ async def verify_math_response(
 
     logger.info(f"Generating {VERIFICATION_SAMPLES} responses for self-consistency check")
 
-    for i in range(VERIFICATION_SAMPLES):
+    async def _sample(i: int) -> Tuple[str, Optional[str]]:
         try:
             text = await call_hf_chat_async(
                 base_messages,
@@ -3216,13 +3327,17 @@ async def verify_math_response(
                 top_p=0.9,
                 task_type="verify_solution",
             )
-            responses.append(text)
-            answers.append(_extract_final_answer(text))
-            logger.info(f"  Sample {i+1} answer: {answers[-1]}")
+            answer = _extract_final_answer(text)
+            logger.info(f"  Sample {i+1} answer: {answer}")
+            return text, answer
         except Exception as e:
             logger.warning(f"  Sample {i+1} failed: {e}")
-            responses.append("")
-            answers.append(None)
+            return "", None
+
+    samples = await asyncio.gather(*(_sample(i) for i in range(VERIFICATION_SAMPLES)))
+    for text, answer in samples:
+        responses.append(text)
+        answers.append(answer)
 
     # Check agreement among non-None answers
     valid_answers = [a for a in answers if a is not None]
@@ -3889,7 +4004,9 @@ async def generate_ai_learning_path(request: LearningPathRequest, response: Resp
         if ENABLE_RAG_ANALYSIS_CONTEXT:
             try:
                 subject_for_context = (request.subject or "general_math").strip() or "general_math"
-                competency_chunks = build_analysis_curriculum_context(request.weaknesses, subject_for_context)
+                competency_chunks = await asyncio.to_thread(
+                    build_analysis_curriculum_context, request.weaknesses, subject_for_context
+                )
                 if competency_chunks:
                     lines = []
                     for idx, row in enumerate(competency_chunks[:8], start=1):
@@ -5809,6 +5926,7 @@ def _filter_admin_user_records(
                     str(record.get("uid") or ""),
                     str(record.get("name") or ""),
                     str(record.get("email") or ""),
+                    str(record.get("lrn") or ""),
                 ]
             ).lower()
             if search_term not in searchable:
@@ -6951,13 +7069,10 @@ async def list_admin_users(
             detail="Requested page is too deep. Narrow filters or use a smaller page number.",
         )
 
-    required_window = page * pageSize
-    scan_limit = min(max(required_window * 4, pageSize * 8), ADMIN_USERS_MAX_SCAN_DOCS)
-
     firestore_client = cast(Any, firebase_firestore).client()
     records = await _load_admin_user_records_for_list(
         firestore_client,
-        scan_limit=scan_limit,
+        scan_limit=ADMIN_USERS_MAX_SCAN_DOCS,
         role=role,
         class_section_id=classSectionId,
     )
@@ -9724,11 +9839,6 @@ class AsyncTaskCancelResponse(BaseModel):
     message: str
 
 
-class HFMonitoringDataResponse(BaseModel):
-    success: bool
-    data: Dict[str, Any]
-
-
 class ImportGroundedFeedbackRequest(BaseModel):
     flow: str = Field(..., description="Flow identifier: quiz or lesson")
     status: str = Field(..., description="Event status: success, failed, or skipped")
@@ -10641,7 +10751,8 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
             learner_level=learner_level_hint,
         )
 
-        curriculum_chunks = retrieve_curriculum_context(
+        curriculum_chunks = await asyncio.to_thread(
+            retrieve_curriculum_context,
             query=retrieval_query,
             subject=requested_subject,
             quarter=requested_quarter,
@@ -10965,7 +11076,9 @@ async def publish_saved_lesson_plan(http_request: Request, lesson_id: str):
         module_unit=str(lesson_data.get("moduleUnit") or "").strip() or None,
         learner_level=str(lesson_data.get("learnerLevel") or "").strip() or None,
     )
-    curriculum_chunks = retrieve_curriculum_context(query=retrieval_query, subject=subject, quarter=quarter, top_k=5)
+    curriculum_chunks = await asyncio.to_thread(
+        retrieve_curriculum_context, query=retrieval_query, subject=subject, quarter=quarter, top_k=5
+    )
     retrieval_summary = summarize_retrieval_confidence(curriculum_chunks)
     retrieval_band = str(retrieval_summary.get("band") or "low")
     retrieval_issues = not curriculum_chunks or retrieval_band == "low"
@@ -12188,12 +12301,16 @@ async def get_async_task_status(http_request: Request, task_id: str):
     with _async_tasks_lock:
         _prune_async_tasks()
         task = _async_tasks.get(task_id)
-        if task is None:
+        task_data = dict(task) if task is not None else None
+
+    if task_data is None:
+        task_data = await asyncio.to_thread(_load_ai_job_doc, task_id)
+        if task_data is None:
             raise HTTPException(status_code=404, detail="Task not found")
-        owner_uid = str(task.get("ownerUid") or "")
-        if user.role != "admin" and owner_uid != user.uid:
-            raise HTTPException(status_code=403, detail="Forbidden for this task")
-        task_data = dict(task)
+
+    owner_uid = str(task_data.get("ownerUid") or "")
+    if user.role != "admin" and owner_uid != user.uid:
+        raise HTTPException(status_code=403, detail="Forbidden for this task")
 
     return AsyncTaskStatusResponse(
         success=True,
@@ -12298,89 +12415,14 @@ async def cancel_async_task(http_request: Request, task_id: str):
 
         updated_status = str(task.get("status") or "queued")
 
+    _mirror_async_task(task_id)
+
     return AsyncTaskCancelResponse(
         success=True,
         taskId=task_id,
         status=updated_status,
         message="Cancellation request accepted.",
     )
-
-
-@app.get("/api/hf/monitoring", response_model=HFMonitoringDataResponse)
-async def get_hf_monitoring(http_request: Request):
-    """
-    Aggregates DeepSeek AI status, model config, and latency probe.
-    Returns distilled data safe for frontend consumption.
-
-    Requires admin authentication.
-    """
-    user = get_current_user(http_request)
-    if user.role != "admin":
-        raise HTTPException(status_code=403, detail="Forbidden for this role")
-
-    _ensure_deepseek_available()
-
-    try:
-        generation_model_id = get_model_for_task("chat")
-    except Exception:
-        generation_model_id = CHAT_MODEL
-
-    embedding_model_id = os.getenv("EMBEDDING_MODEL", "BAAI/bge-small-en-v1.5")
-
-    runtime_config = get_current_runtime_config()
-
-    task_resolved: dict[str, str] = {}
-    for task in [
-        "chat", "verify_solution", "lesson_generation", "quiz_generation",
-        "learning_path", "daily_insight", "risk_classification", "risk_narrative",
-        "rag_lesson", "rag_problem", "rag_analysis_context",
-    ]:
-        try:
-            task_resolved[task] = get_model_for_task(task)
-        except Exception:
-            task_resolved[task] = generation_model_id
-
-    result: Dict[str, Any] = {
-        "modelId": generation_model_id,
-        "modelStatus": "Operational",
-        "avgResponseTimeMs": 0,
-        "embeddingModelId": embedding_model_id,
-        "embeddingModelStatus": "Operational",
-        "inferenceBalance": 0.0,
-        "totalPeriodCost": 0.0,
-        "hubApiCallsUsed": 0,
-        "hubApiCallsLimit": 2500,
-        "zeroGpuMinutesUsed": 0,
-        "zeroGpuMinutesLimit": 25,
-        "publicStorageUsedTB": 0.0,
-        "publicStorageLimitTB": 11.2,
-        "lastChecked": datetime.now(timezone.utc).isoformat(),
-        "periodStart": "",
-        "periodEnd": "",
-        "activeProfile": runtime_config.get("profile") or os.getenv("MODEL_PROFILE", "dev"),
-        "runtimeOverridesActive": len(runtime_config.get("overrides", {})) > 0,
-        "resolvedModels": task_resolved,
-        "provider": "deepseek",
-        "apiBaseUrl": os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
-    }
-
-    try:
-        client = get_deepseek_client()
-        latency_start = time.time()
-        probe_response = client.chat.completions.create(
-            model=str(CHAT_MODEL),
-            messages=[{"role": "user", "content": "Hi"}],
-            max_tokens=1,
-            temperature=0.0,
-        )
-        latency_ms = int((time.time() - latency_start) * 1000)
-        result["avgResponseTimeMs"] = latency_ms
-        result["modelStatus"] = "Operational"
-    except Exception as e:
-        logger.warning(f"DeepSeek latency probe failed: {e}")
-        result["modelStatus"] = "Degraded"
-
-    return HFMonitoringDataResponse(success=True, data=result)
 
 
 @app.get("/api/quiz/topics")
@@ -13887,7 +13929,8 @@ async def generate_diagnostic_lesson(request: DiagnosticLessonRequest):
         subject = topic_info.get("subject", "General Mathematics")
         title = topic_info.get("title", request.topic_id)
         
-        curriculum_chunks = retrieve_curriculum_context(
+        curriculum_chunks = await asyncio.to_thread(
+            retrieve_curriculum_context,
             query=f"{title} {request.topic_id} examples problems exercises",
             subject=subject,
             top_k=4,
@@ -14313,7 +14356,8 @@ async def generate_adaptive_quiz(request: AdaptiveQuizRequest):
         subject = topic_info.get("subject", "General Mathematics")
         title = topic_info.get("title", request.topic_id)
         
-        curriculum_chunks = retrieve_curriculum_context(
+        curriculum_chunks = await asyncio.to_thread(
+            retrieve_curriculum_context,
             query=f"{title} {request.topic_id} practice problems exercises",
             subject=subject,
             top_k=3,
@@ -14533,7 +14577,8 @@ async def generate_personalized_lesson(request: PersonalizedLessonRequest):
                 logger.warning(f"Could not load competency profile: {e}")
 
         # Retrieve curriculum context
-        context_chunks = retrieve_curriculum_context(
+        context_chunks = await asyncio.to_thread(
+            retrieve_curriculum_context,
             query=build_lesson_query(request.topic, request.subject or "General Mathematics", request.quarter or 1),
             subject=request.subject,
             quarter=request.quarter,
@@ -14570,8 +14615,10 @@ Return as JSON with fields: topic, sections (array of title/content), suggested_
             temperature=0.2,
             top_p=0.9,
             enable_thinking=True,
+            timeout_sec=100,
+            max_retries=1,
         )
-        response_text = get_inference_client().generate_from_messages(req)
+        response_text = await asyncio.to_thread(get_inference_client().generate_from_messages, req)
 
         # Parse JSON response
         try:

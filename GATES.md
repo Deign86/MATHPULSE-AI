@@ -1,3 +1,54 @@
+# Gates: Open issues #211–#306 (root / integration)
+
+Scope: all 11 lane branches merged into `fix/open-issues-211-306`, repo-level checks green, PR opened closing every issue.
+
+- [x] G1: All 11 lane branches merged into the integration branch
+  CHECK: git log --oneline main..HEAD --merges | wc -l
+  EXPECT: /^\s*11\s*$/
+  EVIDENCE: 11
+
+- [x] G2: Every issue 211–306 is referenced by a `Fixes #n` line or an ABANDON line in a lane gates file
+  CHECK: node scripts/check-issue-coverage.mjs
+  EXPECT: covered 96/96
+  EVIDENCE: covered 96/96 (fixed 96, abandoned 0)
+
+- [x] G3: Typecheck passes
+  CHECK: npx tsc --noEmit && echo TSC_OK
+  EXPECT: TSC_OK
+  EVIDENCE: TSC_OK
+
+- [x] G4: ESLint passes with zero warnings
+  CHECK: npx eslint src --ext .ts,.tsx --max-warnings=0 && echo ESLINT_OK
+  EXPECT: ESLINT_OK
+  EVIDENCE: ESLINT_OK (exit 0, --max-warnings=0; only a Node DEP0060 deprecation notice on stderr)
+
+- [x] G5: Anti-slop oxlint passes
+  CHECK: npx oxlint --quiet && echo OX_OK
+  EXPECT: OX_OK
+  EVIDENCE: OX_OK (exit 0; only a Node MODULE_TYPELESS_PACKAGE_JSON notice on stderr)
+
+- [x] G6: Frontend unit tests pass
+  CHECK: npx vitest run
+  EXPECT: /Tests\s+\d+ passed/
+  EVIDENCE: Test Files 134 passed (134) | Tests 605 passed (605)
+
+- [x] G7: Backend tests pass
+  CHECK: python -m pytest backend/tests -q --tb=short
+  EXPECT: /passed/
+  EVIDENCE: 601 passed, 2 warnings (vectorstore files mutated by the run were restored with git checkout)
+
+- [x] G8: Production build succeeds
+  CHECK: set "VITE_API_URL=/api" && npm run build && echo BUILD_OK
+  EXPECT: BUILD_OK
+  EVIDENCE: BUILD_OK with VITE_API_URL=/api (vite build + prod-host + demo-creds checks passed; only the existing chunk-size warning)
+
+- [x] G9: No e2e test for a fixed issue still carries the known-bug tag (manual: cross-check lane reports)
+  EVIDENCE: `grep -rn known-bug tests/e2e` -> only student/leaderboard.e2e.ts:154 (skipped 'failed leaderboard load' test; not one of #211-#306) plus two doc lines in tests/e2e/codemap.md. main had 65 tagged sites.
+
+Publication (push + PR closing every issue) needs a commit to exist, so it cannot run inside the pre-commit hook; it is tracked in the `PLAN.md` status log.
+
+---
+
 # Acceptance Gates
 
 ## Definitive issue closure audit — 2026-10-07
@@ -39,7 +90,7 @@ Publication, CI, and issue disposition are tracked separately in `.slim/deepwork
 
 - [ ] User-facing functional coverage is exercised through available E2E/flow tests; any credential- or emulator-dependent gap is stated precisely.
   EVIDENCE: `npx e2e list` succeeded; environment/.env.local credential-name checks returned no configured E2E user credentials.
-ABANDON: line40 authenticated E2E cannot run because `npx e2e list` found 15 student/teacher/admin flows but no `E2E_USER_{STUDENT,TEACHER,ADMIN}_{USERNAME,PASSWORD}` credentials are configured in the environment or `.env.local`. The issue audit above separately verified deterministic browser flows and authenticated quiz reads.
+ABANDON: line91 authenticated E2E cannot run because `npx e2e list` found 15 student/teacher/admin flows but no `E2E_USER_{STUDENT,TEACHER,ADMIN}_{USERNAME,PASSWORD}` credentials are configured in the environment or `.env.local`. The issue audit above separately verified deterministic browser flows and authenticated quiz reads.
 
 - [x] Final diff is clean of generated test artifacts and the gate ledger is complete.
   CHECK: git diff --check; node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
@@ -397,3 +448,20 @@ ABANDON: GLW3b The Browser pane session was reset on 2026-10-09, so the teacher 
   CHECK: npm test -- --run src/components/onboarding/GuidedTour.test.tsx --maxWorkers=2
   EXPECT: passed
   EVIDENCE: Found in the GLW3b teacher run at 390x844 with touch: the Question Bank overview card showed, then hid 70 ms later because "Checking processing status…" lay under the menu entry (the check compared positions only), then showed again. New test "keeps a shown step when a page loader sits behind its floating feature" failed first, then passes; the test full-screen loader is now `position: fixed` like `MathPulseLoader`. Onboarding tests plus the six host tour suites: 12 files, 258 tests; typecheck, ESLint and oxlint exit 0. The engine doc states the rule.
+
+## Merge origin/main (1bc66f06) into claude/onboarding-tours — 2026-10-09
+
+User request: update the branches with `main`, resolve conflicts, keep `main`'s logic (the user owns UI/UX only), then open the PRs. `main` was 76 commits ahead of the old base `a1e5e7d`.
+
+- [x] MRG1: Conflicts resolved keeping `main`'s logic: `App.tsx` and `ModulesPage.tsx` keep both sides' props (the guide's `tourActive`/`tourView` plus main's `onStreakChange`); `AdminMobileBottomNav.tsx` and `LeaderboardPage.tsx` take main (AI Monitoring nav removed; the leaderboard is all-time only, so its period switcher is gone); `AIMonitoringPage.tsx` and `ResourceRankingRow.tsx` stay deleted as on main.
+  EVIDENCE: `git merge origin/main` reported 6 conflicts (4 content, 2 modify/delete); all resolved as above, no conflict markers left. The merged fixture `ragLessonStream.sse` is identical to main's blob.
+
+- [x] MRG2: The guides follow main: the admin AI Monitoring page guide is removed (admin first-use guide 12 steps, 10 page guides) and the student Leaderboard guide drops its "Time period" step and its daily/weekly wording (74 student page steps, 8 optional); docs updated.
+  CHECK: npm test -- --run src/components/onboarding --maxWorkers=2
+  EXPECT: passed
+  EVIDENCE: Onboarding tests plus the admin settings, Modules and Leaderboard suites: 8 files, 239 tests passed. `docs/admin-onboarding-guide.md` (step count, page list, coverage row) and `docs/student-onboarding-guide.md` (Leaderboard row, 74 steps) updated.
+
+- [x] MRG3: Full frontend checks pass on the merged tree.
+  CHECK: npm test -- --run --maxWorkers=2; npm run typecheck; npm run lint -- --max-warnings=0; npm run lint:anti-slop; npm run build
+  EXPECT: All commands exit 0.
+  EVIDENCE: Vitest 148 files / 897 tests: 893 passed and 4 failed, all in main's `ragLessonStream.contract.test.ts`, because this Windows checkout (`core.autocrlf=true`) wrote its fixture with CRLF (`git ls-files --eol`: `i/lf w/crlf`); with the working copy back to LF the file passes 6/6, and main's own CI passes on Linux. Typecheck, `npm run lint -- --max-warnings=0`, anti-slop and `VITE_API_URL=/api npm run build` (check-api-url, check-prod-host, check-no-demo-creds PASS) exit 0.

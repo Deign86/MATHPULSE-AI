@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   ArrowLeft,
   Palette,
@@ -26,6 +26,8 @@ import { db } from '../../lib/firebase';
 import ConfirmModal from '../ConfirmModal';
 import { GuideReplayCard } from '../onboarding/GuideReplayCard';
 import { changePasswordWithReauth } from '../../services/settingsService';
+import { getAuditLogs } from '../../services/adminService';
+import { downloadAuditLogCsv } from '../../utils/auditLogCsv';
 import type { UserSettings } from '../../types/models';
 
 export interface AdminSettingsPageProps {
@@ -48,7 +50,6 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   settingsData,
   onSaveSettings,
   onApplySettingsPreview,
-  onExportData,
   onClearCache,
   onBack,
   previousTabName = 'Overview',
@@ -77,10 +78,19 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   const [emailAlerts, setEmailAlerts] = useState<boolean>(
     settingsData?.notifications?.emailNotifications ?? true
   );
-  const [atRiskAlerts, setAtRiskAlerts] = useState(true);
-  const [securityAlerts, setSecurityAlerts] = useState(true);
-  const [dailyDigest, setDailyDigest] = useState(false);
+  const [atRiskAlerts, setAtRiskAlerts] = useState<boolean>(
+    settingsData?.notifications?.notificationTypes?.achievements ?? true
+  );
+  const [securityAlerts, setSecurityAlerts] = useState<boolean>(
+    settingsData?.notifications?.notificationTypes?.newContent ?? true
+  );
+  const [dailyDigest, setDailyDigest] = useState<boolean>(
+    settingsData?.notifications?.notificationTypes?.weeklySummary ?? true
+  );
   const [isDirty, setIsDirty] = useState(false);
+  const [isExportingAudit, setIsExportingAudit] = useState(false);
+  const savedSettingsRef = useRef<UserSettings | undefined>(settingsData);
+  const previewedSettingsRef = useRef<UserSettings | undefined>(undefined);
 
   // Password update states
   const [currentPassword, setCurrentPassword] = useState('');
@@ -91,20 +101,23 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
   // Password fields are not part of isDirty; replay navigates away and would discard them.
   const hasUnsavedEdits = isDirty || Boolean(currentPassword || newPassword || confirmPassword);
 
+  const syncFromSettings = useCallback((saved: UserSettings) => {
+    setDarkMode(saved.appearance?.darkMode ?? false);
+    setCompactView(saved.appearance?.compactView ?? false);
+    setReduceAnimations(saved.appearance?.reduceAnimations ?? false);
+    setEmailAlerts(saved.notifications?.emailNotifications ?? true);
+    setAtRiskAlerts(saved.notifications?.notificationTypes?.achievements ?? true);
+    setSecurityAlerts(saved.notifications?.notificationTypes?.newContent ?? true);
+    setDailyDigest(saved.notifications?.notificationTypes?.weeklySummary ?? true);
+  }, []);
+
+  // Sync settings loaded or saved by the app; skip echoes of our own theme preview
   useEffect(() => {
-    if (settingsData?.appearance?.darkMode !== undefined) {
-      setDarkMode(settingsData.appearance.darkMode);
+    if (settingsData && settingsData !== previewedSettingsRef.current) {
+      savedSettingsRef.current = settingsData;
+      syncFromSettings(settingsData);
     }
-    if (settingsData?.appearance?.compactView !== undefined) {
-      setCompactView(settingsData.appearance.compactView);
-    }
-    if (settingsData?.appearance?.reduceAnimations !== undefined) {
-      setReduceAnimations(settingsData.appearance.reduceAnimations);
-    }
-    if (settingsData?.notifications?.emailNotifications !== undefined) {
-      setEmailAlerts(settingsData.notifications.emailNotifications);
-    }
-  }, [settingsData]);
+  }, [settingsData, syncFromSettings]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -153,13 +166,38 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
     setDarkMode(isDark);
     setIsDirty(true);
     if (onApplySettingsPreview && settingsData) {
-      onApplySettingsPreview({
+      const previewed = {
         ...settingsData,
         appearance: {
           ...settingsData.appearance,
           darkMode: isDark,
         },
-      });
+      };
+      previewedSettingsRef.current = previewed;
+      onApplySettingsPreview(previewed);
+    }
+  };
+
+  const discardChanges = () => {
+    const saved = savedSettingsRef.current;
+    if (saved) {
+      syncFromSettings(saved);
+      onApplySettingsPreview?.(saved);
+    }
+    setIsDirty(false);
+  };
+
+  const handleExportAuditTrail = async () => {
+    setIsExportingAudit(true);
+    try {
+      const entries = await getAuditLogs();
+      downloadAuditLogCsv(entries, entries.length);
+      toast.success('Audit log exported successfully');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to export audit log';
+      toast.error(message);
+    } finally {
+      setIsExportingAudit(false);
     }
   };
 
@@ -179,8 +217,8 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
           soundEnabled: settingsData?.notifications?.soundEnabled ?? true,
           notificationTypes: {
             quizReminders: settingsData?.notifications?.notificationTypes?.quizReminders ?? true,
-            newContent: settingsData?.notifications?.notificationTypes?.newContent ?? true,
-            achievements: settingsData?.notifications?.notificationTypes?.achievements ?? true,
+            newContent: securityAlerts,
+            achievements: atRiskAlerts,
             streakAlerts: settingsData?.notifications?.notificationTypes?.streakAlerts ?? true,
             weeklySummary: dailyDigest,
           },
@@ -329,7 +367,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      setIsDirty(false);
+                      discardChanges();
                       toast.info('Settings changes discarded');
                     }}
                     className="h-10 px-3 rounded-xl border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
@@ -631,11 +669,12 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={onExportData}
+                    disabled={isExportingAudit}
+                    onClick={handleExportAuditTrail}
                     className="h-9 px-3 rounded-xl border-slate-200 dark:border-slate-700 text-xs font-bold flex items-center gap-1.5 cursor-pointer"
                   >
                     <Download size={13} />
-                    <span>Export CSV</span>
+                    <span>{isExportingAudit ? 'Exporting...' : 'Export CSV'}</span>
                   </Button>
                 </div>
 
@@ -677,7 +716,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
         isOpen={isDiscardConfirmOpen}
         onClose={() => setIsDiscardConfirmOpen(false)}
         onConfirm={() => {
-          setIsDirty(false);
+          discardChanges();
           setIsDiscardConfirmOpen(false);
           if (onBack) onBack();
         }}

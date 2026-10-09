@@ -13,20 +13,6 @@ export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
 }
 
-/** Quarter as carried by lessons: numeric 1-4 or CurriculumQuarter string. */
-type LessonQuarterInput = number | CurriculumQuarter | string;
-
-const QUARTER_TO_INT = new Map([
-  ['Q1', 1], ['Q2', 2], ['Q3', 3], ['Q4', 4],
-  ['1', 1], ['2', 2], ['3', 3], ['4', 4],
-]);
-
-/** Coerce lesson quarter to RAG API int 1-4; defaults 1. */
-function parseQuarterToInt(value: LessonQuarterInput): number {
-  const key = String(value ?? '').trim().toUpperCase();
-  return QUARTER_TO_INT.get(key) ?? 1;
-}
-
 // ---------------------------------------------------------------------------
 // Rich text formatter — breaks plain paragraphs into formatted JSX.
 //
@@ -374,10 +360,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Button } from './ui/button';
 import { cn } from './ui/utils';
 import { Lesson, Quiz } from '../data/subjects';
-import type { RagLessonSection } from '../services/lessonService';
-import { useLessonContent, type UseLessonContentResult } from '../hooks/useLessonContent';
+import type { RagLessonSection, RagLessonStage } from '../services/lessonService';
+import {
+  buildRagLessonRequest,
+  useLessonContent,
+  useNextLessonPrefetch,
+  type UseLessonContentResult,
+} from '../hooks/useLessonContent';
 import { getFirebaseStoragePdfUrl } from '../data/curriculum/types';
-import type { CurriculumQuarter } from '../data/curriculum/types';
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { logLessonView } from '../services/trackingService';
@@ -405,6 +395,8 @@ interface LessonViewerProps {
   setIsInQuizMode?: (value: boolean) => void;
   initialContent?: UseLessonContentResult;
   onLogLessonView?: (userId: string, lessonId: string, topic: string) => Promise<void>;
+  /** Next lesson in the module's order; its content is pregenerated once this lesson loads. */
+  nextLesson?: Lesson;
 }
 
 export function shouldRestoreSavedLessonSection(initialSection: number): boolean {
@@ -484,11 +476,21 @@ const OBJECTIVE_COLORS = [
   { bg: 'bg-rose-50',    border: 'border-rose-200',   num: 'bg-rose-500',    text: 'text-rose-700',    ex: 'text-rose-500'    },
 ];
 
-function LoadingSkeleton() {
+const LESSON_STAGE_LABELS: Record<RagLessonStage, string> = {
+  retrieving: 'Finding curriculum sources…',
+  generating: 'Writing your lesson…',
+  thinking: 'Thinking through the lesson…',
+  verifying: 'Checking accuracy…',
+  finalizing: 'Almost ready…',
+  cached: 'Loading saved lesson…',
+};
+
+function LoadingSkeleton({ stage }: { stage?: RagLessonStage | null }) {
+  // MathPulseLoader's container is role="status" aria-live="polite", so stage changes are announced.
   return (
     <MathPulseLoader
       title="Loading lesson from DepEd curriculum..."
-      subtitle="This may take a moment while the AI retrieves curriculum content."
+      subtitle={stage ? LESSON_STAGE_LABELS[stage] : 'This may take a moment while the AI retrieves curriculum content.'}
       fullScreen
     />
   );
@@ -498,11 +500,13 @@ function ErrorPanel({
   message,
   onRetry,
   onCancel,
+  cancelLabel = 'Back to lesson',
   isOffline,
 }: {
   message: string;
   onRetry: () => void;
   onCancel?: () => void;
+  cancelLabel?: string;
   isOffline: boolean;
 }) {
   return (
@@ -531,7 +535,7 @@ function ErrorPanel({
         </button>
         {onCancel && (
           <button onClick={onCancel} className="mt-3 ml-4 text-slate-500 text-xs hover:text-slate-700 underline">
-            Back to lesson
+            {cancelLabel}
           </button>
         )}
       </motion.div>
@@ -547,6 +551,7 @@ function PdfFallbackPanel({
   pdfUrl,
   reason,
   onRetry,
+  onBack,
 }: {
   lessonTitle: string;
   competencyCode?: string;
@@ -555,6 +560,7 @@ function PdfFallbackPanel({
   pdfUrl: string;
   reason?: string;
   onRetry: () => void;
+  onBack: () => void;
 }) {
   const [iframeLoading, setIframeLoading] = useState(true);
   const [iframeError, setIframeError] = useState(false);
@@ -563,6 +569,13 @@ function PdfFallbackPanel({
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-slate-50">
       <div className="flex items-center gap-3 px-4 py-3 bg-white border-b border-slate-200 shadow-sm">
+        <button
+          onClick={onBack}
+          className="w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center text-slate-700 shrink-0 cursor-pointer"
+          aria-label="Go back"
+        >
+          <ArrowLeft size={16} />
+        </button>
         <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
           <FileText className="text-blue-600" size={20} />
         </div>
@@ -1288,6 +1301,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   setIsInQuizMode,
   initialContent,
   onLogLessonView,
+  nextLesson,
 }) => {
   const { userProfile, userRole } = useAuth();
   // Issue #164: students see assurance copy only; teacher/admin keep full RAG telemetry.
@@ -1326,22 +1340,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }, [showTryItPage]);
   const [tryItQuizCompleted, setTryItQuizCompleted] = useState(false);
 
-  const request = {
-    topic: lesson.title,
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    subject: (lesson as any).subject || 'General Mathematics',
-    // SAFETY: lessons may carry quarter as "Q1" string or number; RAG API requires int 1-4.
-    quarter: parseQuarterToInt((lesson as any).quarter),
-    lessonTitle: lesson.title,
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    moduleId: (lesson as any).subjectId,
-    lessonId: lesson.id,
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    competencyCode: (lesson as any).competencyCode,
-    learnerLevel: 'Grade 11',
-    // SAFETY: trusted internal value already conforms to the asserted type.
-    storagePath: (lesson as any).storagePath,
-  };
+  const request = buildRagLessonRequest(lesson);
 
   const fetchedLessonContent = useLessonContent(lesson.id, request, !initialContent);
   const {
@@ -1355,7 +1354,15 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
     needsReview,
     activeModel,
     isOffline,
+    stage,
   } = initialContent ?? fetchedLessonContent;
+
+  // Contract C4: once a student's lesson has loaded, pregenerate the next one in the background.
+  useNextLessonPrefetch(
+    lesson.id,
+    nextLesson,
+    !initialContent && !isLoading && !error && sections.length > 0 && userRole === 'student',
+  );
 
   const [showEvidenceModal, setShowEvidenceModal] = useState(false);
 
@@ -1515,7 +1522,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
   }, [currentSection, maxUnlockedSection, totalSections, sections.length, isLoading, sectionProgressLoaded, userProfile?.uid, lesson.id]);
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <LoadingSkeleton stage={stage} />;
   }
 
   if (error && sections.length === 0) {
@@ -1531,10 +1538,11 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           pdfUrl={depedPdfUrl}
           reason={error}
           onRetry={retry}
+          onBack={onBack}
         />
       );
     }
-    return <ErrorPanel message={error} onRetry={retry} isOffline={isOffline} />;
+    return <ErrorPanel message={error} onRetry={retry} onCancel={onBack} cancelLabel="Back to module" isOffline={isOffline} />;
   }
 
   // Derive lesson number from lessonId for the TryItYourselfEngine

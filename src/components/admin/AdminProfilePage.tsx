@@ -51,6 +51,7 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
   const [isDirty, setIsDirty] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isDiscardConfirmOpen, setIsDiscardConfirmOpen] = useState(false);
+  const [leaveAfterDiscard, setLeaveAfterDiscard] = useState(false);
 
   useEffect(() => {
     if (!isDirty) {
@@ -68,6 +69,10 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
     setIsDirty(false);
     setIsDiscardConfirmOpen(false);
     toast.info('Changes discarded');
+    if (leaveAfterDiscard) {
+      setLeaveAfterDiscard(false);
+      onBack?.();
+    }
   };
 
   const handleSave = async () => {
@@ -102,6 +107,7 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
             type="button"
             onClick={() => {
               if (isDirty) {
+                setLeaveAfterDiscard(true);
                 setIsDiscardConfirmOpen(true);
               } else {
                 onBack();
@@ -190,7 +196,10 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setIsDiscardConfirmOpen(true)}
+                    onClick={() => {
+                      setLeaveAfterDiscard(false);
+                      setIsDiscardConfirmOpen(true);
+                    }}
                     className="h-10 px-3 rounded-xl border-slate-300 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 cursor-pointer"
                   >
                     <RotateCcw size={14} />
@@ -343,8 +352,8 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
                     <div className="relative">
                       <Building size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                       <Input
-                        value={accountData.school || accountData.department || 'Senior High School Mathematics'}
-                        onChange={(e) => handleFieldChange('school', e.target.value)}
+                        value={accountData.department || 'Senior High School Mathematics'}
+                        onChange={(e) => handleFieldChange('department', e.target.value)}
                         placeholder="Department or Division"
                         className="pl-10 h-10 text-xs rounded-xl"
                       />
@@ -374,7 +383,10 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
       {/* Discard Confirmation Modal */}
       <ConfirmModal
         isOpen={isDiscardConfirmOpen}
-        onClose={() => setIsDiscardConfirmOpen(false)}
+        onClose={() => {
+          setLeaveAfterDiscard(false);
+          setIsDiscardConfirmOpen(false);
+        }}
         onConfirm={handleDiscardChanges}
         title="Discard Unsaved Changes?"
         message="You have unsaved changes to your administrator profile. Discarding will revert all edits back to their previous values."

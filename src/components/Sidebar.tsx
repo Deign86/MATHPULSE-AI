@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X, Cpu, Database, School } from 'lucide-react';
+import { LayoutDashboard, BookOpen, MessageSquare, GraduationCap, Users, BarChart3, Shield, Trophy, Shirt, Swords, ChevronLeft, ChevronRight, X, Database, School } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { cn } from './ui/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
@@ -88,7 +88,6 @@ const Sidebar: React.FC<SidebarProps> = ({
           label: 'AI & Intelligence',
           items: [
             { icon: Database, label: 'RAG Manager' },
-            { icon: Cpu, label: 'AI Monitoring' },
           ],
         },
         {

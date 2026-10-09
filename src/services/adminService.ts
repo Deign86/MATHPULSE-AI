@@ -1227,19 +1227,6 @@ export async function getAnalyticsSummary(range: AdminAnalyticsRange = 'all'): P
     };
   } catch (err) {
     console.error('[adminService] getAnalyticsSummary error:', err);
-    return {
-      totalActiveUsers: 0,
-      totalStudents: 0,
-      totalTeachers: 0,
-      atRiskStudents: 0,
-      achievementsUnlocked: 0,
-      totalXPEarned: 0,
-      activeStreaks: 0,
-      aiTutorSessions: 0,
-      totalQuizzesTaken: 0,
-      avgQuizScore: 0,
-      activeLearners: 0,
-      quizAttempts: [],
-    };
+    throw err;
   }
 }
