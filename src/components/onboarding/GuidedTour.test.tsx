@@ -170,6 +170,7 @@ describe('pages that are still loading', () => {
   function loadingScreen() {
     const screenCover = document.createElement('div');
     screenCover.setAttribute('data-tour-loading', '');
+    screenCover.style.position = 'fixed';
     vi.spyOn(screenCover, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 0, 1024, 768));
     document.body.append(screenCover);
     return screenCover;
@@ -240,6 +241,26 @@ describe('pages that are still loading', () => {
     sectionLoader.remove();
     await waitFor(() => expect(dialog).toHaveAttribute('aria-busy', 'false'));
     target.remove();
+  });
+
+  it('keeps a shown step when a page loader sits behind its floating feature', async () => {
+    const menuItem = document.createElement('div');
+    menuItem.dataset.tourNav = 'question_bank';
+    placeAt(menuItem, 560);
+    document.body.append(menuItem);
+    render(<GuidedTour steps={[{ title: 'Question Bank', description: 'Phone menu entry', target: '[data-tour-nav="question_bank"]', tab: 'Dashboard' }]} onNavigate={() => {}} onDismiss={() => {}} />);
+    const dialog = await screen.findByRole('dialog');
+    await waitFor(() => expect(dialog).toHaveAttribute('aria-busy', 'false'));
+    // The page behind the open menu starts loading a section under the menu entry.
+    const sectionLoader = document.createElement('div');
+    sectionLoader.setAttribute('data-tour-loading', '');
+    vi.spyOn(sectionLoader, 'getBoundingClientRect').mockReturnValue(new DOMRect(0, 540, 1024, 120));
+    document.body.append(sectionLoader);
+    fireEvent.scroll(window);
+    await new Promise(resolve => setTimeout(resolve, 400));
+    expect(dialog).toHaveAttribute('aria-busy', 'false');
+    sectionLoader.remove();
+    menuItem.remove();
   });
 
   it('waits for its own page while the previous page is still on screen', async () => {

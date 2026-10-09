@@ -93,13 +93,16 @@ function pageMounted(tab: string): boolean {
   return pages.length === 0 || pages.some(page => page.getAttribute('data-tour-page') === tab);
 }
 
-/** A loading screen drawn over the feature (not a loader inside it). */
+/**
+ * A loading overlay drawn over the feature. Only fixed overlays (the full-screen loader) sit on top:
+ * a page's own loader can share the feature's position yet lie behind it, e.g. under a phone menu.
+ */
 function coveredByLoader(target: HTMLElement, loaders: readonly HTMLElement[]): boolean {
   const bounds = target.getBoundingClientRect();
   const x = bounds.left + bounds.width / 2;
   const y = bounds.top + bounds.height / 2;
   return loaders.some(loader => {
-    if (target.contains(loader)) return false;
+    if (target.contains(loader) || getComputedStyle(loader).position !== 'fixed') return false;
     const cover = loader.getBoundingClientRect();
     return x >= cover.left && x <= cover.right && y >= cover.top && y <= cover.bottom;
   });

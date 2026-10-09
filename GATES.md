@@ -392,3 +392,8 @@ ABANDON: GLW3b The Browser pane session was reset on 2026-10-09, so the teacher 
   CHECK: git grep -c "data-tour-loading" -- docs/student-onboarding-guide.md src/components/onboarding/codemap.md
   EXPECT: docs/student-onboarding-guide.md:1
   EVIDENCE: CHECK printed `docs/student-onboarding-guide.md:1` and `src/components/onboarding/codemap.md:2`. The engine section explains the loaders, `data-tour-page`, the reveal rules, the restarted waits and the 20 s limit; the codemap lists both attributes.
+
+- [x] GLW6: A page's own loader lying behind a floating feature (the phone AI Tools menu over the Question Bank page) does not hide a shown step; only fixed loading overlays (the full-screen loader) count as covering it.
+  CHECK: npm test -- --run src/components/onboarding/GuidedTour.test.tsx --maxWorkers=2
+  EXPECT: passed
+  EVIDENCE: Found in the GLW3b teacher run at 390x844 with touch: the Question Bank overview card showed, then hid 70 ms later because "Checking processing status…" lay under the menu entry (the check compared positions only), then showed again. New test "keeps a shown step when a page loader sits behind its floating feature" failed first, then passes; the test full-screen loader is now `position: fixed` like `MathPulseLoader`. Onboarding tests plus the six host tour suites: 12 files, 258 tests; typecheck, ESLint and oxlint exit 0. The engine doc states the rule.
