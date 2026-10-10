@@ -307,7 +307,7 @@ Generate a teacher_uploaded module JSON following this exact schema:
   ],
   "aiSafety": {{
     "requiresGrounding": true,
-    "allowedModels": ["deepseek-chat"],
+    "allowedModels": ["deepseek-flash"],
     "groundingSources": ["teacher_file", "deped_rag"]
   }}
 }}

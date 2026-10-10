@@ -44,7 +44,7 @@ def _call_with_max_retries(max_retries: int | None) -> int:
     inference.ds_api_key = "mock-key-for-testing"
     request = InferenceRequest(
         messages=[{"role": "user", "content": "hi"}],
-        model="deepseek-chat",
+        model="deepseek-flash",
         task_type="chat",
         max_retries=max_retries,
     )
@@ -98,9 +98,9 @@ def _routing_table() -> dict:
 def test_routing_chat_verification_uses_chat_model_and_lessons_keep_reasoner():
     config = _routing_table()
     task_models = config["routing"]["task_model_map"]
-    assert task_models["verify_solution"] == "deepseek-chat"
-    assert task_models["rag_lesson"] == "deepseek-reasoner"
-    assert task_models["risk_narrative"] == "deepseek-reasoner"
+    assert task_models["verify_solution"] == "deepseek-flash"
+    assert task_models["rag_lesson"] == "deepseek-v4-pro"
+    assert task_models["risk_narrative"] == "deepseek-v4-pro"
     assert "verify_solution" not in config["models"]["rag_primary"]["enable_thinking_tasks"]
 
 

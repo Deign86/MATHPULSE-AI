@@ -360,7 +360,7 @@ const modulesData = [
         M9_Embed["Embed Prompt via BAAI/bge-small Model"]
         M9_RAGSearch["Retrieve DepEd SSHS Context from Chroma Vector Store"]
         M9_Assemble["Assemble Prompt with Curricular Context"]
-        M9_CallAI["Invoke DeepSeek AI API (deepseek-reasoner)"]
+        M9_CallAI["Invoke DeepSeek AI API (deepseek-v4-pro)"]
         M9_Stream["Stream Formatted LaTeX & Markdown Solution"]
         M9_SaveChat["Save Message to Session History"]
         M9_LogAudit["Log AI Token Usage & Security Event"]

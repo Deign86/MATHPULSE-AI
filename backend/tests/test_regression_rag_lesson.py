@@ -23,7 +23,7 @@ os.environ.setdefault("DEEPSEEK_API_KEY", "mock-key-for-testing")
 
 from routes import rag_routes  # noqa: E402
 
-REASONER = "deepseek-reasoner"
+REASONER = "deepseek-v4-pro"
 REAL_STREAM_REASONER_LESSON = rag_routes._stream_reasoner_lesson
 SSE_FIXTURE = Path(__file__).resolve().parents[2] / "src" / "services" / "__tests__" / "fixtures" / "ragLessonStream.sse"
 CHUNKS = [
@@ -550,8 +550,8 @@ def test_config_guard_lesson_primary_model_is_reasoner_without_env(bare_model_en
 def test_config_guard_prod_profile_routes_lessons_to_the_rag_model(
     bare_model_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The HF Space runs MODEL_PROFILE=prod, which exports INFERENCE_MODEL_ID=deepseek-chat (overriding every
-    task in the inference client's map) and HF_RAG_MODEL_ID=deepseek-reasoner. Lessons must follow the RAG model."""
+    """The HF Space runs MODEL_PROFILE=prod, which exports INFERENCE_MODEL_ID=deepseek-flash (overriding every
+    task in the inference client's map) and HF_RAG_MODEL_ID=deepseek-v4-pro. Lessons must follow the RAG model."""
     monkeypatch.setenv("INFERENCE_MODEL_ID", rag_routes.CHAT_MODEL)
     monkeypatch.setenv("HF_RAG_MODEL_ID", REASONER)
     assert rag_routes._lesson_primary_model() == REASONER

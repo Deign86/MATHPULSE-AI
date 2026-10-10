@@ -211,6 +211,11 @@ export default defineConfig(({ mode }) => {
     port: 5173,
     strictPort: false,
     open: false,
+    // Vite full-reloads the page for any changed file outside the module graph, so edits to the backend,
+    // docs, gates, tests or worktrees wiped the running app's state mid-session (and mid-e2e-test).
+    watch: {
+      ignored: ['**/backend/**', '**/functions/**', '**/docs/**', '**/gates/**', '**/tests/**', '**/scripts/**', '**/datasets/**', '**/.worktrees/**', '**/.e2e/**', '**/*.md'],
+    },
     proxy: {
       '/api': {
         target: backendTarget,

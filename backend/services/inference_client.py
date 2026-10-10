@@ -42,7 +42,7 @@ try:
 except Exception:
     pass
 
-from .ai_client import get_deepseek_client, CHAT_MODEL, REASONER_MODEL, DEEPSEEK_BASE_URL
+from .ai_client import get_deepseek_client, current_model_id, CHAT_MODEL, REASONER_MODEL, DEEPSEEK_BASE_URL
 from .logging_utils import configure_structured_logging, log_model_call
 
 LOGGER = configure_structured_logging("mathpulse.inference")
@@ -198,11 +198,11 @@ def get_current_runtime_config() -> dict:
 
 def _resolve_key(key: str) -> str:
     if value := _RUNTIME_OVERRIDES.get(key):
-        return value
+        return current_model_id(value)
     if _RUNTIME_PROFILE and _RUNTIME_PROFILE in _MODEL_PROFILES:
         if value := _MODEL_PROFILES[_RUNTIME_PROFILE].get(key):
-            return value
-    return os.getenv(key, "")
+            return current_model_id(value)
+    return current_model_id(os.getenv(key, ""))
 
 
 def get_model_for_task(task_type: str) -> str:
@@ -214,7 +214,7 @@ def get_model_for_task(task_type: str) -> str:
             or os.getenv("INFERENCE_LOCK_MODEL_ID")
             or CHAT_MODEL
         )
-        return override
+        return current_model_id(override)
     task_key_map = {
         "chat": "INFERENCE_CHAT_MODEL_ID",
         "quiz_generation": "HF_QUIZ_MODEL_ID",
@@ -736,7 +736,8 @@ class InferenceClient:
         }
 
         if target_model == REASONER_MODEL:
-            params["max_tokens"] = max(req.max_new_tokens or 4096, 4096)
+            # Reasoning tokens count toward max_tokens, so leave room past the answer budget.
+            params["max_tokens"] = max(req.max_new_tokens or 16384, 16384)
         else:
             params["temperature"] = req.temperature
             params["top_p"] = req.top_p

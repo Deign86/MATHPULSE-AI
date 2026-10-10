@@ -20,7 +20,7 @@ os.environ.setdefault("DEEPSEEK_API_KEY", "mock-key-for-testing")
 
 from routes import rag_routes  # noqa: E402
 
-REASONER = "deepseek-reasoner"
+REASONER = "deepseek-v4-pro"
 CHUNKS = [
     {
         "content": "A rational function is a quotient of two polynomial functions.",
@@ -605,7 +605,9 @@ def test_fallback_contract_reasoner_stream_request_shape(monkeypatch: pytest.Mon
     assert text == '{"sections": []}'
     assert fake.options == {"max_retries": 0}
     assert fake.create_kwargs["stream"] is True
-    assert fake.create_kwargs["max_tokens"] == 8192
+    assert fake.create_kwargs["max_tokens"] == rag_routes._REASONER_LESSON_MAX_TOKENS
+    assert fake.create_kwargs["extra_body"] == {"thinking": {"type": "enabled"}}
+    assert fake.create_kwargs["reasoning_effort"] == rag_routes._REASONER_LESSON_EFFORT == "low"
     assert fake.create_kwargs["model"] == REASONER
     assert "temperature" not in fake.create_kwargs and "top_p" not in fake.create_kwargs
     timeout = fake.create_kwargs["timeout"]

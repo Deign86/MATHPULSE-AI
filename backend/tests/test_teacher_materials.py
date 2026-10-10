@@ -116,7 +116,7 @@ def mock_deepseek_success():
         ],
         "aiSafety": {
             "requiresGrounding": True,
-            "allowedModels": ["deepseek-chat"],
+            "allowedModels": ["deepseek-flash"],
             "groundingSources": ["teacher_file", "deped_rag"],
         },
     }

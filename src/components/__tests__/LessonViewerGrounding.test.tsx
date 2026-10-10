@@ -51,7 +51,7 @@ const stubLessonContent: UseLessonContentResult = {
   retrievalBand: 'high',
   retrievalConfidence: 0.812,
   needsReview: false,
-  activeModel: 'deepseek/deepseek-reasoner',
+  activeModel: 'deepseek/deepseek-v4-pro',
   isOffline: false,
 };
 
@@ -122,7 +122,7 @@ describe('Issue #164: Curriculum Grounding Evidence role gating', () => {
     expect(screen.queryByText('Curriculum Grounding Evidence')).toBeNull();
 
     const page = document.body.textContent || '';
-    expect(page).not.toContain('deepseek-reasoner');
+    expect(page).not.toContain('deepseek-v4-pro');
     expect(page).not.toContain('SHS_GM_Q1_LE2.md');
   });
 
@@ -132,11 +132,11 @@ describe('Issue #164: Curriculum Grounding Evidence role gating', () => {
 
     expect(screen.getByLabelText('Inspect evidence')).toBeVisible();
     const page = document.body.textContent || '';
-    expect(page).toContain('deepseek-reasoner');
+    expect(page).toContain('deepseek-v4-pro');
 
     const modal = openEvidenceModal();
     const text = modal.textContent || '';
-    expect(text).toContain('deepseek-reasoner');
+    expect(text).toContain('deepseek-v4-pro');
     expect(text).toContain('Similarity: 82.3%');
     expect(text).toContain('Chunk #1');
     expect(text).toContain('81.2%');

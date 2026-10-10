@@ -13,7 +13,7 @@ describe('public sign up', { tags: ['public', 'signup'] }, () => {
     await screen.getByRole('button', "Don't have an account? Create one").tap();
 
     await expect(screen.getByRole('heading', 'Create Account')).toBeVisible();
-    await expect(screen.getByText('Begin your personalized mathematics journey')).toBeVisible();
+    await expect(screen.getByText('Join your class and start leveling up in math.')).toBeVisible();
     await expect(screen.getByLabel('Full Name')).toBeVisible();
     await expect(screen.getByPlaceholder('Juan Dela Cruz')).toBeVisible();
     const accountType = screen.getByRole('radiogroup', 'Account Type');
@@ -83,11 +83,12 @@ describe('public sign up', { tags: ['public', 'signup'] }, () => {
     await expect(screen.getByRole('heading', 'Create Account')).toBeVisible();
     await expect(screen.getByText('Password requirements')).toBeHidden();
 
-    const rule = (label: string) => screen.getByRole('listitem').filter({ hasText: label });
+    const checklist = screen.getByRole('list', 'Password requirements');
+    const rule = (label: string) => checklist.getByRole('listitem').filter({ hasText: label });
 
     await screen.getByLabel('Password').fill('abc');
     await expect(screen.getByText('Password requirements')).toBeVisible();
-    await expect(screen.getByRole('listitem')).toHaveText([
+    await expect(checklist.getByRole('listitem')).toHaveText([
       'At least 8 characters',
       'Contains uppercase and lowercase letters',
       'Contains at least one number',
@@ -106,7 +107,7 @@ describe('public sign up', { tags: ['public', 'signup'] }, () => {
 
     await screen.getByLabel('Password').fill('Abcdefg1!');
     await expect(screen.getByText('Password requirements')).toBeHidden();
-    await expect(screen.getByRole('listitem')).toHaveCount(0);
+    await expect(checklist).toBeHidden();
   });
 
   test('a mismatched Confirm shows Passwords do not match until it matches', async ({ app, browser, screen }) => {

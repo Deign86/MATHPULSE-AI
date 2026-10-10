@@ -1,10 +1,22 @@
 import { describe, test } from '@e2e-dev/web';
-import { expect } from 'e2e';
+import { expect, type Locator } from 'e2e';
 
 const dismissDialogs =
   'if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing';
 const moduleCard = /Grade 11 · (General|Finite) Mathematics Q[1-4]/;
 const ragLessonRoute = '**/api/rag/lesson';
+const finiteModuleTitles = ['Systems and Matrices', 'Linear Optimization'];
+
+// An admin switch (platformConfig/subjects in Curriculum Control) decides whether Finite Mathematics opens, so the library is
+// the source of truth: its cards are always listed, and are buttons only while the subject is open, else "Not Yet Available".
+const openFiniteCardCount = async (content: Locator) => {
+  for (const title of finiteModuleTitles) {
+    await expect(content.getByRole('heading', title)).toBeVisible();
+  }
+  const open = await content.getByRole('button', new RegExp(`^(${finiteModuleTitles.join('|')})`)).count();
+  expect([0, finiteModuleTitles.length], 'Finite Mathematics cards are either all open or all unavailable').toContain(open);
+  return open;
+};
 
 describe('student modules', { tags: ['student', 'modules'] }, () => {
   test('sidebar Modules opens the Curriculum Modules library', { session: 'student' }, async ({ app, agent, screen, browser }) => {
@@ -39,10 +51,9 @@ describe('student modules', { tags: ['student', 'modules'] }, () => {
     await expect(content.getByRole('button', /^Functions and Their Graphs/)).toBeVisible();
     await expect(content.getByRole('button', /^Basic Trigonometry/)).toBeVisible();
     await expect(content.getByRole('button', /^Logical Propositions, Syllogisms, and Fallacies/)).toBeVisible();
-    await expect(content.getByRole('button', /^Systems and Matrices/)).toBeVisible();
-    await expect(content.getByRole('button', /^Linear Optimization/)).toBeVisible();
+    const finiteOpen = await openFiniteCardCount(content);
     await expect(content.getByText('Coming Soon')).toHaveCount(0);
-    await expect(content.getByText('Not Yet Available')).toHaveCount(0);
+    await expect(content.getByText('Not Yet Available')).toHaveCount(finiteModuleTitles.length - finiteOpen);
     await expect(content.getByText('Locked')).toHaveCount(0);
     await expect(content.getByRole('button', 'Notify Me')).toHaveCount(0);
   });
@@ -87,14 +98,14 @@ describe('student modules', { tags: ['student', 'modules'] }, () => {
 
     await subject.selectOption({ label: 'Finite Mathematics' });
     await expect(content.getByText('Grade 11 · Finite Mathematics · All Quarters')).toBeVisible();
-    await expect(content.getByRole('button', /^Systems and Matrices/)).toBeVisible();
-    await expect(content.getByRole('button', /^Linear Optimization/)).toBeVisible();
-    await expect(content.getByRole('button', moduleCard)).toHaveCount(2);
+    const finiteOpen = await openFiniteCardCount(content);
+    await expect(content.getByRole('button', moduleCard)).toHaveCount(finiteOpen);
 
     // Finite Mathematics is year-long, so a quarter filter keeps both of its modules.
     await quarter.selectOption({ label: 'Q2' });
     await expect(content.getByText('Grade 11 · Finite Mathematics · Q2')).toBeVisible();
-    await expect(content.getByRole('button', moduleCard)).toHaveCount(2);
+    expect(await openFiniteCardCount(content)).toBe(finiteOpen);
+    await expect(content.getByRole('button', moduleCard)).toHaveCount(finiteOpen);
 
     await subject.selectOption({ label: 'General Mathematics' });
     await quarter.selectOption({ label: 'Q4' });
@@ -301,7 +312,7 @@ describe('student modules', { tags: ['student', 'modules'] }, () => {
     await screen.getByRole('button', 'Apply Filters').tap();
     await expect(drawerHeading).toBeHidden();
     await expect(content.getByText('Grade 11 · Finite Mathematics · Q2')).toBeVisible();
-    await expect(content.getByRole('button', /^Systems and Matrices/)).toBeVisible();
+    await openFiniteCardCount(content);
     await expect(content.getByRole('button', /^Business and Finance/)).toHaveCount(0);
     await expect(quarterPill).toHaveValue('Q2');
 
@@ -362,7 +373,7 @@ describe('student modules', { tags: ['student', 'modules'] }, () => {
     await content.getByRole('button', /^Patterns, Sequences, and Series/).tap();
     await expect(content.getByRole('heading', 'Study Journey')).toBeVisible();
     // The badge is CSS-uppercased, and text matching reads the rendered "CHAPTER 2".
-    await expect(content.getByText(/^chapter \d+$/i)).toBeVisible();
+    await expect(content.getByText(/^\s*chapter\s+\d+\s*$/i)).toBeVisible();
   });
 
   test('Study Materials turns into Review once the lesson has been opened', { session: 'student' }, async ({ app, agent, screen, browser }) => {

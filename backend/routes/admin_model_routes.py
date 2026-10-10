@@ -37,9 +37,9 @@ def get_model_config(_admin=Depends(require_admin)):
         **get_current_runtime_config(),
         "availableProfiles": list(_MODEL_PROFILES.keys()),
         "profileDescriptions": {
-            "dev":    "deepseek-chat everywhere - fast, $0.14/M input",
-            "budget": "deepseek-chat for all tasks - minimal cost",
-            "prod":   "deepseek-reasoner for RAG, deepseek-chat for chat - best quality",
+            "dev":    "deepseek-flash everywhere - fast, $0.30/M input",
+            "budget": "deepseek-flash for all tasks - minimal cost",
+            "prod":   "deepseek-v4-pro for RAG, deepseek-flash for chat - best quality",
         },
     }
 

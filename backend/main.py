@@ -36,6 +36,12 @@ from threading import Lock
 # Lazy import for audit_logger to prevent ModuleNotFoundError during test collection.
 # All call sites use asyncio.create_task() so delaying the import is safe.
 _audit_logger = None
+
+
+async def _skip_audit_event(**_event: Any) -> None:
+    """Stands in for log_audit_event when services.audit_logger cannot be imported."""
+
+
 def _get_audit_logger():
     global _audit_logger
     if _audit_logger is None:
@@ -43,7 +49,9 @@ def _get_audit_logger():
             from services.audit_logger import log_audit_event as _fn
             _audit_logger = _fn
         except ImportError:
-            _audit_logger = False  # sentinel: don't retry
+            _audit_logger = _skip_audit_event  # don't retry the import
+    return _audit_logger
+
 # Load local environment variables from .env.local / .env before startup validation
 from pathlib import Path
 try:
@@ -286,14 +294,14 @@ HF_TOKEN = os.environ.get(
 )  # Kept for HF Space deployment / dataset push only; AI inference uses DEEPSEEK_API_KEY
 
 # Grade 11 tutoring default model. Can be overridden via INFERENCE_MODEL_ID or INFERENCE_CHAT_MODEL_ID.
-HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "deepseek-chat")
+HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "deepseek-flash")
 
 # Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
 CHAT_MODEL = HF_MATH_MODEL_ID
 
 # Dedicated quiz model override. When empty, routing.task_model_map decides quiz model.
 HF_QUIZ_MODEL_ID = (os.getenv("HF_QUIZ_MODEL_ID", "").strip() or None)
-HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "deepseek-chat")
+HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "deepseek-flash")
 
 RISK_MODEL = CHAT_MODEL
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
@@ -449,7 +457,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/rag/lesson/stream": ALL_APP_ROLES,
     "/api/rag/lesson/prefetch": ALL_APP_ROLES,
     "/api/rag/generate-problem": TEACHER_OR_ADMIN,
-    "/api/rag/analysis-context": TEACHER_OR_ADMIN,
+    "/api/rag/analysis-context": ALL_APP_ROLES,
     "/api/rag/documents/by-subject/{subject}": ADMIN_ONLY,
     "/api/rag/documents/by-source": ADMIN_ONLY,
     "/api/rag/documents/all": ADMIN_ONLY,
@@ -566,7 +574,7 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
             logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
 
     async def _warmup_vectorstore() -> None:
-        active_model = os.getenv("HF_MODEL_ID", "deepseek-chat")
+        active_model = os.getenv("HF_MODEL_ID", "deepseek-flash")
         try:
             from rag.vectorstore_loader import get_vectorstore_health
             health = await asyncio.to_thread(get_vectorstore_health)
@@ -1392,7 +1400,7 @@ app.add_middleware(
 # ─── DeepSeek AI Clients ──────────────────────────────────────
 
 # Zero-shot classification replaced with DeepSeek chat-based classification.
-# BART risk model replaced with deepseek-chat structured output.
+# BART risk model replaced with deepseek-flash structured output.
 
 from services.ai_client import get_deepseek_client, CHAT_MODEL, REASONER_MODEL, APIError, RateLimitError, APITimeoutError
 
@@ -1706,7 +1714,7 @@ async def call_hf_chat_stream_async(
             yield str(chunk)
 
 
-def load_local_math_model(model_name: str = "deepseek-chat"):
+def load_local_math_model(model_name: str = "deepseek-flash"):
     """Optional local loader — deprecated in favor of DeepSeek API."""
     raise NotImplementedError(
         "Local model loading is deprecated. Use DeepSeek API via DEEPSEEK_API_KEY env var."

@@ -68,9 +68,9 @@ def _lesson_primary_model() -> str:
     """Model for rag_lesson generation.
 
     An explicit RAG model (HF_RAG_MODEL_ID via admin override, MODEL_PROFILE or env) wins: the prod profile
-    also exports INFERENCE_MODEL_ID=deepseek-chat, which overrides every task in the inference client's map.
-    With no RAG model configured, fall back to the client's task map (config/models.yaml → deepseek-reasoner),
-    since get_model_for_task() would otherwise resolve to deepseek-chat.
+    also exports INFERENCE_MODEL_ID=deepseek-flash, which overrides every task in the inference client's map.
+    With no RAG model configured, fall back to the client's task map (config/models.yaml → deepseek-v4-pro),
+    since get_model_for_task() would otherwise resolve to deepseek-flash.
     """
     if get_current_runtime_config()["resolved"].get("HF_RAG_MODEL_ID"):
         return get_model_for_task("rag_lesson")
@@ -392,6 +392,12 @@ _LEARNER_PROFILE_CAP_SEC = 4.0
 _LEARNER_PROFILE_MAX_CHARS = 1500
 _LESSON_PROGRESS_INTERVAL_SEC = 1.0
 _LESSON_PING_INTERVAL_SEC = 15.0
+_REASONER_LESSON_MAX_TOKENS = 32768
+# The lesson is rewritten from retrieved curriculum text, so deep reasoning adds little; DeepSeek's default
+# "high" effort took 61-221 s per lesson. Override with RAG_LESSON_REASONING_EFFORT=high|max if quality needs it.
+_REASONER_LESSON_EFFORT = os.getenv("RAG_LESSON_REASONING_EFFORT", "low").strip().lower()
+if _REASONER_LESSON_EFFORT not in {"low", "high", "max"}:
+    _REASONER_LESSON_EFFORT = "low"
 _REASONER_STREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
 _STUDENT_LESSONS_COLLECTION = "studentLessons"
 GENERIC_LEARNER_PROFILE = (
@@ -637,13 +643,16 @@ def _stream_reasoner_lesson(
 ) -> str:
     """Stream a lesson from DeepSeek in a worker thread; returns the accumulated answer content."""
     client = get_deepseek_client().with_options(max_retries=0)
-    # Reasoner rejects sampling params, and its reasoning tokens count toward max_tokens.
+    # Thinking mode ignores sampling params, and its reasoning tokens count toward max_tokens:
+    # 8192 ran out mid-JSON on most lessons, so the budget leaves room for reasoning plus the lesson.
     stream = client.chat.completions.create(
         model=model,
         messages=messages,
-        max_tokens=8192,
+        max_tokens=_REASONER_LESSON_MAX_TOKENS,
+        reasoning_effort=_REASONER_LESSON_EFFORT,
         stream=True,
         timeout=_REASONER_STREAM_TIMEOUT,
+        extra_body={"thinking": {"type": "enabled"}},
     )
     parts: List[str] = []
     content_chars = 0

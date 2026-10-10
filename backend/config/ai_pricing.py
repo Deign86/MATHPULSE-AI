@@ -1,6 +1,6 @@
 # backend/config/ai_pricing.py
 # DeepSeek V4 API Pricing Configuration
-# TODO: Review pricing after 2026-05-31
+# Peak-hour rates from api-docs.deepseek.com/quick_start/pricing (2026-10); off-peak is half.
 
 from datetime import datetime, timezone
 
@@ -14,15 +14,15 @@ DEEPSEEK_PRICING = {
             "output_per_1m": 0.87,
         },
         "full_price": {
-            "input_cache_hit_per_1m": 0.0145,
-            "input_cache_miss_per_1m": 1.74,
-            "output_per_1m": 3.48,
+            "input_cache_hit_per_1m": 0.044,
+            "input_cache_miss_per_1m": 1.32,
+            "output_per_1m": 3.96,
         },
     },
-    "deepseek-v4-flash": {
-        "input_cache_hit_per_1m": 0.0028,
-        "input_cache_miss_per_1m": 0.14,
-        "output_per_1m": 0.28,
+    "deepseek-flash": {
+        "input_cache_hit_per_1m": 0.006,
+        "input_cache_miss_per_1m": 0.3,
+        "output_per_1m": 1.2,
     },
 }
 

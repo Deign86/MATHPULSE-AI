@@ -248,14 +248,18 @@ describe('responsive bottom navigation', { tags: ['any', 'responsive-nav'] }, ()
         await expect(destination.menu).toHaveAttribute('aria-expanded', 'false');
       }
 
+      // The Audit Log page is heavy and left the renderer stalled for the dismissal checks (0 reads in 5s), so run them from the light Overview page.
+      await nav.getByRole('button', 'Dashboard Overview').tap();
+      await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 30_000 });
       await insights.tap();
+      await expect(nav.getByRole('button', /^Analytics/)).toBeVisible();
       await nav.getByRole('button', 'Close menu').tap({ position: cornerTap });
-      await expect(nav.getByRole('button', /^Analytics/)).toBeHidden();
+      await expect(nav.getByRole('button', /^Analytics/)).toBeHidden({ timeout: 15_000 });
       await expect(insights).toHaveAttribute('aria-expanded', 'false');
       await manage.tap();
       await expect(nav.getByRole('button', /^Users/)).toBeVisible();
-      await screen.getByRole('heading', 'Audit Log', { level: 1 }).tap({ position: cornerTap });
-      await expect(nav.getByRole('button', /^Users/)).toBeHidden();
+      await screen.getByRole('heading', 'Admin Dashboard').tap({ position: cornerTap });
+      await expect(nav.getByRole('button', /^Users/)).toBeHidden({ timeout: 15_000 });
 
       await nav.getByRole('button', 'Dashboard Overview').tap();
       await expect(screen.getByRole('heading', 'Admin Dashboard')).toBeVisible({ timeout: 30_000 });

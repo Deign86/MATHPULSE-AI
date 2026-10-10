@@ -5,7 +5,7 @@ describe('public sign in', { tags: ['public', 'login'] }, () => {
   test('the signed-out root shows the Welcome Back card with labeled fields', async ({ app, screen }) => {
     await app.open('/');
     await expect(screen.getByRole('heading', 'Welcome Back')).toBeVisible({ timeout: 45_000 });
-    await expect(screen.getByText('Sign in to continue learning')).toBeVisible();
+    await expect(screen.getByText('Pick up right where you left off.')).toBeVisible();
     await expect(screen.getByText('MathPulse')).toBeVisible();
     await expect(screen.getByRole('image', 'MathPulse AI')).toBeVisible();
 

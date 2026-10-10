@@ -5,6 +5,7 @@ const profileMenu = /^Profile menu: /;
 const draftName = 'E2E-Profile Draft';
 const smartDarkClass = /(^|\s)smart-dark(\s|$)/;
 const flippedCard = /rotateY\(180deg\)/;
+// The header bell and the Teacher guide's page-guide button are also named 'Notifications'; the settings tab comes last in the DOM.
 const notificationLabels = ['Email Notifications', 'At-Risk Student Alerts', 'Quiz & Assessment Submissions', 'Weekly Class Summary'];
 
 describe('teacher profile and settings', { tags: ['teacher', 'profile-settings'], timeout: 120_000 }, () => {
@@ -138,7 +139,7 @@ describe('teacher profile and settings', { tags: ['teacher', 'profile-settings']
     await expect(screen.getByRole('button', 'Save Settings')).toBeDisabled();
     await expect(screen.getByRole('button', 'Discard')).toBeHidden();
 
-    await screen.getByRole('button', 'Notifications').tap();
+    await screen.getByRole('button', 'Notifications').last().tap();
     await expect(screen.getByRole('heading', 'Class Alerts & Notifications')).toBeVisible();
     for (const label of notificationLabels) {
       await expect(screen.getByText(label)).toBeVisible();
@@ -262,7 +263,7 @@ describe('teacher profile and settings', { tags: ['teacher', 'profile-settings']
       await expect(screen.getByRole('heading', 'Teacher Dashboard')).toBeVisible({ timeout: 45_000 });
       await screen.getByRole('button', profileMenu).tap();
       await screen.getByRole('menuitem', 'Settings').tap();
-      await screen.getByRole('button', 'Notifications').tap();
+      await screen.getByRole('button', 'Notifications').last().tap();
       await expect(screen.getByRole('heading', 'Class Alerts & Notifications')).toBeVisible();
       await expect(screen.getByRole('switch')).toHaveCount(4);
     };

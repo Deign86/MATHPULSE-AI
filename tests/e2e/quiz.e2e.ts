@@ -1,15 +1,33 @@
 import { describe, test } from '@e2e-dev/web';
-import { expect } from 'e2e';
+import { expect, type Screen } from 'e2e';
 
-const closeStartupDialogs =
-  'if an Initial Assessment or Daily Rewards dialog is open, close it without starting or claiming anything; otherwise do nothing';
+// The Daily Rewards and Initial Assessment prompts mount on timers after the profile loads. Close them with
+// their own buttons: an agent step needed 70-120 s per test under load and left the page covered.
+async function closeStartupDialogs(screen: Screen) {
+  const rewards = screen.getByRole('heading', 'Daily Rewards');
+  const assessment = screen.getByRole('dialog', 'Initial Assessment');
+  await rewards.waitFor({ timeout: 6_000 }).catch(() => undefined);
+  for (let pass = 0; pass < 2; pass += 1) {
+    if (await rewards.isVisible()) {
+      await screen.getByRole('button', 'Close daily rewards').tap();
+      await expect(rewards).toBeHidden({ timeout: 10_000 });
+    }
+    await assessment.waitFor({ timeout: 3_000 }).catch(() => undefined);
+    if (await assessment.isVisible()) {
+      await assessment.getByRole('button', 'Close').tap();
+      await expect(assessment).toBeHidden({ timeout: 10_000 });
+    }
+  }
+}
+
+
 
 describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
-  test('the checkpoint quiz offers sound, hint, and calculator controls, answer feedback, question arrows, and a leave confirmation', { session: 'student', timeout: 300_000 }, async ({ app, agent, screen }) => {
+  test('the checkpoint quiz offers sound, hint, and calculator controls, answer feedback, question arrows, and a leave confirmation', { session: 'student', timeout: 300_000 }, async ({ app, agent, browser, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', /\d+ lessons?/).first().tap();
@@ -33,7 +51,9 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await expect(screen.getByRole('button', 'Mute sound')).toBeVisible();
 
     await screen.getByRole('button', /Hint$/).tap();
-    await agent.assert('exactly one answer choice is crossed out or disabled, and the key counter next to the hearts counter reads 4');
+    await agent.assert('exactly one answer choice is crossed out or disabled');
+    // Read the counter itself instead of asking the agent to; every quiz starts with 5 keys.
+    await expect.poll(() => browser.evaluate(() => document.querySelector('img[alt="Keys"]')?.parentElement?.textContent?.trim() ?? '')).toBe('4');
 
     await screen.getByRole('button', 'Toggle calculator').tap();
     await expect(screen.getByRole('button', 'Close calculator')).toBeVisible();
@@ -82,7 +102,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', /\d+ lessons?/).first().tap();
@@ -112,11 +132,11 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await expect(screen.getByRole('heading', 'Study Journey')).toBeVisible();
   });
 
-  test('a correct answer shows the Correct! celebration on top of the question card', { session: 'student', timeout: 300_000 }, async ({ app, agent, screen }) => {
+  test('a correct answer shows the Correct! celebration on top of the question card', { session: 'student', timeout: 300_000 }, async ({ app, agent, browser, screen }) => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', /\d+ lessons?/).first().tap();
@@ -128,7 +148,37 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await agent.act('work out question 1 and choose the answer choice that is mathematically correct, and do not press Next Question');
     await expect(screen.getByText('Question 1 Explanation')).toBeVisible();
     test.skip((await screen.getByRole('heading', 'Correct!').count()) === 0, 'question 1 was graded Incorrect, so no celebration is due');
-    await agent.assert('a celebration card with the mascot, the large word CORRECT! and an XP pill is drawn over the middle of the quiz, in front of the question card', { vision: 'only' });
+    // Geometry and stacking, read from the DOM: a session saved after a password fill withholds pixels (PIXEL_TAINTED).
+    const celebration = await browser.evaluate(() => {
+      const fixedAncestor = (start: Element | null) => {
+        let node = start;
+        while (node && getComputedStyle(node).position !== 'fixed') node = node.parentElement;
+        return node;
+      };
+      const heading = [...document.querySelectorAll('h2')].find((h2) => h2.textContent?.trim() === 'Correct!') ?? null;
+      const overlay = fixedAncestor(heading);
+      const quizRoot = fixedAncestor(document.querySelector('button[aria-label="Exit quiz"]'));
+      if (!heading || !overlay || !quizRoot) return { found: false, centerOffsetX: 1, centerOffsetY: 1, overlayZ: 0, quizZ: 0, mascot: false, xpPill: '', rootContainsOverlay: false };
+      const box = overlay.getBoundingClientRect();
+      return {
+        found: true,
+        centerOffsetX: Math.abs(box.left + box.width / 2 - window.innerWidth / 2) / window.innerWidth,
+        centerOffsetY: Math.abs(box.top + box.height / 2 - window.innerHeight / 2) / window.innerHeight,
+        overlayZ: Number(getComputedStyle(overlay).zIndex),
+        quizZ: Number(getComputedStyle(quizRoot).zIndex),
+        mascot: overlay.querySelector('img[alt="Mascot"]') !== null,
+        xpPill: overlay.textContent?.match(/\+ \d+ XP|Preview/)?.[0] ?? '',
+        rootContainsOverlay: quizRoot.contains(overlay),
+      };
+    });
+    expect(celebration.found).toBe(true);
+    expect(celebration.centerOffsetX).toBeLessThan(0.05);
+    expect(celebration.centerOffsetY).toBeLessThan(0.05);
+    // Portalled outside the quiz root and stacked above it, so it is drawn in front of the question card.
+    expect(celebration.rootContainsOverlay).toBe(false);
+    expect(celebration.overlayZ).toBeGreaterThan(celebration.quizZ);
+    expect(celebration.mascot).toBe(true);
+    expect(celebration.xpPill).not.toBe('');
 
     await screen.getByRole('button', 'Exit quiz').tap();
     await screen.getByRole('button', 'Leave Quiz').tap();
@@ -139,7 +189,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', /\d+ lessons?/).first().tap();
@@ -155,19 +205,21 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
 
     for (let questionNumber = 1; questionNumber <= questionCount; questionNumber += 1) {
       await expect(screen.getByText(`Q${questionNumber} of ${questionCount}`)).toBeVisible();
-      await agent.act(`choose any one answer choice for question ${questionNumber}, and do not press Next Question or View Results`);
+      await agent.act(`answer question ${questionNumber}: tap any one answer choice, or type an answer and submit it if the question has a text box. The quiz grades it at once and shows an explanation with a Next Question or View Results button; that is expected, so stop there without pressing those buttons`);
       await expect(screen.getByText(`Question ${questionNumber} Explanation`)).toBeVisible();
       await screen.getByRole('button', questionNumber < questionCount ? 'Next Question' : 'View Results').tap();
     }
 
-    await expect(screen.getByText(/^Quiz Complete! \+\d+ XP$/)).toBeVisible({ timeout: 30_000 });
-    await expect(screen.getByRole('heading', /^(EXCELLENT!|GOOD JOB!|KEEP TRYING!)$/)).toBeVisible();
+    await expect(screen.getByRole('heading', /^(EXCELLENT!|GOOD JOB!|KEEP TRYING!)$/)).toBeVisible({ timeout: 30_000 });
+    // Only a first completion awards XP and raises the toast; a Retry attempt (earlier runs finish this lesson's quiz) says "Retake · no XP awarded".
+    const isRetake = await screen.getByText('Retake · no XP awarded').isVisible();
+    if (!isRetake) await expect(screen.getByText(/^Quiz Complete! \+\d+ XP$/)).toBeVisible({ timeout: 30_000 });
     await expect(screen.getByText(new RegExp(`^Quiz Complete • Score: \\d+/${questionCount}$`))).toBeVisible();
     await expect(screen.getByRole('heading', 'Performance Details')).toBeVisible();
     await expect(screen.getByText('Correct Answers')).toBeVisible();
     await expect(screen.getByText('Total XP Earned')).toBeVisible();
     await expect(screen.getByText('Final Accuracy')).toBeVisible();
-    await agent.waitFor('the Total XP Earned row of the results card shows a number greater than zero', { timeout: 15_000 });
+    if (!isRetake) await agent.waitFor('the Total XP Earned row of the results card shows a number greater than zero', { timeout: 15_000 });
 
     await expect(screen.getByText(/^Your answer: /).first()).toBeHidden();
     await screen.getByText('Review answers').tap();
@@ -190,7 +242,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     await app.open('/modules');
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await expect(screen.getByRole('heading', 'Curriculum Modules')).toBeVisible();
 
     await screen.getByRole('button', /\d+ lessons?/).first().tap();
@@ -206,7 +258,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     expect(questionCount).toBeGreaterThan(0);
     for (let questionNumber = 1; questionNumber <= questionCount; questionNumber += 1) {
       await expect(screen.getByText(`Q${questionNumber} of ${questionCount}`)).toBeVisible();
-      await agent.act(`choose any one answer choice for question ${questionNumber}, and do not press Next Question or View Results`);
+      await agent.act(`answer question ${questionNumber}: tap any one answer choice, or type an answer and submit it if the question has a text box. The quiz grades it at once and shows an explanation with a Next Question or View Results button; that is expected, so stop there without pressing those buttons`);
       await expect(screen.getByText(`Question ${questionNumber} Explanation`)).toBeVisible();
       await screen.getByRole('button', questionNumber < questionCount ? 'Next Question' : 'View Results').tap();
     }
@@ -224,7 +276,7 @@ describe('student quiz player', { tags: ['student', 'quiz-player'] }, () => {
     });
     await browser.reload();
     await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
-    await agent.act(closeStartupDialogs);
+    await closeStartupDialogs(screen);
     await screen.getByRole('button', /\d+ lessons?/).filter({ hasText: moduleTitle }).first().tap();
     await expect(screen.getByRole('heading', 'Study Journey')).toBeVisible();
     await expect(screen.getByRole('button', 'Retry')).toHaveCount(retryCount + 1, { timeout: 15_000 });

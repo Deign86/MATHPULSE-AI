@@ -999,7 +999,8 @@ Return ONLY valid JSON, no markdown fences."""
         from main import call_hf_chat_async  # noqa: E402
         raw = await call_hf_chat_async(
             [{"role": "user", "content": prompt}],
-            max_tokens=1500,
+            # The analysis JSON alone runs ~1.7k tokens; 1500 cut it mid-string and forced the fallback.
+            max_tokens=4096,
             temperature=0.3,
             task_type="analytics",
         )

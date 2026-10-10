@@ -598,7 +598,7 @@ class TestChatTransport:
 
 class TestInferenceRouting:
     def test_chat_strict_model_lock_keeps_single_model_chain(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "deepseek-chat")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "deepseek-flash")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
 
         client = InferenceClient()
@@ -610,15 +610,15 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("chat", selected_model)
 
-        assert selected_model == "deepseek-chat"
+        assert selected_model == "deepseek-flash"
         assert "chat_strict_model_only" in source
-        assert model_chain == ["deepseek-chat"]
+        assert model_chain == ["deepseek-flash"]
 
     def test_chat_env_override_wins_under_model_lock(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "deepseek-chat")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "deepseek-flash")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
         monkeypatch.setenv("INFERENCE_ENFORCE_LOCK_MODEL", "true")
-        monkeypatch.setenv("INFERENCE_LOCK_MODEL_ID", "deepseek-reasoner")
+        monkeypatch.setenv("INFERENCE_LOCK_MODEL_ID", "deepseek-v4-pro")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -629,16 +629,16 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("chat", selected_model)
 
-        assert selected_model == "deepseek-chat"
+        assert selected_model == "deepseek-flash"
         assert "chat_override_env" in source
-        assert model_chain == ["deepseek-chat"]
+        assert model_chain == ["deepseek-flash"]
 
     def test_chat_temp_override_wins_under_model_lock(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "deepseek-reasoner")
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "deepseek-chat")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_ID", "deepseek-v4-pro")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "deepseek-flash")
         monkeypatch.setenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true")
         monkeypatch.setenv("INFERENCE_ENFORCE_LOCK_MODEL", "true")
-        monkeypatch.setenv("INFERENCE_LOCK_MODEL_ID", "deepseek-reasoner")
+        monkeypatch.setenv("INFERENCE_LOCK_MODEL_ID", "deepseek-v4-pro")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -649,14 +649,14 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("chat", selected_model)
 
-        assert selected_model == "deepseek-chat"
+        assert selected_model == "deepseek-flash"
         assert "chat_temp_override_env" in source
-        assert model_chain == ["deepseek-chat"]
+        assert model_chain == ["deepseek-flash"]
 
     def test_chat_temp_override_does_not_change_non_chat_task_under_lock(self, monkeypatch):
-        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "deepseek-chat")
+        monkeypatch.setenv("INFERENCE_CHAT_MODEL_TEMP_OVERRIDE", "deepseek-flash")
         monkeypatch.setenv("INFERENCE_ENFORCE_LOCK_MODEL", "true")
-        monkeypatch.setenv("INFERENCE_LOCK_MODEL_ID", "deepseek-reasoner")
+        monkeypatch.setenv("INFERENCE_LOCK_MODEL_ID", "deepseek-v4-pro")
 
         client = InferenceClient()
         req = InferenceRequest(
@@ -667,9 +667,9 @@ class TestInferenceRouting:
         selected_model, source = client._resolve_primary_model(req)
         model_chain = client._model_chain_for_task("verify_solution", selected_model)
 
-        assert selected_model == "deepseek-reasoner"
+        assert selected_model == "deepseek-v4-pro"
         assert "chat_temp_override_env" not in source
-        assert model_chain == ["deepseek-reasoner"]
+        assert model_chain == ["deepseek-v4-pro"]
 
 
 # ─── Risk Prediction ──────────────────────────────────────────

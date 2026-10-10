@@ -32,7 +32,7 @@ const countDensityWritesForOneSecond = () =>
 describe('student profile and settings', { tags: ['student', 'profile-settings'], timeout: 180_000 }, () => {
   test('the profile shows the Student ID pass, which flips to its back and returns', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/profile');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Edit Profile')).toBeVisible();
@@ -52,7 +52,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Grade Level and school records stay read-only, even in Edit Profile mode', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/profile');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Edit Profile')).toBeVisible();
@@ -83,7 +83,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Edit Profile: a changed Full Name previews on the pass and Cancel restores the saved name', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/profile');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Edit Profile')).toBeVisible();
@@ -104,7 +104,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('leaving the profile with an unsaved edit asks first: Stay on Profile keeps it, Leave Without Saving drops it', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/profile');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Edit Profile')).toBeVisible();
@@ -115,7 +115,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await fullName.fill(draftName);
 
     const guardHeading = screen.getByRole('heading', 'Leave Without Saving?');
-    await screen.getByRole('button', 'Dashboard').tap();
+    await screen.getByRole('navigation').getByRole('button', 'Dashboard').tap();
     await expect(guardHeading).toBeVisible();
     await expect(screen.getByText(/navigate to Dashboard, your unsaved changes will be lost\.$/)).toBeVisible();
 
@@ -124,7 +124,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     await expect(fullName).toHaveValue(draftName);
     await expect(browser).toHaveURL('/profile');
 
-    await screen.getByRole('button', 'Dashboard').tap();
+    await screen.getByRole('navigation').getByRole('button', 'Dashboard').tap();
     await expect(guardHeading).toBeVisible();
     await screen.getByRole('button', 'Leave Without Saving').tap();
     await expect(browser).toHaveURL('/');
@@ -138,7 +138,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Back with an unsaved edit asks to discard and Keep Editing keeps the draft', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/profile');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Edit Profile')).toBeVisible();
@@ -157,7 +157,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Discard Changes after Back leaves My Profile without saving the draft', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/profile');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Edit Profile')).toBeVisible();
@@ -182,7 +182,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Change Email opens a re-authentication form that is cancelled, never submitted', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/profile');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Change')).toBeVisible();
@@ -211,7 +211,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Open Avatar Studio on the profile goes to the Avatar Studio wardrobe', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/profile');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'My Profile')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Open Avatar Studio')).toBeVisible();
@@ -224,7 +224,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('settings opens on Display & Theme and the folder tabs reach all four sheets', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Saved')).toBeVisible();
@@ -256,7 +256,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Display & Theme: Dark Mode applies the dark theme and Light Mode switches it back, without saving', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByText('Day & Night Mode')).toBeVisible();
@@ -273,7 +273,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Settings applies display settings once and keeps Dark Mode steady instead of re-rendering in a loop', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Saved')).toBeVisible();
@@ -287,7 +287,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Daily Study Targets: a new Daily XP Target updates the goal and marks the sheet unsaved', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('heading', 'Daily Study Targets')).toBeVisible();
@@ -314,7 +314,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('leaving Settings without saving drops the unsaved Daily XP Target instead of showing it as saved', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Saved')).toBeVisible();
@@ -337,7 +337,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Alerts & Reminders shows the device alert control and five reminder switches without granting permission', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Alerts & Reminders')).toBeVisible();
@@ -360,7 +360,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Login & Password shows the Change Password form, locked until filled, and the account status', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'Login & Password')).toBeVisible();
@@ -383,7 +383,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('My Data & Files: Save Copy downloads the learning summary as JSON', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'My Data & Files')).toBeVisible();
@@ -398,7 +398,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('My Data & Files: Free Up Space clears temporary files and keeps the student signed in', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'My Data & Files')).toBeVisible();
@@ -415,12 +415,12 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
     expect(await browser.evaluate((key: string) => window.localStorage.getItem(key), markerKey), 'the device storage marker survived Free Up Space').toBeNull();
     await expect(screen.getByRole('button', 'Free Up Space')).toBeEnabled();
     await expect(screen.getByRole('heading', 'My Data & Files')).toBeVisible();
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible();
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible();
   });
 
   test('My Data & Files: Retake Test asks "Reset Diagnostic Assessment?" and Cancel leaves the data alone', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'My Data & Files')).toBeVisible();
@@ -442,7 +442,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('Retake Test warns that the reset also wipes XP before it is confirmed', { session: 'student' }, async ({ app, agent, screen }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'My Data & Files')).toBeVisible();
@@ -459,7 +459,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('My Data & Files: Log Out asks to confirm and Stay keeps the session', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'My Data & Files')).toBeVisible();
@@ -481,7 +481,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
 
   test('settings side links open the Student ID pass and Avatar Studio', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     await expect(screen.getByRole('heading', 'Display & Theme')).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);
     await expect(screen.getByRole('button', 'View & Edit Student ID Pass')).toBeVisible();
@@ -504,7 +504,7 @@ describe('student profile and settings', { tags: ['student', 'profile-settings']
   test('below lg the Select settings section dropdown switches sheets', { session: 'student' }, async ({ app, agent, screen, browser }) => {
     await browser.setViewport({ width: 390, height: 844 });
     await app.open('/settings');
-    await expect(screen.getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
+    await expect(screen.getByRole('navigation').getByRole('button', 'Dashboard')).toBeVisible({ timeout: 45_000 });
     const sectionPicker = screen.getByRole('button', 'Select settings section');
     await expect(sectionPicker).toBeVisible({ timeout: 30_000 });
     await agent.act(closeAssessmentPrompt);

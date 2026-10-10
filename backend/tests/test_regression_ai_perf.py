@@ -173,9 +173,9 @@ def test_config_guard_shared_deepseek_client_has_no_sdk_retries(monkeypatch):
 
 def test_config_guard_task_model_routing():
     task_models = yaml.safe_load(MODELS_YAML.read_text(encoding="utf-8"))["routing"]["task_model_map"]
-    assert task_models["rag_lesson"] == "deepseek-reasoner", "lessons keep full reasoning depth (user requirement)"
-    assert task_models["chat"] == "deepseek-chat", "chat prefers speed (user requirement)"
-    assert task_models["verify_solution"] == "deepseek-chat", "chat verification prefers speed (user requirement)"
+    assert task_models["rag_lesson"] == "deepseek-v4-pro", "lessons keep full reasoning depth (user requirement)"
+    assert task_models["chat"] == "deepseek-flash", "chat prefers speed (user requirement)"
+    assert task_models["verify_solution"] == "deepseek-flash", "chat verification prefers speed (user requirement)"
 
 
 # ─── 3. Retrieval guards ─────────────────────────────────────────────────────────────────────────

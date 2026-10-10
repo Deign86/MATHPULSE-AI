@@ -88,7 +88,7 @@ def generate_tutor_checkin(req: TutorCheckinRequest):
         # Call DeepSeek with a short, fast completion
         response = client.generate(
             messages=[{"role": "user", "content": prompt}],
-            model="deepseek-chat",
+            model="deepseek-flash",
             temperature=0.7,
             max_tokens=150,
         )

@@ -1,13 +1,13 @@
 models:
   primary:
-    id: deepseek-chat
+    id: deepseek-flash
     description: Default DeepSeek chat model — all chat tasks, quizzes, lessons, reasoning
     max_new_tokens: 800
     temperature: 0.7
     top_p: 0.9
 
   rag_primary:
-    id: deepseek-reasoner
+    id: deepseek-v4-pro
     description: DeepSeek reasoner — extended reasoning for complex RAG tasks
     max_new_tokens: 1800
     temperature: 0.2
@@ -28,50 +28,50 @@ models:
 
   model_capabilities:
     sequential_only:
-      - deepseek-reasoner
+      - deepseek-v4-pro
     supports_thinking:
-      - deepseek-reasoner
+      - deepseek-v4-pro
 
 routing:
   task_model_map:
-    chat:                  deepseek-chat
-    verify_solution:       deepseek-chat
-    lesson_generation:     deepseek-chat
-    quiz_generation:       deepseek-chat
-    practice_generation:   deepseek-chat
-    learning_path:         deepseek-chat
-    daily_insight:         deepseek-chat
-    risk_classification:   deepseek-chat
-    risk_narrative:        deepseek-reasoner
-    rag_lesson:            deepseek-reasoner
-    rag_problem:           deepseek-chat
-    rag_analysis_context:  deepseek-chat
+    chat:                  deepseek-flash
+    verify_solution:       deepseek-flash
+    lesson_generation:     deepseek-flash
+    quiz_generation:       deepseek-flash
+    practice_generation:   deepseek-flash
+    learning_path:         deepseek-flash
+    daily_insight:         deepseek-flash
+    risk_classification:   deepseek-flash
+    risk_narrative:        deepseek-v4-pro
+    rag_lesson:            deepseek-v4-pro
+    rag_problem:           deepseek-flash
+    rag_analysis_context:  deepseek-flash
 
   task_fallback_model_map:
     chat:
-      - deepseek-chat
+      - deepseek-flash
     verify_solution:
-      - deepseek-chat
+      - deepseek-flash
     lesson_generation:
-      - deepseek-chat
+      - deepseek-flash
     quiz_generation:
-      - deepseek-chat
+      - deepseek-flash
     practice_generation:
-      - deepseek-chat
+      - deepseek-flash
     learning_path:
-      - deepseek-chat
+      - deepseek-flash
     daily_insight:
-      - deepseek-chat
+      - deepseek-flash
     risk_classification:
-      - deepseek-chat
+      - deepseek-flash
     risk_narrative:
-      - deepseek-chat
+      - deepseek-flash
     rag_lesson:
-      - deepseek-chat
+      - deepseek-flash
     rag_problem:
-      - deepseek-chat
+      - deepseek-flash
     rag_analysis_context:
-      - deepseek-chat
+      - deepseek-flash
 
   task_provider_map:
     chat:                  deepseek

@@ -53,7 +53,7 @@ export const DEFAULT_ADMIN_SYSTEM_CONFIG: AdminSystemConfig = {
   maxClassSize: 50,
   auditLogVisible: true,
   aiConfig: {
-    modelName: 'deepseek-chat',
+    modelName: 'deepseek-flash',
     temperature: 0.7,
     endpoint: 'https://api.deepseek.com',
   },

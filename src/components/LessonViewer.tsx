@@ -1558,7 +1558,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
 
   if (error && sections.length === 0) {
     if (depedPdfUrl) {
-      return (
+      // Portalled like the lesson itself: rendered in place, the desktop sidebar painted over its Go back button.
+      return ReactDOM.createPortal(
         <PdfFallbackPanel
           lessonTitle={lesson.title}
           // SAFETY: lesson payloads from the curriculum pipeline always carry these optional metadata fields.
@@ -1570,7 +1571,8 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
           reason={error}
           onRetry={retry}
           onBack={onBack}
-        />
+        />,
+        document.getElementById('modal-root') || document.body,
       );
     }
     return <ErrorPanel message={error} onRetry={retry} onCancel={onBack} cancelLabel="Back to module" isOffline={isOffline} />;

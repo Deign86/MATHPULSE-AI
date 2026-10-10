@@ -93,7 +93,7 @@ def test_health_answers_while_a_rag_lesson_is_blocked_in_retrieval_and_inference
     ), patch("routes.rag_routes.retrieve_lesson_pdf_context", _blocking_retrieval), patch(
         "routes.rag_routes._get_inference_client", return_value=_BlockingInferenceClient()
     ), patch("routes.rag_routes._stream_reasoner_lesson", _blocking_reasoner_stream), patch(
-        "routes.rag_routes._lesson_primary_model", return_value="deepseek-reasoner"
+        "routes.rag_routes._lesson_primary_model", return_value="deepseek-v4-pro"
     ), patch("routes.rag_routes.verify_lesson_factuality", _verified), patch(
         "routes.rag_routes._fetch_youtube_videos", return_value=[]
     ), patch("routes.rag_routes._log_rag_usage", return_value=None):
