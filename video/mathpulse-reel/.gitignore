@@ -1,0 +1,10 @@
+# Renders and review frames (regenerate with `npm run render`)
+out/
+snapshots/
+# media-use ledger and resolve cache
+.media/
+# Generated music bed: `node scripts/make-music.mjs`
+assets/music/bed.wav
+# Un-normalized VoiceStudio takes (normalized copies are committed)
+assets/vo/raw/
+node_modules/
