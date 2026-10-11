@@ -1,6 +1,6 @@
 # GATES — MathPulse AI feature reel (fast-paced motion video)
 
-Mode: solo. Working dir: `video/mathpulse-reel`. Deliverable: `out/mathpulse-reel.mp4` (v4, 2026-10-11, 60 fps, real UI captures).
+Mode: solo. Working dir: `video/mathpulse-reel`. Deliverables: `out/mathpulse-reel-v4.mp4` (real UI captures, 60 fps) and `out/mathpulse-reel-v3.mp4` (motion-graphics cut `v3-motion.html`, unchanged composition, 60 fps).
 
 ## Inputs
 - [x] G1 Lasseter's animation principles read and mapped to concrete motion rules used in the composition (document in `MOTION-NOTES.md`).
@@ -28,13 +28,13 @@ Mode: solo. Working dir: `video/mathpulse-reel`. Deliverable: `out/mathpulse-ree
 
 ## Output
 - [x] G7 `out/mathpulse-reel.mp4` exists, has video + AAC audio, duration == root `data-duration` (±0.2 s).
-  CHECK: ffprobe -v error -show_entries stream=codec_type,codec_name:format=duration -of csv=p=0 out/mathpulse-reel.mp4
+  CHECK: ffprobe -v error -show_entries stream=codec_type,codec_name:format=duration -of csv=p=0 out/mathpulse-reel-v4.mp4
   EXPECT: video h264 + audio aac, duration matches
   EVIDENCE: `h264,video` / `aac,audio` / `49.500000` (root data-duration 49.5), 1920x1080 30 fps, 11.98 MB.
 - [x] G8 Frame QA: contact sheet of every scene midpoint reviewed; no clipped text, no overlapping elements, logo readable.
   EVIDENCE: 99 frames at 0.5 s (`out/sheet_00..10.png`) reviewed on v1 → 6 entrance-state leaks (cursor, typing dots, leaderboard rows, heatmap cells, docs/bars, tiles) traced to the tween helper and fixed; v2 sheet `out/qa_sheet2.jpg` (36 frames) shows no pre-visible elements, no overlaps, no clipped text.
 - [x] G9 Audio QA: VO audible over music (music ducked under VO), peak <= -1 dBTP, integrated loudness about -14 LUFS.
-  CHECK: ffmpeg -i out/mathpulse-reel.mp4 -af ebur128=peak=true -f null - 2>&1 | tail -12
+  CHECK: ffmpeg -i out/mathpulse-reel-v4.mp4 -af ebur128=peak=true -f null - 2>&1 | tail -12
   EXPECT: I between -16 and -12 LUFS, true peak <= -1.0 dBTP
   EVIDENCE: two-pass linear loudnorm (measured I -15.72, offset -0.20): I = -14.0 LUFS, LRA 6.9 LU, true peak -1.4 dBTP. Per-line mix RMS now even: vo03 -17.4, vo06 -17.2, vo07 -13.1 (impact hit lowered to 0.55/0.9 s), vo08 -16.6 dBFS. Pre-master: VO -14.7 dBFS RMS vs bed ducked to 0.18 = -27.6 dBFS RMS → voice ~13 dB above music, plus -5 dB at 2.2 kHz / -3 dB at 380 Hz carve on the bed.
 - [x] G10 Delivered through the HeyGen HyperFrames connector (project imported, link recorded) or the exact refusal recorded.
@@ -51,6 +51,10 @@ Mode: solo. Working dir: `video/mathpulse-reel`. Deliverable: `out/mathpulse-ree
   EXPECT: >= 8
   EVIDENCE: 9 `<video>` captures referenced (chat, modules, quizmaker, leaderboard, import, rag, users, analytics); sources recorded by `scripts/record-ui.mjs` from the local dev build.
 - [x] G13 Output is 60 fps.
-  CHECK: ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 out/mathpulse-reel.mp4
+  CHECK: ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 out/mathpulse-reel-v4.mp4
   EXPECT: 60/1
   EVIDENCE: ffprobe r_frame_rate 60/1, 1920x1080, 49.500000 s; master I = -14.0 LUFS, TP -1.4 dBTP (two-pass linear loudnorm).
+- [x] G14 v3 motion-graphics cut kept as its own composition (`v3-motion.html`, byte-identical to commit 63a60b9a's index.html) and rendered at 60 fps.
+  CHECK: ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate:format=duration -of csv=p=0 out/mathpulse-reel-v3.mp4
+  EXPECT: 60/1 and 49.500000
+  EVIDENCE: ffprobe 60/1, 49.500000 s; `diff` of v3-motion.html against `git show 63a60b9a:video/mathpulse-reel/index.html` is empty; mastered with the same two-pass linear loudnorm.

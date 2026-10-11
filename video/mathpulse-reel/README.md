@@ -2,13 +2,23 @@
 
 49.5-second product reel (1920×1080, 60 fps) built as a HyperFrames composition: 14 scenes on a 160 BPM grid, Deign voice-over from a local VoiceStudio, generated drum track.
 
+## Two cuts
+
+| Cut | Composition | Output | What it is |
+| --- | --- | --- | --- |
+| v3 motion | `v3-motion.html` | `out/mathpulse-reel-v3.mp4` | Pure motion-graphics cut (designed UI mocks), composition frozen as of the first PR commit |
+| v4 real UI | `index.html` | `out/mathpulse-reel-v4.mp4` | Same reel with real app screen recordings in six scenes |
+
+Both render at 60 fps and share every asset. Render v3 with `--composition v3-motion.html`.
+
 ## Rebuild
 
 ```bash
 cd video/mathpulse-reel
 node scripts/make-music.mjs                      # writes assets/music/bed.wav (49.5 s, 160 BPM)
 npx --yes hyperframes@0.8.146 check --timeout 30000
-npx --yes hyperframes@0.8.146 render --output out/mathpulse-reel-raw.mp4 --quality looks --fps 60 --workers 2
+npx --yes hyperframes@0.8.146 render --output out/mathpulse-reel-v4-raw.mp4 --quality looks --fps 60 --workers 2
+npx --yes hyperframes@0.8.146 render --composition v3-motion.html --output out/mathpulse-reel-v3-raw.mp4 --quality looks --fps 60 --workers 2
 ```
 
 Master the audio with a two-pass linear `loudnorm` (I -14, TP -1.5, LRA 9): run the first pass with `print_format=json`, then feed the measured values back with `linear=true`. The single-pass filter is dynamic and rides gain around the impact hits.
