@@ -4,6 +4,7 @@ import { expect } from 'e2e';
 const closeInterruptions =
   "if an Initial Assessment or Daily Rewards dialog is open, close it with its X close button without starting, skipping or claiming anything (never press 'Skip for now'); otherwise do nothing";
 const scopeRefusal = /outside my math scope|math-only support|built for math tutoring/;
+const rawModelMarkup = /\*\*|\\\(|\\\[|<think|\\n|```/;
 
 describe('student AI chat', { tags: ['student', 'ai-chat'] }, () => {
   test('a math question gets a rendered answer that can be searched, reopened, and deleted', { session: 'student', timeout: 300_000 }, async ({ app, agent, screen, browser }) => {
@@ -49,6 +50,9 @@ describe('student AI chat', { tags: ['student', 'ai-chat'] }, () => {
     await expect(explainPrompt).toBeEnabled({ timeout: 120_000 });
     await expect(copyButtons).toHaveCount(2);
     await expect(browser.locator('.chat-markdown .katex').first()).toBeVisible();
+    // Regression: the rendered reply never leaks model markup (raw **bold**, \(..\) TeX delimiters,
+    // <think> blocks, literal \n sequences or a ```fence```); the markdown pipeline formats all of it.
+    await expect(browser.locator('.chat-markdown').last()).not.toContainText(rawModelMarkup);
 
     await search.fill(marker);
     await expect(conversationRows).toHaveCount(1);

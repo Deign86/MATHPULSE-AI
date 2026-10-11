@@ -13,7 +13,7 @@ Agentic browser end-to-end suites driven by the tester-army/e2e runner (v0.18.0)
   - `assessment/`: IAR hub states, initial assessment runner
   - `teacher/`: dashboard, class analytics, intervention center, quiz maker, question bank, data import, topic mastery/competency, schedule, profile/settings
   - `admin/`: console/users, classes/curriculum, systems, content/RAG, analytics/audit, profile/settings
-  - `regression/`, plus `quiz.e2e.ts` (quiz player)
+  - `regression/`: IAR placement, Quiz Battle, RAG lesson, and `ai-text-formatting.e2e.ts` (model output renders as formatted text; chat grounding is scoped and small talk skips retrieval), plus `quiz.e2e.ts` (quiz player)
 - Tests tagged `known-bug` assert the correct behavior for a known open bug. They fail until it is fixed (see the linked GitHub issues). Gating runs use `--exclude-tag known-bug`.
 - `e2e.config.ts` (repo root) selects `tests/e2e/**/*.e2e.ts`, uses the web engine at 1280x720, starts Vite on `127.0.0.1:5173` with `VITE_API_URL=http://127.0.0.1:8000`, and drives a `gpt-6-luna` agent. Credentials come from `E2E_USER_{STUDENT,STUDENT2,TEACHER,ADMIN}_{USERNAME,PASSWORD}` env vars (never committed).
 - The backend on `:8000` is a separate prerequisite: uvicorn with `backend/.env` and `FIREBASE_SERVICE_ACCOUNT_FILE`. Browser automation is an exclusive resource, so exactly one lane holds it at a time.
