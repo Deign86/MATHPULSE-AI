@@ -27,6 +27,7 @@ from services.inference_client import (
     create_default_client,
     get_model_for_task,
 )
+from services.llm_text import clean_llm_text, to_plain_text
 from services.llm_json import LLMJsonError, extract_dict_list, extract_json_value
 
 logger = logging.getLogger("mathpulse.quiz_generation")
@@ -284,18 +285,20 @@ def _parse_quiz_response(text: str, expected_count: int) -> List[Dict[str, Any]]
                     break
 
         # ── Build normalized internal record ────────────────────────────
+        if flat_options:
+            flat_options = [to_plain_text(o, single_line=True, strip_option_label=True) for o in flat_options]
         normalized = {
             "id": i + 1,
             "type": qtype,
-            "question": q["question_text"],
+            "question": clean_llm_text(q["question_text"]),
             "bloomLevel": q.get("bloom_level", "apply"),
             "competencyCode": q.get("competency_code"),
-            "correctAnswer": correct_answer_text,
+            "correctAnswer": to_plain_text(correct_answer_text, single_line=True, strip_option_label=True),
             "options": flat_options,
-            "explanation": q.get("explanation", ""),
+            "explanation": clean_llm_text(q.get("explanation", "")),
             "points": q.get("points", 1),
             "xpReward": q.get("xp_reward", 10),
-            "hints": q.get("hints", []),
+            "hints": [clean_llm_text(h) for h in (q.get("hints") or []) if isinstance(h, str) and h.strip()],
         }
 
         validated.append(normalized)

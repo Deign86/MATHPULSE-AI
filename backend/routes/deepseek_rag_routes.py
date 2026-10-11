@@ -16,6 +16,7 @@ from fastapi import APIRouter
 from services.ai_client import REASONER_MODEL, CHAT_MODEL
 from services.inference_client import is_enabled, rag_grounded_completion, parse_json_response
 from services.jev_client import score_student_mastery
+from services.llm_text import clean_llm_text
 from rag.curriculum_rag import (
     retrieve_curriculum_context,
     build_analysis_curriculum_context,
@@ -257,7 +258,9 @@ async def generate_module_preview(req: ModulePreviewRequest):
     if not raw:
         return ModulePreviewResponse(ai_overview="", rag_confidence=band, generated=False)
 
-    overview = raw.strip()
+    overview = clean_llm_text(raw)
+    if not overview:
+        return ModulePreviewResponse(ai_overview="", rag_confidence=band, generated=False)
     if band == "low":
         overview += "\n\n⚠ Limited curriculum data available for this topic."
 
@@ -347,8 +350,12 @@ async def generate_study_tips(req: StudyTipsRequest):
     if not raw:
         return StudyTipsResponse(tips="", generated=False, confidence_score=req.confidence_score)
 
+    tips = clean_llm_text(raw)
+    if not tips:
+        return StudyTipsResponse(tips="", generated=False, confidence_score=req.confidence_score)
+
     return StudyTipsResponse(
-        tips=raw.strip(),
+        tips=tips,
         generated=True,
         confidence_score=req.confidence_score,
     )

@@ -9,6 +9,7 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { apiFetch } from '../../services/apiService';
+import AiText from '../AiText';
 import {
   JevBloomBadge,
   JevConfidenceBadge,
@@ -453,7 +454,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                       <Clock className="w-3.5 h-3.5 shrink-0 mt-0.5 text-purple-600 dark:text-purple-400" />
                       <div>
                         <span className="font-bold">Pacing Insight: </span>
-                        <span>{analysis.time_analysis.insight}</span>
+                        <AiText inline>{analysis.time_analysis.insight}</AiText>
                       </div>
                     </div>
                   )}

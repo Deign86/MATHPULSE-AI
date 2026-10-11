@@ -37,6 +37,7 @@ import { useCurriculum } from '../hooks/useCurriculum';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { recordGet } from '../utils/memberOf';
+import AiText from './AiText';
 import {
   JevBloomBadge,
   JevConfidenceBadge,
@@ -1108,7 +1109,7 @@ const GradesPage = () => {
                 </div>
 
                 <p className="text-xs font-medium text-slate-700 dark:text-slate-200 leading-relaxed line-clamp-2 mt-1">
-                  "{diagnosticSummary.recommendation}"
+                  "<AiText inline>{diagnosticSummary.recommendation}</AiText>"
                 </p>
               </div>
 

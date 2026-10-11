@@ -123,6 +123,7 @@ import { TeacherStatCard, RadialScoreRing } from './TeacherStatCard';
 import type { ProfileData } from './SettingsPage';
 import TeacherProfilePage from './teacher/TeacherProfilePage';
 import TeacherSettingsPage from './teacher/TeacherSettingsPage';
+import AiText from './AiText';
 
 export function isNum<T>(value: T): value is T & number {
   return typeof value === "number";
@@ -5439,7 +5440,7 @@ const InterventionView: React.FC<{
                   <TrendingUp className="w-3.5 h-3.5" /> Learning Strengths
                 </h4>
                 <p className="text-[13px] text-[#475569] leading-relaxed pl-2">
-                  {interventionPlan?.learning_strengths || (
+                  {interventionPlan?.learning_strengths ? <AiText inline>{interventionPlan.learning_strengths}</AiText> : (
                     !isUrgentBarrier
                       ? <>Excels in <span className="font-semibold text-[#1e293b]">{effectiveWeakestTopic}</span>. Demonstrates high engagement during interactive tests.</>
                       : <>Demonstrates engagement but faces challenges. Needs support with foundational topics.</>
@@ -5455,7 +5456,7 @@ const InterventionView: React.FC<{
                 </h4>
                 <ul className="text-[13px] text-[#475569] leading-relaxed list-none p-0 m-0 space-y-1 pl-2">
                   {interventionPlan?.next_steps_summary ? (
-                    <li>{interventionPlan.next_steps_summary}</li>
+                    <li><AiText inline>{interventionPlan.next_steps_summary}</AiText></li>
                   ) : effectiveStruggles.length > 0 && effectiveStruggles[0] !== 'Foundational Mathematics' ? (
                     effectiveStruggles.map((s, i) => (
                       <li key={i}>Must continue strengthening <span className="font-semibold text-[#1e293b]">{s}</span>.</li>
