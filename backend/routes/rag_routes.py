@@ -31,6 +31,7 @@ from services.inference_client import (
     get_current_runtime_config,
     get_model_for_task,
 )
+from services.llm_text import sanitize_tree
 from rag.curriculum_rag import (
     build_analysis_curriculum_context,
     build_lesson_prompt,
@@ -952,6 +953,9 @@ async def _build_lesson(uid: str, payload: RagLessonRequest, emit: LessonEmit) -
             },
         )
     timings["verify"] = (time.perf_counter() - stage_started) * 1000
+    # Normalise model prose (think tags, fences, \(..\) delimiters, literal \n)
+    # so LessonViewer renders clean Markdown+LaTeX instead of raw markup.
+    parsed_lesson = sanitize_tree(parsed_lesson)
 
     # ── Step 5: Enrich with videos (lookup started at the top) ───────────────
     emit("stage", {"stage": "finalizing"})

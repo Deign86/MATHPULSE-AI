@@ -20,6 +20,7 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from services.ai_client import CHAT_MODEL, get_deepseek_client
+from services.llm_text import sanitize_tree
 from services.llm_json import LLMJsonError, extract_dict_list, extract_json_value
 import firebase_admin
 from firebase_admin import firestore as fs
@@ -181,7 +182,7 @@ def _parse_questions_response(raw: str, count: int) -> List[Dict[str, Any]]:
     if not questions:
         raise HTTPException(status_code=500, detail="AI response missing questions. Please try again.")
 
-    return questions[:count]
+    return [sanitize_tree(q) for q in questions[:count]]
 
 
 def _build_question_prompt(subject: str, competency: str, difficulty: str, count: int) -> tuple[str, str]:

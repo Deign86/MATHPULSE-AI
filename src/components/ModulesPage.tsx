@@ -76,6 +76,7 @@ import { fetchPendingQuizzesForStudent, type PlayableQuiz } from '../services/qu
 import { subscribeToUserProgress } from '../services/progressService';
 import { watchModule } from '../services/moduleWatchService';
 import type { ModuleProgress, UserProgress } from '../types/models';
+import AiText from './AiText';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -942,9 +943,9 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
 
             {/* Summary */}
             {selectedTeacherModule.summary && (
-              <p className="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-medium max-w-3xl">
+              <AiText className="text-slate-300 text-sm sm:text-base leading-relaxed mb-6 font-medium max-w-3xl">
                 {selectedTeacherModule.summary}
-              </p>
+              </AiText>
             )}
 
             {/* Primary Action Button + Progress Banner */}

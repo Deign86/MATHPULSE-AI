@@ -6,6 +6,7 @@ real quiz data from Firestore and DeepSeek AI for learning path generation.
 """
 
 import json
+from services.llm_text import sanitize_tree, to_plain_text
 import logging
 import time
 from datetime import datetime, timezone
@@ -430,7 +431,8 @@ Return as JSON:
                 response_format={"type": "json_object"},
             )
             content = response.choices[0].message.content or "{}"
-            return json.loads(content)
+            insights = json.loads(content)
+            return {k: to_plain_text(v, strip_bullets=False) if isinstance(v, str) else v for k, v in insights.items()}
         except Exception as e:
             logger.warning(f"DeepSeek insights failed: {e}")
             return {
@@ -503,7 +505,7 @@ Return ONLY valid JSON:
                 response_format={"type": "json_object"},
             )
             content = response.choices[0].message.content or "{}"
-            parsed = json.loads(content)
+            parsed = sanitize_tree(json.loads(content))
 
             steps = []
             for s in parsed.get("steps", []):
@@ -587,10 +589,10 @@ Return as a JSON array of strings. Each recommendation max 25 words. Be specific
             )
             content = response.choices[0].message.content or "[]"
             parsed = json.loads(content)
-            if isinstance(parsed, list):
-                return parsed[:5]
             if isinstance(parsed, dict):
-                return parsed.get("recommendations", parsed.get("actions", []))[:5]
+                parsed = parsed.get("recommendations", parsed.get("actions", []))
+            if isinstance(parsed, list):
+                return [to_plain_text(r, single_line=True) for r in parsed[:5] if isinstance(r, str) and r.strip()]
         except Exception as e:
             logger.warning(f"DeepSeek recommendations failed: {e}")
 

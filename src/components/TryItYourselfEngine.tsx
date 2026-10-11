@@ -30,6 +30,7 @@ import ScientificCalculator from './ScientificCalculator';
 import MathText from './MathText';
 import { resolveQuestion, useHint, completeSession, fetchShadowRetries } from '../services/tryItYourselfService';
 import type { Question } from '@/types/curriculum';
+import AiText from './AiText';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -1125,7 +1126,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                     <div className="space-y-2">
                       {currentQuestion.hints.slice(0, qs?.hintsUsed ?? 0).map((hint, i) => (
                         <p key={i} className="text-sm text-amber-800 leading-relaxed">
-                          <span className="font-bold text-amber-600 tabular-nums">{i + 1}.</span> {hint}
+                          <span className="font-bold text-amber-600 tabular-nums">{i + 1}.</span> <AiText inline>{hint}</AiText>
                         </p>
                       ))}
                     </div>
@@ -1140,7 +1141,7 @@ const TryItYourselfEngine: React.FC<TryItYourselfEngineProps> = ({
                     <img src="/mascot/modules_avatar.png" className="w-10 h-10 shrink-0" alt="AI Explain" />
                     <div>
                       <p className="font-extrabold text-lg mb-1 text-sky-700">Explanation</p>
-                      <p className="text-base leading-relaxed text-sky-800">{currentQuestion.explanation}</p>
+                      <AiText className="text-base leading-relaxed text-sky-800">{currentQuestion.explanation}</AiText>
                     </div>
                   </div>
                 </motion.div>

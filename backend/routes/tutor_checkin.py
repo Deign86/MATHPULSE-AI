@@ -13,6 +13,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from services.wri_service import ESCALATION_RISK_STATUSES, RiskLevel, normalize_risk_band
+from services.llm_text import to_plain_text
 
 logger = logging.getLogger("mathpulse.tutor_checkin")
 
@@ -93,7 +94,9 @@ def generate_tutor_checkin(req: TutorCheckinRequest):
             max_tokens=150,
         )
 
-        message = response.strip() if response else _fallback_message(req.risk_status)
+        message = to_plain_text(response, strip_bullets=False) if response else ""
+        if not message:
+            message = _fallback_message(req.risk_status)
 
         tone_map: Dict[RiskLevel, str] = {
             "safe": "encouraging",

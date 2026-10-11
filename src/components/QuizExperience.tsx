@@ -14,6 +14,7 @@ import MathAnswerInput from './MathAnswerInput';
 import SupplementalBanner from './SupplementalBanner';
 import type { AIQuizQuestion } from '../types/models';
 import { useExtraHints } from '../hooks/useExtraHints';
+import AiText from './AiText';
 
 const quizAnimations = `
   @keyframes score-pop {
@@ -912,7 +913,7 @@ playSound('complete');
                             <p className="font-semibold">{index + 1}. {question.question}</p>
                             <p>Your answer: {attempt?.answerText || attempt?.answer || 'Not answered'}{attempt ? (attempt.correct ? ' · Correct' : ' · Incorrect') : ''}</p>
                             {!attempt?.correct && <p>Correct answer: {correctAnswer}</p>}
-                            {question.explanation && <p className="text-slate-500">{question.explanation}</p>}
+                            {question.explanation && <AiText className="text-slate-500">{question.explanation}</AiText>}
                           </li>
                         );
                       })}
@@ -1318,9 +1319,9 @@ playSound('complete');
                                - explanationText: string (markdown-supported correct answer explanation)
                                - optional explanationMedia: string (supplementary media URL)
                                - correctAnswerId: string (ID of correct choice for highlighting) */}
-                          <p className={`text-base leading-relaxed ${(viewIndex === currentQuestionIndex ? lastAnswerCorrect : answerRecords[viewIndex]?.correct) ? 'text-emerald-800' : 'text-rose-800'}`}>
+                          <AiText className={`text-base leading-relaxed ${(viewIndex === currentQuestionIndex ? lastAnswerCorrect : answerRecords[viewIndex]?.correct) ? 'text-emerald-800' : 'text-rose-800'}`}>
                             {viewedQuestion.explanation || `Correct Answer: ${viewedQuestion.correctAnswerText || viewedQuestion.options?.[viewedQuestion.correctAnswer]}`}
-                          </p>
+                          </AiText>
                         </div>
                       </div>
                    </motion.div>

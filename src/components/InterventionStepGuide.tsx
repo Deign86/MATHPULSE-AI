@@ -10,6 +10,7 @@ import { InterventionVideoStep } from './intervention/InterventionVideoStep';
 import { normalizeTopicDisplay } from '../config/subjects';
 import { apiService } from '../services/apiService';
 import { toast } from 'sonner';
+import AiText from './AiText';
 
 interface Props {
   step: LearningStep;
@@ -136,7 +137,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
                   <span className="text-[12px] font-semibold text-slate-600">{step.duration_minutes} minutes</span>
                   {step.num_items && <span className="text-[12px] text-slate-500">• {step.num_items} items</span>}
                 </div>
-                <p className="text-[13px] text-[#475569] leading-relaxed">{step.description || `Work through ${step.topic} at ${step.difficulty} difficulty.`}</p>
+                <AiText className="text-[13px] text-[#475569] leading-relaxed">{step.description || `Work through ${step.topic} at ${step.difficulty} difficulty.`}</AiText>
               </div>
 
               {step.type === 'video_lesson' && (
@@ -165,7 +166,7 @@ export const InterventionStepGuide: React.FC<Props> = ({
                     <div className={`max-w-[85%] px-3 py-2 rounded-[12px] text-[12px] leading-relaxed ${
                       msg.role === 'user' ? 'bg-indigo-500 text-white' : 'bg-white border border-slate-200 text-[#475569]'
                     }`}>
-                      {msg.content}
+                      {msg.role === 'user' ? msg.content : <AiText>{msg.content}</AiText>}
                     </div>
                   </div>
                 ))}

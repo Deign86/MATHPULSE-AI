@@ -471,6 +471,53 @@ def _retrieve_exact_file_chunks(
     return rows[: max(1, top_k)]
 
 
+def _content_fingerprint(content: str) -> str:
+    """Stable key for near-duplicate detection: lowercase alnum words of the first ~160 chars."""
+    words = re.findall(r"[a-z0-9]+", (content or "").lower())
+    return " ".join(words[:28])
+
+
+def _dedupe_rows(rows: List[CurriculumChunk], top_k: int) -> List[CurriculumChunk]:
+    """Drop overlapping-window duplicates so the prompt only carries distinct passages.
+
+    Ingestion uses overlapping chunks, so neighbouring hits often repeat the same
+    sentences. Two rows are duplicates when they share a fingerprint, or when one
+    row's fingerprint is contained in the other's content and they come from the
+    same source page. Rows arrive sorted by score, so the best copy is kept.
+    """
+    kept: List[CurriculumChunk] = []
+    seen_fp: set = set()
+    for row in rows:
+        content = str(row.get("content") or "")
+        fp = _content_fingerprint(content)
+        if not fp:
+            continue
+        if fp in seen_fp:
+            continue
+        duplicate = False
+        for prev in kept:
+            if prev.get("source_file") != row.get("source_file"):
+                continue
+            prev_content = str(prev.get("content") or "")
+            if len(content) >= 200 and content[:200] in prev_content:
+                duplicate = True
+                break
+            if len(prev_content) >= 200 and prev_content[:200] in content:
+                duplicate = True
+                break
+        if duplicate:
+            continue
+        seen_fp.add(fp)
+        kept.append(row)
+        if len(kept) >= max(1, top_k):
+            break
+    return kept
+
+
+def _has_filters(**filters: Any) -> bool:
+    return any(v is not None and v != "" for v in filters.values())
+
+
 def retrieve_curriculum_context(
     query: str,
     subject: str | None = None,
@@ -483,66 +530,120 @@ def retrieve_curriculum_context(
     storage_path: str | None = None,
     top_k: int = 8,
     grade_level: str | None = None,
+    min_score: float | None = None,
+    dedupe: bool = True,
     **kwargs: Any,
 ) -> list[CurriculumChunk]:
+    """Return at most ``top_k`` distinct, filter-matching chunks ranked by similarity.
+
+    Retrieval is scoped as tightly as the vector store allows:
+    * exact ``storage_path`` requests only score that file's chunks;
+    * metadata filters run server-side when the HNSW index is complete, so
+      Chroma returns only matching rows instead of a large unfiltered sample;
+    * otherwise a bounded candidate window is filtered in Python;
+    * ``min_score`` drops weak matches and ``dedupe`` removes overlapping
+      windows, so callers never pay prompt tokens for redundant context.
+    """
     from rag.vectorstore_loader import get_vectorstore_components
 
     _, collection, embedder = get_vectorstore_components()
 
     prefixed_query = f"Represent this sentence for searching relevant passages: {query}"
+    top_k = max(1, int(top_k))
+    threshold = float(min_score) if min_score is not None else None
+
+    def _finalize(rows: List[CurriculumChunk]) -> List[CurriculumChunk]:
+        rows = sorted(rows, key=lambda r: float(r.get("score") or 0.0), reverse=True)
+        if threshold is not None:
+            rows = [r for r in rows if float(r.get("score") or 0.0) >= threshold]
+        return _dedupe_rows(rows, top_k) if dedupe else rows[:top_k]
 
     # FIX (issue #160): chroma 1.5.9 query+where raises InternalError
     # "Error finding id" whenever the filter matches; unfiltered query and
     # filtered get both work, so filter candidates in Python. No re-ingest.
+    filters = dict(
+        subject=subject,
+        quarter=quarter,
+        content_domain=content_domain,
+        chunk_type=chunk_type,
+        module_id=module_id,
+        lesson_id=lesson_id,
+        competency_code=competency_code,
+    )
+    # Fetch a small surplus so dedupe/threshold still leaves top_k rows.
+    want_n = top_k + max(2, top_k // 2) if dedupe else top_k
+
     if storage_path:
         try:
             query_embedding = embedder.encode(
                 prefixed_query,
                 normalize_embeddings=True,
             ).tolist()
-            return _retrieve_exact_file_chunks(
-                collection,
-                embedder,
-                query_embedding,
-                storage_path,
-                subject,
-                quarter,
-                content_domain,
-                chunk_type,
-                module_id,
-                lesson_id,
-                competency_code,
-                top_k,
+            return _finalize(
+                _retrieve_exact_file_chunks(
+                    collection,
+                    embedder,
+                    query_embedding,
+                    storage_path,
+                    subject,
+                    quarter,
+                    content_domain,
+                    chunk_type,
+                    module_id,
+                    lesson_id,
+                    competency_code,
+                    want_n,
+                )
             )
         except Exception:
             pass
 
-    fetch_n = max(int(top_k) * 10, 50)
+    where = _to_where(storage_path=storage_path, **filters) if _has_filters(storage_path=storage_path, **filters) else None
+
+    # Server-side filtered query: only matching rows leave the store. Chroma
+    # raises "Error finding id" on filtered queries when the HNSW index is
+    # incomplete (issue #160), so this path is gated on the index health probe
+    # and falls through to the bounded candidate window on any failure.
+    if where is not None:
+        try:
+            query_embedding = embedder.encode(prefixed_query, normalize_embeddings=True).tolist()
+            if _index_is_healthy(collection, query_embedding):
+                result = collection.query(
+                    query_embeddings=[query_embedding],
+                    n_results=want_n,
+                    where=where,
+                    include=["documents", "metadatas", "distances"],
+                )
+                documents = (result.get("documents") or [[]])[0]
+                metadatas = (result.get("metadatas") or [[]])[0]
+                distances = (result.get("distances") or [[]])[0]
+                rows: List[CurriculumChunk] = []
+                for idx, content in enumerate(documents):
+                    md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
+                    distance = float(distances[idx]) if idx < len(distances) else 1.0
+                    rows.append(_row_from_chunk(content, md, distance, storage_path=storage_path))
+                return _finalize(rows)
+        except Exception:
+            pass
+
+    # Bounded candidate window. Unfiltered queries need little surplus; filtered
+    # fallbacks need more because most candidates are discarded in Python.
+    fetch_n = max(want_n * 8, 40) if where is not None else max(want_n * 2, 12)
     _, result, _ = _query_embeddings_with_fallback(collection, embedder, prefixed_query, fetch_n)
 
     documents = (result.get("documents") or [[]])[0]
     metadatas = (result.get("metadatas") or [[]])[0]
     distances = (result.get("distances") or [[]])[0]
 
-    rows: List[CurriculumChunk] = []
+    rows = []
     for idx, content in enumerate(documents):
         md = metadatas[idx] if idx < len(metadatas) and isinstance(metadatas[idx], dict) else {}
         distance = float(distances[idx]) if idx < len(distances) else 1.0
-        if _metadata_matches(
-            md,
-            subject=subject,
-            quarter=quarter,
-            content_domain=content_domain,
-            chunk_type=chunk_type,
-            module_id=module_id,
-            lesson_id=lesson_id,
-            competency_code=competency_code,
-            storage_path=storage_path,
-        ):
+        if _metadata_matches(md, storage_path=storage_path, **filters):
             rows.append(_row_from_chunk(content, md, distance, storage_path=storage_path))
-        if len(rows) >= max(1, top_k):
+        if len(rows) >= want_n:
             break
-    return rows
+    return _finalize(rows)
 
 
 def build_exact_lesson_query(
@@ -707,20 +808,42 @@ _MAX_CONTEXT_CHARS = 9000
 _TRUNCATED = "…[truncated]"
 
 
-def format_retrieved_chunks(curriculum_chunks: list[dict]) -> str:
-    """Numbered excerpt list for prompts; each excerpt and the total are capped."""
+def _trim_to_sentence(text: str, limit: int) -> str:
+    """Cut at the last sentence/line boundary before ``limit`` so excerpts don't end mid-formula."""
+    if len(text) <= limit:
+        return text
+    head = text[:limit]
+    cut = max(head.rfind(". "), head.rfind(".\n"), head.rfind("\n"))
+    if cut >= int(limit * 0.6):
+        head = head[: cut + 1]
+    return head.rstrip() + _TRUNCATED
+
+
+def format_retrieved_chunks(
+    curriculum_chunks: list[dict],
+    *,
+    max_chars: int = _MAX_CONTEXT_CHARS,
+    max_excerpt_chars: int = _MAX_EXCERPT_CHARS,
+    include_scores: bool = True,
+) -> str:
+    """Numbered excerpt list for prompts; each excerpt and the total are capped.
+
+    Callers that only need a hint of context (chat turns, short generators)
+    pass smaller ``max_chars``/``max_excerpt_chars`` so the model sees just the
+    relevant passages rather than every retrieved window in full.
+    """
     refs = []
     used = 0
     for i, chunk in enumerate(curriculum_chunks, start=1):
-        content = str(chunk.get("content", "") or "")
-        if len(content) > _MAX_EXCERPT_CHARS:
-            content = content[:_MAX_EXCERPT_CHARS].rstrip() + _TRUNCATED
+        content = _trim_to_sentence(str(chunk.get("content", "") or "").strip(), max_excerpt_chars)
+        meta = f"({chunk.get('content_domain')}/{chunk.get('chunk_type')})"
+        if include_scores:
+            meta += f" score={chunk.get('score')}"
         entry = (
-            f"{i}. [{chunk.get('source_file')} p.{chunk.get('page')}] "
-            f"({chunk.get('content_domain')}/{chunk.get('chunk_type')}) score={chunk.get('score')}\n"
+            f"{i}. [{chunk.get('source_file')} p.{chunk.get('page')}] {meta}\n"
             f"   Excerpt: {content}"
         )
-        remaining = _MAX_CONTEXT_CHARS - used
+        remaining = max_chars - used
         if len(entry) > remaining:
             if remaining > 200:
                 refs.append(entry[:remaining].rstrip() + _TRUNCATED)
@@ -728,6 +851,67 @@ def format_retrieved_chunks(curriculum_chunks: list[dict]) -> str:
         refs.append(entry)
         used += len(entry) + 1
     return "\n".join(refs) if refs else "No curriculum context retrieved."
+
+
+# ── Chat-turn retrieval ──────────────────────────────────────────────────────
+#
+# Tutor chat turns only need a hint of curriculum grounding. Greetings,
+# acknowledgements and continuation replies ("ok", "next", "thanks") carry no
+# retrievable topic, so we skip the vector store entirely for them; for real
+# questions we inject at most a few short, distinct, high-scoring excerpts.
+
+_CHAT_RAG_MIN_SCORE = 0.55
+_CHAT_RAG_TOP_K = 3
+_CHAT_RAG_MAX_CHARS = 1600
+_CHAT_RAG_EXCERPT_CHARS = 520
+_CHAT_SKIP_RE = re.compile(
+    r"^\s*(?:ok(?:ay)?|yes|no|yep|nope|sure|thanks?(?:\s+you)?|ty|thank\s+you|got\s+it|next|continue|go\s+on|"
+    r"more|again|hi|hello|hey|good\s+(?:morning|afternoon|evening)|bye|goodbye|cool|nice|great|wow|lol|"
+    r"i\s+see|understood|noted|please|pls|yeah|yup|k|kk|\?+|!+|\.+)\s*[.!?]*\s*$",
+    re.IGNORECASE,
+)
+
+
+def should_retrieve_for_chat(message: str) -> bool:
+    """True when a chat message has enough topical content to be worth a vector lookup."""
+    text = (message or "").strip()
+    if len(text) < 12:
+        return False
+    if _CHAT_SKIP_RE.match(text):
+        return False
+    # Needs at least two "real" words (letters), otherwise it's an emoji/number blip.
+    return len(re.findall(r"[A-Za-z]{3,}", text)) >= 2
+
+
+def retrieve_chat_context(
+    message: str,
+    *,
+    subject: str | None = None,
+    top_k: int = _CHAT_RAG_TOP_K,
+    min_score: float = _CHAT_RAG_MIN_SCORE,
+    max_chars: int = _CHAT_RAG_MAX_CHARS,
+) -> str:
+    """Compact curriculum reference block for one tutor chat turn, or ``""``."""
+    if not should_retrieve_for_chat(message):
+        return ""
+    rows = retrieve_curriculum_context(
+        query=message[:300],
+        subject=subject,
+        top_k=top_k,
+        min_score=min_score,
+    )
+    if not rows:
+        return ""
+    body = format_retrieved_chunks(
+        rows,
+        max_chars=max_chars,
+        max_excerpt_chars=_CHAT_RAG_EXCERPT_CHARS,
+        include_scores=False,
+    )
+    return (
+        "RELEVANT CURRICULUM REFERENCE (DepEd SHS modules; use only if it helps answer the "
+        "student's current question):\n" + body
+    )
 
 
 def summarize_retrieval_confidence(curriculum_chunks: list[dict]) -> Dict[str, any]:

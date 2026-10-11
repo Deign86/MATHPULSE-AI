@@ -19,6 +19,7 @@ import { Button } from './ui/button';
 import { apiService } from '../services/apiService';
 import { generatePracticeSession } from '../services/practiceService';
 import type { LearningStep } from '../services/interventionService';
+import AiText from './AiText';
 
 interface ModuleSection {
   title: string;
@@ -772,7 +773,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                         >
                           {i + 1}
                         </span>
-                        {q.question}
+                        <AiText inline>{q.question}</AiText>
                       </legend>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pl-9 mb-3">
@@ -833,9 +834,9 @@ export const ModuleStepGuide: React.FC<Props> = ({
                               Correct Answer: Option {q.answer}
                             </p>
                             {q.explanation && (
-                              <p className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
+                              <AiText className="text-slate-600 dark:text-slate-300 text-[11px] leading-relaxed">
                                 {q.explanation}
-                              </p>
+                              </AiText>
                             )}
                           </div>
                         )}

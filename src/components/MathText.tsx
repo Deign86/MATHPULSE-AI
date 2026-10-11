@@ -115,13 +115,21 @@ function plainToLatex(expr: string): string {
   return result;
 }
 
+/** Markdown that must be rendered rather than shown raw: emphasis, code, headings, strikethrough. */
+const MARKDOWN_SYNTAX_RE = /\*\*[^*]+\*\*|__[^_]+__|(?<![\w\\])\*[^*\s][^*]*\*(?!\w)|`[^`]+`|^\s{0,3}#{1,6}\s|~~[^~]+~~/m;
+
 const MathText: React.FC<MathTextProps> = ({ children, className }) => {
   if (!children || !isString(children)) return null;
 
-  const processed = convertToLatex(children);
+  // Model-emitted \(..\) / \[..\] delimiters are not recognised by remark-math.
+  const delimiterNormalized = children
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_m, inner: string) => `$$${inner.trim()}$$`)
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_m, inner: string) => `$${inner.trim()}$`);
+  const processed = convertToLatex(delimiterNormalized);
 
-  // If no math delimiters after processing, render as plain text
-  if (!processed.includes('$')) {
+  // Nothing to typeset and no Markdown syntax: render verbatim (cheap, and
+  // avoids touching plain option labels).
+  if (!processed.includes('$') && !MARKDOWN_SYNTAX_RE.test(processed)) {
     return <span className={className}>{children}</span>;
   }
 

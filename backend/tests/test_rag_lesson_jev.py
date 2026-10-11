@@ -101,7 +101,7 @@ def test_factuality_pass_retains_generated_lesson(monkeypatch) -> None:
     response = client.post("/api/rag/lesson", json=PAYLOAD)
 
     assert response.status_code == 200
-    assert response.json()["sections"][0]["content"] == GENERATED_INTRO
+    assert response.json()["sections"][0]["content"] == GENERATED_INTRO.strip()
     assert response.json()["jevVerification"] == {"verified": True, "pCorrect": 0.95}
 
 
@@ -131,7 +131,7 @@ def test_jev_exception_fails_open_cleanly(monkeypatch) -> None:
     response = client.post("/api/rag/lesson", json=PAYLOAD)
 
     assert response.status_code == 200
-    assert response.json()["sections"][0]["content"] == GENERATED_INTRO
+    assert response.json()["sections"][0]["content"] == GENERATED_INTRO.strip()
     assert response.json()["jevVerification"] is None
 
 
