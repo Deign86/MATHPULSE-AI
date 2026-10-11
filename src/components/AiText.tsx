@@ -71,7 +71,7 @@ const AiText: React.FC<AiTextProps> = ({ children, inline = false, className }) 
     void ensureKatexStyles();
   }, []);
 
-  if (typeof children !== 'string' || !children.trim()) {
+  if (!children || !children.trim()) {
     return null;
   }
 

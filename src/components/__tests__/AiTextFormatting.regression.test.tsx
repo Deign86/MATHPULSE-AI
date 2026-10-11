@@ -8,17 +8,11 @@ import React from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as extraHints from '../../hooks/useExtraHints';
+import * as tryItYourselfService from '../../services/tryItYourselfService';
 import type { AIQuizQuestion } from '../../types/models';
 import type { Question } from '@/types/curriculum';
 import QuizExperience, { type Quiz } from '../QuizExperience';
 import TryItYourselfEngine from '../TryItYourselfEngine';
-
-vi.mock('../../services/tryItYourselfService', () => ({
-  resolveQuestion: vi.fn().mockResolvedValue({}),
-  useHint: vi.fn().mockResolvedValue({}),
-  completeSession: vi.fn().mockResolvedValue({}),
-  fetchShadowRetries: vi.fn().mockResolvedValue({ questions: [] }),
-}));
 
 const RAW_MARKUP = /\*\*|\\\(|\\\[|<think>|\\n/;
 const getCanvasContext = HTMLCanvasElement.prototype.getContext;
@@ -29,6 +23,12 @@ describe('AI text formatting regression', () => {
     vi.spyOn(extraHints, 'useExtraHints').mockReturnValue({
       extraHintsEnabled: false, hintTokens: 0, totalHintsAvailable: 0, loading: false,
     });
+    vi.spyOn(tryItYourselfService, 'resolveQuestion').mockResolvedValue({ xpAwarded: 0, status: 'ok', struggleFlag: false });
+    vi.spyOn(tryItYourselfService, 'useHint').mockResolvedValue({ hintsUsed: 1, xpMultiplier: 1, acknowledged: true });
+    vi.spyOn(tryItYourselfService, 'completeSession').mockResolvedValue({
+      totalXP: 0, questionsResolved: 1, questionsRevealed: 0, averageAttempts: 1, struggleTopics: [],
+    });
+    vi.spyOn(tryItYourselfService, 'fetchShadowRetries').mockResolvedValue({ variants: [], generated: false });
   });
 
   afterEach(() => {
