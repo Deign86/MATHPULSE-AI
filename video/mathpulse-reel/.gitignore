@@ -8,3 +8,4 @@ assets/music/bed.wav
 # Un-normalized VoiceStudio takes (normalized copies are committed)
 assets/vo/raw/
 node_modules/
+.capture/

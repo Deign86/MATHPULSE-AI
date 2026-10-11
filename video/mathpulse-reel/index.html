@@ -43,6 +43,16 @@
       .pill { display: inline-block; padding: 8px 18px; border-radius: 999px; font-weight: 800; font-size: 22px; }
       .glow { position: absolute; width: 1100px; height: 1100px; border-radius: 50%; background: radial-gradient(circle, rgba(153, 86, 222, 0.55) 0%, rgba(153, 86, 222, 0) 62%); left: 410px; top: -10px; }
       .will { will-change: transform, opacity; }
+      /* Browser window chrome for real-UI captures; the <video> itself lives in #ui-layer (untimed wrapper, above the scenes). */
+      .win { position: absolute; border-radius: 22px; background: #0a1628; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.4); overflow: hidden; }
+      .win .bar { height: 44px; background: #111c33; display: flex; align-items: center; gap: 8px; padding: 0 18px; }
+      .win .bar i { width: 12px; height: 12px; border-radius: 50%; background: #FF8B8B; }
+      .win .bar i:nth-child(2) { background: #FFB356; }
+      .win .bar i:nth-child(3) { background: #75D06A; }
+      .win .bar span { margin-left: 14px; flex: 1; height: 26px; border-radius: 13px; background: rgba(255, 255, 255, 0.08); color: #9aa6b8; font-size: 16px; font-weight: 700; display: flex; align-items: center; padding: 0 14px; }
+      #ui-layer { position: absolute; inset: 0; pointer-events: none; }
+      .vid { position: absolute; overflow: hidden; border-radius: 0 0 22px 22px; }
+      .vid video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; }
       .metronome { position: absolute; bottom: 70px; left: 50%; margin-left: -60px; display: flex; gap: 16px; }
       .metronome i { display: block; width: 8px; height: 34px; border-radius: 4px; background: #ffffff; opacity: 0.22; }
 
@@ -96,7 +106,7 @@
       #path-mascot { position: absolute; left: 60px; top: 70px; width: 380px; height: 380px; }
 
       /* S5 practice */
-      #prac-card { left: 140px; top: 120px; width: 760px; height: 600px; }
+      #prac-card { left: 140px; top: 120px; width: 700px; height: 600px; }
       .topic { display: flex; flex-direction: column; gap: 10px; padding: 18px 32px 0; font-weight: 700; font-size: 28px; }
       .topic .bar { height: 16px; border-radius: 8px; background: #f4f4f5; overflow: hidden; }
       .topic .bar i { display: block; height: 100%; width: 100%; background: #9956DE; transform-origin: left center; }
@@ -211,7 +221,7 @@
     </style>
   </head>
   <body>
-    <div id="root" data-composition-id="main" data-start="0" data-duration="49.5" data-width="1920" data-height="1080">
+    <div id="root" data-composition-id="main" data-start="0" data-duration="49.5" data-width="1920" data-height="1080" data-fps="60">
       <!-- ============ S0 open ============ -->
       <section id="s-open" class="clip" data-scene="open" data-start="0" data-duration="3" data-track-index="0">
         <div class="bg navy"></div>
@@ -237,16 +247,10 @@
       <!-- ============ S2 AI tutor ============ -->
       <section id="s-tutor" class="clip" data-scene="tutor" data-start="6" data-duration="4.5" data-track-index="0">
         <div class="bg navy"></div>
-        <div id="tutor-card" class="card will">
-          <div class="card-head"><span class="dot"></span>AI Tutor · General Mathematics</div>
-          <div class="bubble me will" id="tutor-me">How do I find the domain of f(x) = √(x − 3)?</div>
-          <div class="typing will" id="tutor-typing"><i></i><i></i><i></i></div>
-          <div class="bubble ai will" id="tutor-ai"><span id="tutor-ai-text"></span></div>
-          <div id="tutor-source" class="chip will">📘 Source: DepEd SSHS General Mathematics · Module 1</div>
-        </div>
-        <div class="col right">
+        <div id="tutor-win" class="win will" style="left: 140px; top: 170px; width: 1120px; height: 744px"><div class="bar"><i></i><i></i><i></i><span>mathpulse-ai-2026.web.app/chat</span></div></div>
+        <div class="col right" style="width: 480px; bottom: 300px">
           <div class="kicker will" id="tutor-kicker">Feature 01</div>
-          <div class="h1 will" id="tutor-h">Ask anything.</div>
+          <div class="h2 will" id="tutor-h">Ask anything.</div>
           <div class="sub will" id="tutor-s">Answers grounded in the DepEd SSHS modules, retrieved on every question.</div>
         </div>
         <div id="tutor-mascot">
@@ -289,22 +293,8 @@
       <!-- ============ S4 learning path ============ -->
       <section id="s-path" class="clip" data-scene="path" data-start="15" data-duration="4.5" data-track-index="0">
         <div class="bg navy"></div>
-        <svg id="path-svg" viewBox="0 0 1920 1080">
-          <path id="path-line" pathLength="100" d="M170 860 Q 250 620 330 600 T 560 720 T 760 470 T 900 250 T 1040 560" fill="none" stroke="#7274ED" stroke-width="12" stroke-linecap="round" stroke-dasharray="100" />
-        </svg>
-        <div class="node done will" style="left: 122px; top: 812px">1</div>
-        <div class="node done will" style="left: 282px; top: 552px">2</div>
-        <div class="node now will" style="left: 496px; top: 656px">3</div>
-        <div class="node will" style="left: 712px; top: 422px">4</div>
-        <div class="node will" style="left: 852px; top: 202px">5</div>
-        <div class="node will" style="left: 992px; top: 512px">6</div>
-        <div id="lesson-card" class="card will">
-          <div class="card-head"><span class="dot" style="background: #9956DE"></span>Module 3 · Rational Functions</div>
-          <div style="padding: 24px 32px 20px; font-weight: 800; font-size: 34px">Lesson 2 · Graphing with asymptotes</div>
-          <div class="steps"><i class="on will"></i><i class="on will"></i><i class="will" id="step3"></i><i></i><i></i></div>
-          <div style="padding: 0 32px; font-weight: 700; font-size: 24px; color: #71717a">Step 3 of 5 · Try it yourself</div>
-        </div>
-        <div class="col right" style="top: 560px; width: 600px">
+        <div id="path-win" class="win will" style="left: 660px; top: 170px; width: 1120px; height: 744px"><div class="bar"><i></i><i></i><i></i><span>mathpulse-ai-2026.web.app/modules</span></div></div>
+        <div class="col left" style="top: 470px; width: 480px">
           <div class="kicker will" id="path-kicker">Feature 03</div>
           <div class="h2 will" id="path-h">Your learning path.</div>
           <div class="sub will" id="path-s">Grade 11–12 STEM · modules, lessons, step guides.</div>
@@ -323,12 +313,7 @@
           <div class="topic"><span>Trigonometry</span><div class="bar"><i class="will" id="pb4"></i></div></div>
           <div class="topic"><span>Simple &amp; compound interest</span><div class="bar"><i class="will" id="pb5"></i></div></div>
         </div>
-        <div id="quiz-card" class="card will">
-          <div class="card-head"><span class="dot" style="background: #9956DE"></span>Quiz Maker</div>
-          <div class="wizard"><span class="pill will" id="w1">Setup</span><span class="pill will" id="w2">Topics</span><span class="pill will" id="w3">Style</span><span class="pill will" id="w4">Preview</span></div>
-          <div id="quiz-item" class="will">Q1. A function is defined by f(x) = 2x + 1. What is f(−3)?</div>
-          <div id="quiz-ready" class="chip will">✓ 12 items · Functions · Medium · Generated</div>
-        </div>
+        <div id="quiz-win" class="win will" style="left: 900px; top: 120px; width: 880px; height: 594px"><div class="bar"><i></i><i></i><i></i><span>mathpulse-ai-2026.web.app · AI Quiz Maker</span></div></div>
         <div class="col center" style="top: 760px">
           <div class="h2 will" id="prac-h">Practice on demand.</div>
         </div>
@@ -367,14 +352,7 @@
           <div class="item will"><img src="assets/img/quiz_key.png" alt="" />Key · 50</div>
           <div class="item will"><img src="assets/img/quiz_heart.png" alt="" />Heart · 30</div>
         </div>
-        <div id="board" class="card will">
-          <div class="card-head"><span class="dot" style="background: #FFB356"></span>Leaderboard · Section Newton</div>
-          <div class="row will"><span class="rank">1</span>Maria S.<span class="xp">4,320 XP</span></div>
-          <div class="row will"><span class="rank">2</span>Jose R.<span class="xp">4,105 XP</span></div>
-          <div class="row will"><span class="rank">3</span>Andrea L.<span class="xp">3,970 XP</span></div>
-          <div class="row will"><span class="rank">4</span>Paolo D.<span class="xp">3,840 XP</span></div>
-          <div class="row will"><span class="rank">5</span>You<span class="xp">3,790 XP</span></div>
-        </div>
+        <div id="board-win" class="win will" style="left: 1000px; top: 150px; width: 780px; height: 532px"><div class="bar"><i></i><i></i><i></i><span>mathpulse-ai-2026.web.app/leaderboard</span></div></div>
       </section>
 
       <!-- ============ S8a teacher heatmap ============ -->
@@ -397,16 +375,7 @@
       <!-- ============ S8b teacher import ============ -->
       <section id="s-teacher-b" class="clip" data-scene="teacher-import" data-start="31.5" data-duration="3" data-track-index="0">
         <div class="bg slate"></div>
-        <div id="import-card" class="card will">
-          <div class="card-head"><span class="dot" style="background: #7274ED"></span>Import class record</div>
-          <div id="drop"><span id="drop-label" class="will" data-layout-allow-overlap style="font-weight: 700; font-size: 26px; color: #71717a">Drop the DepEd SHS workbook here</span><div id="xls" class="will">XLSX</div></div>
-          <div id="import-bar"><i class="will" id="import-fill"></i></div>
-          <div id="import-done">
-            <span class="will" id="done1">✓ 42 students · 3 sections parsed</span>
-            <span class="will" id="done2">✓ Grades mapped to competencies</span>
-            <span class="will" id="done3">✓ Accounts created</span>
-          </div>
-        </div>
+        <div id="import-win" class="win will" style="left: 900px; top: 190px; width: 880px; height: 594px"><div class="bar"><i></i><i></i><i></i><span>mathpulse-ai-2026.web.app · Data Import</span></div></div>
         <div class="col left">
           <div class="kicker will" id="tb-kicker">For teachers</div>
           <div class="h1 will" id="tb-h">One click. Whole class.</div>
@@ -418,25 +387,7 @@
       <section id="s-admin" class="clip" data-scene="admin" data-start="34.5" data-duration="4.5" data-track-index="0">
         <div class="bg navy"></div>
         <div id="admin-title" class="h2 will">Admin control.</div>
-        <div id="rag" class="card dark panel will">
-          <div class="card-head"><span class="dot" style="background: #a78bfa"></span>RAG manager</div>
-          <div class="doc will"><span class="dot"></span>GenMath Q1 · Modules 1–8</div>
-          <div class="doc will"><span class="dot"></span>Pre-Calculus Q2 · Modules 1–6</div>
-          <div class="doc will"><span class="dot"></span>Basic Calculus · Modules 1–5</div>
-          <div id="vectors" class="will"><span id="vec-n">0</span><small>chunks indexed · bge-small</small></div>
-        </div>
-        <div id="analytics" class="card dark panel will">
-          <div class="card-head"><span class="dot" style="background: #1FA7E1"></span>Analytics · weekly active</div>
-          <div class="bars"><i class="will" style="height: 40%"></i><i class="will" style="height: 55%"></i><i class="will" style="height: 48%"></i><i class="will" style="height: 70%"></i><i class="will" style="height: 82%"></i><i class="will" style="height: 76%"></i><i class="will" style="height: 100%"></i></div>
-        </div>
-        <div id="users" class="card dark panel will">
-          <div class="card-head"><span class="dot" style="background: #75D06A"></span>Users &amp; roles</div>
-          <div class="urow will">Ma'am Bea<span class="pill">teacher</span></div>
-          <div class="urow will">Maria S.<span class="pill">student</span></div>
-          <div class="urow will">Jose R.<span class="pill">student</span></div>
-          <div class="urow will">Registrar<span class="pill">admin</span></div>
-          <div class="urow will">Audit log · 1,204 events<span class="pill">today</span></div>
-        </div>
+        <div id="admin-win" class="win will" style="left: 360px; top: 230px; width: 1200px; height: 794px"><div class="bar"><i></i><i></i><i></i><span id="admin-url">mathpulse-ai-2026.web.app · RAG Manager</span></div></div>
       </section>
 
       <!-- ============ S10 pwa ============ -->
@@ -491,6 +442,20 @@
         <div id="out-cta" class="chip will">Install free · Web &amp; Android</div>
         <div id="flash" class="will"></div>
       </section>
+
+      <!-- ============ real UI captures (untimed wrappers; videos carry their own timing) ============ -->
+      <div id="ui-layer">
+        <div class="vid will" id="vw-chat" style="left: 140px; top: 214px; width: 1120px; height: 700px"><video id="ui-chat" src="assets/ui/chat.mp4" muted playsinline data-start="6" data-duration="4.5" data-media-start="0" data-playback-rate="1.85" data-track-index="5"></video></div>
+        <div class="vid will" id="vw-modules" style="left: 660px; top: 214px; width: 1120px; height: 700px"><video id="ui-modules" src="assets/ui/modules.mp4" muted playsinline data-start="15" data-duration="4.5" data-media-start="0.4" data-playback-rate="1.6" data-track-index="5"></video></div>
+        <div class="vid will" id="vw-quizmaker" style="left: 900px; top: 164px; width: 880px; height: 550px"><video id="ui-quizmaker" src="assets/ui/quizmaker.mp4" muted playsinline data-start="19.5" data-duration="3" data-media-start="0.4" data-track-index="5"></video></div>
+        <div class="vid will" id="vw-leaderboard" style="left: 1000px; top: 194px; width: 780px; height: 488px"><video id="ui-leaderboard" src="assets/ui/leaderboard.mp4" muted playsinline data-start="25.5" data-duration="3" data-media-start="0.5" data-playback-rate="1.5" data-track-index="5"></video></div>
+        <div class="vid will" id="vw-import" style="left: 900px; top: 234px; width: 880px; height: 550px"><video id="ui-import" src="assets/ui/import.mp4" muted playsinline data-start="31.5" data-duration="3" data-media-start="0.5" data-playback-rate="1.8" data-track-index="5"></video></div>
+        <div class="vid will" id="vw-admin" style="left: 360px; top: 274px; width: 1200px; height: 750px">
+          <video id="ui-rag" src="assets/ui/rag.mp4" muted playsinline data-start="34.5" data-duration="1.7" data-media-start="0.3" data-playback-rate="1.5" data-track-index="5"></video>
+          <video id="ui-users" src="assets/ui/users.mp4" muted playsinline data-start="36.2" data-duration="1.5" data-media-start="0.3" data-playback-rate="1.5" data-track-index="5"></video>
+          <video id="ui-analytics" src="assets/ui/analytics.mp4" muted playsinline data-start="37.7" data-duration="1.3" data-media-start="0.3" data-playback-rate="1.5" data-track-index="5"></video>
+        </div>
+      </div>
 
       <!-- ============ audio ============ -->
       <audio id="music" src="assets/music/bed.wav" data-start="0" data-duration="49.5" data-track-index="1" data-volume="0.7"
@@ -634,19 +599,10 @@
       // ================= S2 AI tutor =================
       {
         const s = T.tutor;
-        ft("#tutor-card", { x: -200, opacity: 0, rotation: -3 }, { x: 0, opacity: 1, rotation: 0, duration: 0.55, ease: "expo.out" }, s);
+        ft("#tutor-win, #vw-chat", { x: -200, opacity: 0, rotation: -3 }, { x: 0, opacity: 1, rotation: 0, duration: 0.55, ease: "expo.out" }, s);
         rise("#tutor-kicker", s + 0.1, 0.4);
         rise("#tutor-h", s + 0.18, 0.5, 90);
         rise("#tutor-s", s + 0.3, 0.5);
-        ft("#tutor-me", { x: 120, scale: 0.6, opacity: 0, transformOrigin: "100% 100%" }, { x: 0, scale: 1, opacity: 1, duration: 0.4, ease: "back.out(1.8)" }, s + 0.4);
-        ft("#tutor-typing", { scale: 0.5, opacity: 0, transformOrigin: "0 100%" }, { scale: 1, opacity: 1, duration: 0.3, ease: "back.out(2)" }, s + 0.85);
-        gsap.utils.toArray("#tutor-typing i").forEach((d, i) => {
-          ft(d, { y: 0 }, { y: -10, duration: 0.18, ease: "sine.inOut", yoyo: true, repeat: 3 }, s + 0.95 + i * 0.1);
-        });
-        ft("#tutor-typing", { opacity: 1 }, { opacity: 0, duration: 0.12, ease: "power2.in" }, s + 1.65);
-        ft("#tutor-ai", { scale: 0.6, opacity: 0, transformOrigin: "0 0" }, { scale: 1, opacity: 1, duration: 0.35, ease: "back.out(1.8)" }, s + 1.75);
-        typeText(document.getElementById("tutor-ai-text"), "The radicand must be ≥ 0, so x − 3 ≥ 0 → x ≥ 3. Domain: [3, ∞).", 1.0, s + 1.8);
-        pop("#tutor-source", s + 2.6);
         ft("#tutor-mascot", { y: 260 }, { y: 0, duration: 0.6, ease: "back.out(1.4)" }, s + 0.5);
         mascot("tm", s + 1.1, 3.2);
       }
@@ -678,15 +634,10 @@
       // ================= S4 learning path =================
       {
         const s = T.path;
-        ft("#path-line", { strokeDashoffset: 100 }, { strokeDashoffset: 0, duration: 1.3, ease: "power2.inOut" }, s);
-        gsap.utils.toArray("#s-path .node").forEach((n, i) => {
-          ft(n, { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.45, ease: "back.out(2.4)" }, s + 0.15 + i * 0.2);
-        });
-        ft("#lesson-card", { y: -80, opacity: 0, scale: 0.9 }, { y: 0, opacity: 1, scale: 1, duration: 0.5, ease: "expo.out" }, s + 1.2);
-        growX("#step3", s + 1.6, 1, 0.5);
-        rise("#path-kicker", s + 1.4, 0.4);
-        rise("#path-h", s + 1.5, 0.5, 90);
-        rise("#path-s", s + 1.62, 0.5);
+        ft("#path-win, #vw-modules", { x: 240, opacity: 0, rotation: 2 }, { x: 0, opacity: 1, rotation: 0, duration: 0.55, ease: "expo.out" }, s);
+        rise("#path-kicker", s + 1.2, 0.4);
+        rise("#path-h", s + 1.3, 0.5, 90);
+        rise("#path-s", s + 1.42, 0.5);
         // mascot hops in on an arc: parabolic y + a little rotation, lands with a squash.
         ft("#path-mascot", { x: -480, y: 0, rotation: -8, opacity: 1 }, { x: 0, rotation: 0, duration: 0.7, ease: "power2.out" }, s + 0.3);
         ft("#path-mascot", { y: 0 }, { y: -170, duration: 0.35, ease: "power2.out" }, s + 0.3);
@@ -699,14 +650,8 @@
       {
         const s = T.practice;
         ft("#prac-card", { x: -220, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, s);
-        ft("#quiz-card", { x: 220, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, s + 0.08);
+        ft("#quiz-win, #vw-quizmaker", { x: 220, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, s + 0.08);
         [["#pb1", 0.82], ["#pb2", 0.64], ["#pb3", 0.47], ["#pb4", 0.3], ["#pb5", 0.9]].forEach(([sel, v], i) => growX(sel, s + 0.35 + i * 0.07, v, 0.7));
-        ["#w1", "#w2", "#w3", "#w4"].forEach((sel, i) => {
-          ft(sel, { scale: 1, backgroundColor: "#f4f4f5", color: "#71717a" }, { scale: 1.08, backgroundColor: "#9956DE", color: "#ffffff", duration: 0.18, ease: "power2.out" }, s + 0.4 + i * BEAT);
-          ft(sel, { scale: 1.08 }, { scale: 1, duration: 0.25, ease: "power2.out" }, s + 0.58 + i * BEAT);
-        });
-        ft("#quiz-item", { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, s + 1.5);
-        pop("#quiz-ready", s + 1.9);
         rise("#prac-h", s + 0.5, 0.5, 80);
       }
 
@@ -739,8 +684,7 @@
         for (let i = 0; i < 5; i++) ft("#streak-icon", { scale: 1 }, { scale: 1.1, duration: 0.1, ease: "power2.out", yoyo: true, repeat: 1 }, s + 1.15 + i * BEAT);
         rise("#streak-text", s + 0.8, 0.4, 40);
         gsap.utils.toArray("#shop .item").forEach((it, i) => ft(it, { y: 120, opacity: 0, rotation: -4 }, { y: 0, opacity: 1, rotation: 0, duration: 0.45, ease: "back.out(1.6)" }, s + 1.1 + i * 0.08));
-        ft("#board", { x: 240, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, s + 0.1);
-        gsap.utils.toArray("#board .row").forEach((r, i) => ft(r, { x: 80, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, s + 0.45 + i * 0.09));
+        ft("#board-win, #vw-leaderboard", { x: 240, opacity: 0 }, { x: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, s + 0.1);
       }
 
       // ================= S8a teacher mastery =================
@@ -768,30 +712,23 @@
       // ================= S8b teacher import =================
       {
         const s = T.teacherB;
-        ft("#import-card", { y: 140, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, s);
+        ft("#import-win, #vw-import", { y: 140, opacity: 0 }, { y: 0, opacity: 1, duration: 0.5, ease: "expo.out" }, s);
         rise("#tb-kicker", s + 0.1, 0.4);
         rise("#tb-h", s + 0.18, 0.5, 90);
         rise("#tb-s", s + 0.3, 0.5);
-        // file drops in on an arc, lands with a squash, bar fills, checks pop on the beat.
-        ft("#xls", { x: 0, y: -240, rotation: -14, opacity: 0 }, { x: 0, y: 0, rotation: 0, opacity: 1, duration: 0.6, ease: "power2.in" }, s + 0.35);
-        ft("#drop-label", { opacity: 1 }, { opacity: 0, duration: 0.2, ease: "power2.in" }, s + 0.8);
-        ft("#xls", { scaleX: 1, scaleY: 1, transformOrigin: "50% 100%" }, { scaleX: 1.14, scaleY: 0.86, duration: 0.07, ease: "power2.out" }, s + 0.95);
-        ft("#xls", { scaleX: 1.14, scaleY: 0.86 }, { scaleX: 1, scaleY: 1, duration: 0.4, ease: "elastic.out(1, 0.4)" }, s + 1.02);
-        growX("#import-fill", s + 1.1, 1, 0.8);
-        ["#done1", "#done2", "#done3"].forEach((sel, i) => ft(sel, { x: -40, opacity: 0 }, { x: 0, opacity: 1, duration: 0.35, ease: "power3.out" }, s + 1.75 + i * BEAT));
       }
 
       // ================= S9 admin =================
       {
         const s = T.admin;
         rise("#admin-title", s, 0.5, 70);
-        ["#rag", "#analytics", "#users"].forEach((sel, i) => ft(sel, { y: 200, opacity: 0, rotation: i === 1 ? 0 : i === 0 ? -3 : 3 }, { y: 0, opacity: 1, rotation: 0, duration: 0.55, ease: "expo.out" }, s + 0.2 + i * 0.1));
-        gsap.utils.toArray("#rag .doc").forEach((d, i) => ft(d, { x: -60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, s + 0.7 + i * 0.12));
-        ft("#vectors", { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4, ease: "power3.out" }, s + 1.1);
-        count(document.getElementById("vec-n"), 0, 12480, 1.6, s + 1.15);
-        gsap.utils.toArray("#analytics .bars i").forEach((b, i) => ft(b, { scaleY: 0 }, { scaleY: 1, duration: 0.6, ease: "power3.out" }, s + 0.9 + i * 0.07));
-        gsap.utils.toArray("#users .urow").forEach((u, i) => ft(u, { x: 60, opacity: 0 }, { x: 0, opacity: 1, duration: 0.4, ease: "power3.out" }, s + 1.0 + i * 0.1));
-        ft("#rag", { y: 0 }, { y: -14, duration: 0.3, ease: "sine.inOut", yoyo: true, repeat: 1 }, s + 3.2);
+        ft("#admin-win, #vw-admin", { y: 200, opacity: 0, scale: 0.96 }, { y: 0, opacity: 1, scale: 1, duration: 0.55, ease: "expo.out" }, s + 0.2);
+        // Three captures cut on the bar: RAG manager → User management → Analytics. Each cut gets a tiny push-in.
+        const adminUrl = document.getElementById("admin-url");
+        const labels = ["mathpulse-ai-2026.web.app · RAG Manager", "mathpulse-ai-2026.web.app · User Management", "mathpulse-ai-2026.web.app · Analytics"];
+        const urlProxy = { i: 0 };
+        tl.fromTo(urlProxy, { i: 0 }, { i: 2, duration: 3.0, ease: "none", onUpdate: () => { adminUrl.textContent = labels[Math.min(2, Math.floor(urlProxy.i + 0.001))]; } }, s + 0.2);
+        for (const cut of [1.7, 3.2]) ft("#admin-win, #vw-admin", { scale: 1.025 }, { scale: 1, duration: 0.35, ease: "power3.out" }, s + cut);
       }
 
       // ================= S10 pwa =================
@@ -850,6 +787,11 @@
         ft("#out-logo", { scaleX: 1.1, scaleY: 0.9 }, { scaleX: 1, scaleY: 1, duration: 0.5, ease: "elastic.out(1, 0.4)" }, s + 3.07);
         ft("#out-title", { scale: 1 }, { scale: 1.05, duration: 0.1, ease: "power2.out", yoyo: true, repeat: 1 }, s + 3.0);
         ft("#out-pulse-path", { scaleY: 1, transformOrigin: "50% 37%" }, { scaleY: 1.6, duration: 0.1, ease: "power2.out", yoyo: true, repeat: 1 }, s + 3.0);
+      }
+
+      // Capture wrappers are untimed, so snap them out at each cut (the <video> inside is timed by the runtime).
+      for (const [sel, end] of [["#vw-chat", T.diag], ["#vw-modules", T.practice], ["#vw-quizmaker", T.battle], ["#vw-leaderboard", T.teacherA], ["#vw-import", T.admin], ["#vw-admin", T.pwa]]) {
+        ft(sel, { opacity: 1 }, { opacity: 0, duration: 0.04, ease: "none" }, end - 0.04);
       }
 
       window.__timelines["main"] = tl;

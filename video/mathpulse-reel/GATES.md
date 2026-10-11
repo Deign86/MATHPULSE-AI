@@ -1,6 +1,6 @@
 # GATES — MathPulse AI feature reel (fast-paced motion video)
 
-Mode: solo. Working dir: `video/mathpulse-reel`. Deliverable: `out/mathpulse-reel.mp4` (v3, 2026-10-11 15:52).
+Mode: solo. Working dir: `video/mathpulse-reel`. Deliverable: `out/mathpulse-reel.mp4` (v4, 2026-10-11, 60 fps, real UI captures).
 
 ## Inputs
 - [x] G1 Lasseter's animation principles read and mapped to concrete motion rules used in the composition (document in `MOTION-NOTES.md`).
@@ -44,3 +44,13 @@ Mode: solo. Working dir: `video/mathpulse-reel`. Deliverable: `out/mathpulse-ree
 
 ## Connector delivery
 `compose` / `render_video` are refused from Claude Code by the HyperFrames MCP server (CLI clients must author locally). The MP4 was uploaded as an artifact asset (`/_blob/cc286b88cdbf6528d26ccc5b7c3d6fd0`, 11,976,054 bytes) and passed to `import-claude-motion-from-url`. Refusal, verbatim: "The video URL must come from Claude Motion's Send to." The connector only accepts URLs minted by Claude Motion's own Send-to flow, so the MP4 is delivered as a file plus the artifact page https://claude.ai/artifact/W6GiRz3h53pnTUWtXdNmCr. To get it into HyperFrames Studio: `npx hyperframes open` in `video/mathpulse-reel` (desktop app) or drop `out/mathpulse-reel.mp4` into Studio.
+
+## v4 additions (co-dev review: show the real site UI; user: screen recordings, 60 fps)
+- [x] G12 Real UI screen recordings (not stills) appear in the tutor, learning-path, practice, rewards, import and admin scenes.
+  CHECK: grep -c "assets/ui/" index.html
+  EXPECT: >= 8
+  EVIDENCE: 9 `<video>` captures referenced (chat, modules, quizmaker, leaderboard, import, rag, users, analytics); sources recorded by `scripts/record-ui.mjs` from the local dev build.
+- [x] G13 Output is 60 fps.
+  CHECK: ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of csv=p=0 out/mathpulse-reel.mp4
+  EXPECT: 60/1
+  EVIDENCE: ffprobe r_frame_rate 60/1, 1920x1080, 49.500000 s; master I = -14.0 LUFS, TP -1.4 dBTP (two-pass linear loudnorm).
