@@ -106,8 +106,57 @@ export function stripThinkTags(input: string, options: ThinkTagStripOptions = {}
   return sanitized;
 }
 
+const MATH_LIKE_TAIL_PATTERN = /[\\^_{=]/;
+
+/**
+ * Index where an unfinished math span begins, or -1 when the text ends outside
+ * math. Code spans and escaped dollars are skipped; a lone `$` only counts when
+ * its tail looks like TeX, so currency such as "$500 per week" stays visible.
+ */
+function findUnclosedMathStart(text: string): number {
+  let cursor = 0;
+  while (cursor < text.length) {
+    if (text.startsWith('```', cursor)) {
+      const fenceEnd = text.indexOf('```', cursor + 3);
+      if (fenceEnd === -1) return -1;
+      cursor = fenceEnd + 3;
+    } else if (text[cursor] === '`') {
+      const codeEnd = text.indexOf('`', cursor + 1);
+      const lineEnd = text.indexOf('\n', cursor + 1);
+      cursor = codeEnd !== -1 && (lineEnd === -1 || codeEnd < lineEnd) ? codeEnd + 1 : cursor + 1;
+    } else if (text[cursor] === '\\' && (text[cursor + 1] === '(' || text[cursor + 1] === '[')) {
+      const closer = text[cursor + 1] === '(' ? '\\)' : '\\]';
+      const closeAt = text.indexOf(closer, cursor + 2);
+      if (closeAt === -1) return cursor;
+      cursor = closeAt + 2;
+    } else if (text[cursor] === '\\') {
+      cursor += 2;
+    } else if (text.startsWith('$$', cursor)) {
+      const closeAt = text.indexOf('$$', cursor + 2);
+      if (closeAt === -1) return cursor;
+      cursor = closeAt + 2;
+    } else if (text[cursor] === '$') {
+      const lineEnd = text.indexOf('\n', cursor + 1);
+      const line = text.slice(cursor + 1, lineEnd === -1 ? text.length : lineEnd);
+      const closeAt = line.indexOf('$');
+      if (closeAt !== -1) {
+        cursor += closeAt + 2;
+      } else if (lineEnd === -1 && MATH_LIKE_TAIL_PATTERN.test(line)) {
+        return cursor;
+      } else {
+        cursor += 1;
+      }
+    } else {
+      cursor += 1;
+    }
+  }
+  return -1;
+}
+
 export function formatAssistantResponseForStreaming(input: string): string {
-  return stripThinkTags(input, { streamingSafeTail: true }).trim();
+  const visible = stripThinkTags(input, { streamingSafeTail: true });
+  const unclosedMathStart = findUnclosedMathStart(visible);
+  return (unclosedMathStart === -1 ? visible : visible.slice(0, unclosedMathStart)).trim();
 }
 
 export function formatAssistantResponseForStorage(input: string): string {

@@ -126,4 +126,39 @@ describe('formatAssistantResponseForStreaming', () => {
 
     expect(formatAssistantResponseForStreaming(input)).toBe('');
   });
+
+  it('holds back an unclosed inline math span', () => {
+    expect(formatAssistantResponseForStreaming('Use $\\frac{1}{')).toBe('Use');
+  });
+
+  it('holds back an unclosed display math span', () => {
+    expect(formatAssistantResponseForStreaming('Area is $$A = \\pi')).toBe('Area is');
+    expect(formatAssistantResponseForStreaming('Total:\n\n$$ G = 550 \\times')).toBe('Total:');
+  });
+
+  it('keeps currency amounts visible', () => {
+    expect(formatAssistantResponseForStreaming('It costs $500 per week')).toBe('It costs $500 per week');
+  });
+
+  it('keeps completed spans and holds back only the open one', () => {
+    expect(formatAssistantResponseForStreaming('x is $x^2$ and $\\sqrt{')).toBe('x is $x^2$ and');
+    expect(formatAssistantResponseForStreaming('x is $x^2$ and $$y=1$$ done')).toBe('x is $x^2$ and $$y=1$$ done');
+  });
+
+  it('leaves code untouched', () => {
+    const fenced = '```\n$\\frac\n```';
+    expect(formatAssistantResponseForStreaming(fenced)).toBe(fenced);
+    expect(formatAssistantResponseForStreaming('Run `$x^` now')).toBe('Run `$x^` now');
+    expect(formatAssistantResponseForStreaming('Try ```\n$\\frac')).toBe('Try ```\n$\\frac');
+  });
+
+  it('ignores escaped dollar signs', () => {
+    expect(formatAssistantResponseForStreaming('Pay \\$x^2 now')).toBe('Pay \\$x^2 now');
+  });
+
+  it('holds back unclosed \\( and \\[ spans', () => {
+    expect(formatAssistantResponseForStreaming('Then \\(x^2 +')).toBe('Then');
+    expect(formatAssistantResponseForStreaming('Then \\[x = \\frac{1}')).toBe('Then');
+    expect(formatAssistantResponseForStreaming('Then \\(x\\) and \\[y')).toBe('Then \\(x\\) and');
+  });
 });

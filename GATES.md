@@ -29,5 +29,17 @@ Scope: AI lessons showed `\times` as "imes" and `\text{` as "ext{", plus a red `
 
 - [x] G6: Full backend suite passes
   EVIDENCE: pytest tests -q (excluding e2e): 1144 passed, 2 warnings in 124.74s
+- [x] G7: PDF exports convert LaTeX to Helvetica-safe text (× ÷ ± ², a/b, sqrt(), <=) and leave currency alone
+  CHECK: npx vitest run src/utils/latexToPlainText.test.ts src/utils/pdfExport.test.ts 2>&1
+  EXPECT: /Tests\s+\d+ passed/
+  EVIDENCE: lane run: src/utils + TeacherDashboard Test Files 21 passed, Tests 139 passed
+
+- [x] G8: Streaming chat holds back an unclosed $$, \[, \( or math-looking $ until it closes; currency and code stay visible
+  CHECK: npx vitest run src/utils/chatMessageFormatting.test.ts 2>&1
+  EXPECT: /Tests\s+\d+ passed/
+  EVIDENCE: 27 passed (red run: 4 failed)
+
+- [x] G9: Full frontend suite stable after both changes
+  EVIDENCE: two consecutive full runs: Test Files 156 passed (156), Tests 995 passed (995); tsc clean; oxlint exit 0
 
 Post-deploy check (not a pre-merge gate): reopen the "Represent business transactions…" lesson in the live app and confirm \times, \text and $$ blocks render.

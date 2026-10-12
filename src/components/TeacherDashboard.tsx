@@ -52,6 +52,7 @@ import {
 } from '../services/interventionService';
 import { InterventionStepGuide } from './InterventionStepGuide';
 import { normalizeTopicDisplay } from '../config/subjects';
+import { latexToPlainText } from '../utils/latexToPlainText';
 import { RiskBadge } from './risk/RiskBadge';
 import {
   getClassroomsByTeacher,
@@ -5894,7 +5895,7 @@ const InterventionView: React.FC<{
                             };
 
                             const writeWrapped = (text: string, indent = 0) => {
-                              const lines = doc.splitTextToSize(text, contentW - indent);
+                              const lines = doc.splitTextToSize(latexToPlainText(text), contentW - indent);
                               for (const line of lines) {
                                 checkPage(5);
                                 doc.text(line, margin + indent, y); y += 5;
@@ -6028,7 +6029,7 @@ const InterventionView: React.FC<{
                                 doc.setTextColor(0, 0, 0);
                                 doc.setFontSize(10);
                                 doc.setFont('helvetica', 'bold');
-                                doc.text(normalizeTopicDisplay(step.title), margin + 14, y + 1);
+                                doc.text(latexToPlainText(normalizeTopicDisplay(step.title)), margin + 14, y + 1);
                                 doc.setFont('helvetica', 'normal');
                                 doc.setFontSize(9);
                                 const meta = `${step.type.replace('_', ' ')} • ${step.duration_minutes} min • ${step.difficulty}${step.competency_tag ? ` • ${step.competency_tag}` : ''}`;
@@ -6038,7 +6039,7 @@ const InterventionView: React.FC<{
                                 y += 8;
                                 if (step.description) {
                                   doc.setFontSize(9);
-                                  const descLines = doc.splitTextToSize(step.description, contentW - 16);
+                                  const descLines = doc.splitTextToSize(latexToPlainText(step.description), contentW - 16);
                                   for (const line of descLines.slice(0, 2)) {
                                     y += 5;
                                     checkPage(5);
