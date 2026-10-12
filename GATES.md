@@ -12,7 +12,13 @@ Scope: `scripts/seed-quiz-battle-bank.ts` generates and verifies (Claude Haiku) 
   EXPECT: LINT_CLEAN
   EVIDENCE: oxlint no findings; tsc --noEmit (strict, esnext/bundler) no errors
 
-- [x] G3: Dry run covered all 7 modules via Claude with double verification, kept 25 per module, balanced answer positions, no Firestore access
-  CHECK: node scripts/seed-quiz-battle-bank.ts --dry-run 2>&1
-  EXPECT: /tokens input=\d+ output=\d+/
+- [x] G3: Dry run covered all 7 modules via Claude with double verification, kept 25 per module, balanced answer positions, no Firestore access (no CHECK: re-running regenerates the reviewed JSON and spends API credit)
   EVIDENCE: kept 25 per module (8 easy / 9 medium / 8 hard) after two independent step-by-step verifier passes that must each find exactly the key correct; 175 total; verify drop 0-9%; 153215 in / 156260 out tokens, about 0.94 USD; correct index spread 49/42/42/42
+
+- [x] G4: Hand review of the generated set before writing
+  EVIDENCE: first dry run had 3/19 bad gm-1 items (wrong key P(4); two equivalent correct choices twice) -> verifier tightened; second run hand-checked gm-1 (25), gm-3 (25), sp-1 (25): 75/75 correct with exactly one correct choice
+
+- [x] G5: Students cannot read bank answers; teachers/admins keep read access for the Question Bank panel; writes stay server-only
+  CHECK: cd functions && npm run build && npm test 2>&1
+  EXPECT: /# fail 0/
+  EVIDENCE: # pass 81, # fail 0; rules test fails with the old `allow read: if isSignedIn();` (not ok 9) and passes with `isTeacherOrAdmin()`
