@@ -619,9 +619,10 @@ service cloud.firestore {
       allow write: if false; // Backend-only via firebase-admin
     }
 
-    // ── Quiz Battle Question Bank (legacy) ──
+    // ── Quiz Battle Question Bank ──
+    // Docs carry correctAnswer; matches read it server-side (Admin SDK), so students must not read it.
     match /quizBattleQuestionBank/{docId} {
-      allow read: if isSignedIn();
+      allow read: if isTeacherOrAdmin();
       allow write: if false;
     }
 

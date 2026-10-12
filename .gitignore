@@ -149,3 +149,6 @@ android/.cxx/
 *.keystore
 *.jks
 
+
+# Quiz Battle seed output
+scripts/output/
