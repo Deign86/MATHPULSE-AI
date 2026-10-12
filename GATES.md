@@ -79,3 +79,18 @@ Scope: fix the bugs from the codev's phone screenshots and the onboarding brief.
   CHECK: npx vitest run src/components/QuizExperience src/features/notifications 2>&1 && echo VITEST_OK
   EXPECT: /Tests\s+\d+ passed[\s\S]*VITEST_OK/
   EVIDENCE: Test Files  17 passed (17) | Tests  103 passed (103) | VITEST_OK
+
+## Guide-offer backfill for accounts that never signed in
+
+- [x] G17: The backfill flags only never-signed-in accounts whose existing profile has no guideOfferPending, skips signed-in, answered, internal @mathpulse.ai and disabled accounts, writes nothing without --apply, leaves a profile changed mid-run alone, and stops on unexpected write errors
+  CHECK: node --test scripts/backfill-guide-offer.test.ts 2>&1
+  EXPECT: /# pass [1-9]\d*\s+# fail 0/
+  EVIDENCE: # todo 0 | # duration_ms 473.0563
+
+- [x] G18: The backfill script and its test pass oxlint (anti-slop) and eslint
+  CHECK: npx oxlint --quiet scripts/backfill-guide-offer.ts scripts/backfill-guide-offer.test.ts 2>&1 && npx eslint scripts/backfill-guide-offer.ts scripts/backfill-guide-offer.test.ts 2>&1 && echo SCRIPT_LINT_CLEAN
+  EXPECT: SCRIPT_LINT_CLEAN
+  EVIDENCE: (Use `node --trace-deprecation ...` to show where the warning was created) | SCRIPT_LINT_CLEAN
+
+- [x] G19: A read-only dry run against production completes and reports what --apply would change
+  EVIDENCE: 2026-10-12 `node scripts/backfill-guide-offer.ts` (exit 0): "scanned=41 signed_in=40 skipped_internal_or_disabled=0 missing_profile=1 already_decided=0 would_offer=0 (none) changed_during_run=0 mode=dry-run". Nothing to apply today; the account without a profile gets the flag from createUserProfile at its first login.
