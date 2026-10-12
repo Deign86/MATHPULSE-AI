@@ -90,7 +90,8 @@ _MODEL_PROFILES: dict[str, dict[str, str]] = {
 # ── Runtime Override Store ────────────────────────────────────────────────────
 # Mutated at runtime by the admin panel via /api/admin/model-config.
 # Priority: above env vars, below INFERENCE_ENFORCE_LOCK_MODEL.
-# Persisted to Firestore so backend cold-restarts restore the last admin-set config.
+# Persisted to Firestore. main.py's lifespan restores it once Firebase Admin is initialized:
+# the default Firebase app does not exist yet when this module is imported.
 
 _RUNTIME_OVERRIDES: dict[str, str] = {}
 _RUNTIME_PROFILE: str = ""
@@ -115,7 +116,8 @@ def _save_runtime_config_to_firestore() -> None:
         LOGGER.warning("Could not persist model config to Firestore: %s", e)
 
 
-def _load_runtime_config_from_firestore() -> None:
+def load_runtime_config_from_firestore() -> None:
+    """Apply the admin model config saved in Firestore; a missing Firebase app or failed read is logged, not raised."""
     try:
         from firebase_admin import firestore as fs
 
@@ -156,7 +158,6 @@ def _apply_model_profile() -> None:
 
 
 _apply_model_profile()
-_load_runtime_config_from_firestore()
 
 
 def set_runtime_model_profile(profile_name: str) -> None:
