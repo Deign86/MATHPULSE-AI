@@ -12,6 +12,7 @@ from rag.curriculum_rag import (
     retrieve_curriculum_context,
     summarize_retrieval_confidence,
 )
+from services.ai_client import CHAT_MODEL, REASONER_MODEL
 
 
 def _mock_vectorstore_components(collection_mock, embedder_mock):
@@ -208,12 +209,12 @@ class TestBuildLessonQuery:
 
 class TestIsSequentialModel:
     def test_sequential_for_reasoner(self):
-        with patch.dict(os.environ, {"INFERENCE_MODEL_ID": "deepseek-v4-pro"}):
+        with patch.dict(os.environ, {"INFERENCE_MODEL_ID": REASONER_MODEL}):
             from services.inference_client import is_sequential_model
             assert is_sequential_model() is True
 
     def test_not_sequential_for_chat(self):
-        with patch.dict(os.environ, {"INFERENCE_MODEL_ID": "deepseek-flash"}):
+        with patch.dict(os.environ, {"INFERENCE_MODEL_ID": CHAT_MODEL}):
             from services.inference_client import is_sequential_model
             assert is_sequential_model() is False
 

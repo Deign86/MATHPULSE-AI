@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal, Optional, TypedDict
 
-from openai import APIConnectionError, APIError, APITimeoutError
+from services.ai_client import APIConnectionError, APIError, APITimeoutError
 
 try:
     from dotenv import load_dotenv
@@ -36,13 +36,13 @@ logger = logging.getLogger("mathpulse.startup")
 AuthProbeStatus = Literal["ok", "auth_failed", "connection_failed", "unchecked"]
 
 
-class DeepSeekAuthState(TypedDict):
+class AnthropicAuthState(TypedDict):
     status: AuthProbeStatus
     key_suffix: str
     checked_at: Optional[str]
 
 
-cached_deepseek_auth_state: DeepSeekAuthState = {
+cached_anthropic_auth_state: AnthropicAuthState = {
     "status": "unchecked",
     "key_suffix": "****",
     "checked_at": None,
@@ -55,33 +55,33 @@ class StartupError(Exception):
 
 
 def compute_key_fingerprint(api_key: Optional[str] = None) -> str:
-    configured_key = api_key if api_key is not None else os.getenv("DEEPSEEK_API_KEY", "")
+    configured_key = api_key if api_key is not None else os.getenv("ANTHROPIC_API_KEY", "")
     return f"****{configured_key[-4:]}" if configured_key else "****"
 
 
-def _record_deepseek_auth_state(status: AuthProbeStatus, key_suffix: str) -> DeepSeekAuthState:
-    global cached_deepseek_auth_state
-    cached_deepseek_auth_state = {
+def _record_anthropic_auth_state(status: AuthProbeStatus, key_suffix: str) -> AnthropicAuthState:
+    global cached_anthropic_auth_state
+    cached_anthropic_auth_state = {
         "status": status,
         "key_suffix": key_suffix,
         "checked_at": datetime.now(timezone.utc).isoformat(),
     }
-    return cached_deepseek_auth_state
+    return cached_anthropic_auth_state
 
 
-def validate_deepseek_auth(timeout_s: float = 5.0) -> DeepSeekAuthState:
-    api_key = os.getenv("DEEPSEEK_API_KEY", "")
+def validate_anthropic_auth(timeout_s: float = 5.0) -> AnthropicAuthState:
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
     key_suffix = compute_key_fingerprint(api_key)
     if not api_key:
-        logger.warning("DeepSeek startup auth probe: status=unchecked key=%s", key_suffix)
-        return _record_deepseek_auth_state("unchecked", key_suffix)
+        logger.warning("Anthropic startup auth probe: status=unchecked key=%s", key_suffix)
+        return _record_anthropic_auth_state("unchecked", key_suffix)
 
     try:
-        from services import inference_client
+        from services.ai_client import get_anthropic_client
 
         executor = ThreadPoolExecutor(max_workers=1)
         probe_future = executor.submit(
-            lambda: inference_client.get_deepseek_client().models.list()
+            lambda: get_anthropic_client().models.list(limit=1, timeout=timeout_s)
         )
         try:
             probe_future.result(timeout=max(timeout_s, 0.0))
@@ -90,45 +90,45 @@ def validate_deepseek_auth(timeout_s: float = 5.0) -> DeepSeekAuthState:
     except APIError as exc:
         if getattr(exc, "status_code", None) in (401, 403):
             logger.warning(
-                "DeepSeek startup auth probe: status=auth_failed key=%s",
+                "Anthropic startup auth probe: status=auth_failed key=%s",
                 key_suffix,
             )
-            return _record_deepseek_auth_state("auth_failed", key_suffix)
+            return _record_anthropic_auth_state("auth_failed", key_suffix)
         logger.warning(
-            "DeepSeek startup auth probe: status=connection_failed key=%s",
+            "Anthropic startup auth probe: status=connection_failed key=%s",
             key_suffix,
         )
-        return _record_deepseek_auth_state("connection_failed", key_suffix)
+        return _record_anthropic_auth_state("connection_failed", key_suffix)
     except (APIConnectionError, APITimeoutError, FutureTimeoutError, TimeoutError, OSError):
         logger.warning(
-            "DeepSeek startup auth probe: status=connection_failed key=%s",
+            "Anthropic startup auth probe: status=connection_failed key=%s",
             key_suffix,
         )
-        return _record_deepseek_auth_state("connection_failed", key_suffix)
+        return _record_anthropic_auth_state("connection_failed", key_suffix)
     except ValueError:
-        logger.warning("DeepSeek startup auth probe: status=unchecked key=%s", key_suffix)
-        return _record_deepseek_auth_state("unchecked", key_suffix)
+        logger.warning("Anthropic startup auth probe: status=unchecked key=%s", key_suffix)
+        return _record_anthropic_auth_state("unchecked", key_suffix)
     except Exception as exc:
         if getattr(exc, "status_code", None) in (401, 403) or type(exc).__name__ == "InferenceAuthError":
             logger.warning(
-                "DeepSeek startup auth probe: status=auth_failed key=%s",
+                "Anthropic startup auth probe: status=auth_failed key=%s",
                 key_suffix,
             )
-            return _record_deepseek_auth_state("auth_failed", key_suffix)
+            return _record_anthropic_auth_state("auth_failed", key_suffix)
         if type(exc).__name__ == "InferenceConnectionError":
             logger.warning(
-                "DeepSeek startup auth probe: status=connection_failed key=%s",
+                "Anthropic startup auth probe: status=connection_failed key=%s",
                 key_suffix,
             )
-            return _record_deepseek_auth_state("connection_failed", key_suffix)
+            return _record_anthropic_auth_state("connection_failed", key_suffix)
         logger.warning(
-            "DeepSeek startup auth probe: status=connection_failed key=%s",
+            "Anthropic startup auth probe: status=connection_failed key=%s",
             key_suffix,
         )
-        return _record_deepseek_auth_state("connection_failed", key_suffix)
+        return _record_anthropic_auth_state("connection_failed", key_suffix)
 
-    logger.info("DeepSeek startup auth probe: status=ok key=%s", key_suffix)
-    return _record_deepseek_auth_state("ok", key_suffix)
+    logger.info("Anthropic startup auth probe: status=ok key=%s", key_suffix)
+    return _record_anthropic_auth_state("ok", key_suffix)
 
 
 def validate_imports() -> None:
@@ -164,8 +164,8 @@ def validate_imports() -> None:
             logger.warning("   ⚠ firebase_admin not available (OK if Firebase not needed)")
         
         # ML & inference
-        from services.ai_client import get_deepseek_client, CHAT_MODEL, REASONER_MODEL  # noqa
-        logger.info("   ✓ DeepSeek AI client imports OK")
+        from services.ai_client import get_anthropic_client, CHAT_MODEL, REASONER_MODEL  # noqa
+        logger.info("   ✓ Claude AI client imports OK")
         
         logger.info("✅ All critical imports validated")
     except ImportError as e:
@@ -188,29 +188,29 @@ def validate_environment() -> None:
     """Verify required environment variables are set."""
     logger.info("🔍 Validating environment variables...")
     
-    # CRITICAL: DEEPSEEK_API_KEY for inference
-    ds_api_key = os.environ.get("DEEPSEEK_API_KEY")
-    if not ds_api_key:
+    # CRITICAL: ANTHROPIC_API_KEY for inference
+    if not os.environ.get("ANTHROPIC_API_KEY"):
         logger.warning(
-            "⚠  WARNING: DEEPSEEK_API_KEY is not set as an environment variable.\n"
-            "   AI inference will fail without this token.\n"
-            "   Use: Set DEEPSEEK_API_KEY in your .env or space secrets."
+            "⚠  WARNING: ANTHROPIC_API_KEY is not set as an environment variable.\n"
+            "   AI inference will fail without this key.\n"
+            "   Use: Set ANTHROPIC_API_KEY in your .env or space secrets."
         )
     else:
-        logger.info("   ✓ DEEPSEEK_API_KEY is set")
-    
-    # Check inference provider config
-    inference_provider = os.getenv("INFERENCE_PROVIDER", "deepseek")
-    logger.info(f"   ✓ INFERENCE_PROVIDER: {inference_provider}")
-    
-    # Check model IDs
-    chat_model = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or "deepseek-flash"
+        logger.info("   ✓ ANTHROPIC_API_KEY is set")
+
+    # Check model IDs; the inference client ignores a leftover non-Claude id
+    from services.ai_client import CHAT_MODEL, current_model_id  # noqa
+    chat_model = (
+        current_model_id(os.getenv("INFERENCE_CHAT_MODEL_ID", ""))
+        or current_model_id(os.getenv("INFERENCE_MODEL_ID", ""))
+        or CHAT_MODEL
+    )
     logger.info(f"   ✓ Chat model configured: {chat_model}")
 
     chat_strict = os.getenv("INFERENCE_CHAT_STRICT_MODEL_ONLY", "true").strip().lower() in {"1", "true", "yes", "on"}
     chat_hard_trigger = os.getenv("INFERENCE_CHAT_HARD_TRIGGER_ENABLED", "false").strip().lower() in {"1", "true", "yes", "on"}
     enforce_lock_model = os.getenv("INFERENCE_ENFORCE_LOCK_MODEL", "true").strip().lower() in {"1", "true", "yes", "on"}
-    lock_model_id = os.getenv("INFERENCE_LOCK_MODEL_ID", "deepseek-flash").strip() or "deepseek-flash"
+    lock_model_id = current_model_id(os.getenv("INFERENCE_LOCK_MODEL_ID", "")) or CHAT_MODEL
     logger.info(f"   ✓ INFERENCE_ENFORCE_LOCK_MODEL: {enforce_lock_model}")
     logger.info(f"   ✓ INFERENCE_LOCK_MODEL_ID: {lock_model_id}")
     model_profile = os.getenv("MODEL_PROFILE", "").strip().lower()
@@ -374,9 +374,6 @@ def validate_inference_client_config() -> None:
         if not hasattr(client, 'task_model_map'):
             raise StartupError("❌ InferenceClient missing task_model_map attribute")
         
-        if not hasattr(client, 'task_provider_map'):
-            raise StartupError("❌ InferenceClient missing task_provider_map attribute")
-        
         # Check that required tasks are mapped
         required_tasks = ['chat', 'verify_solution', 'lesson_generation', 'quiz_generation']
         for task in required_tasks:
@@ -385,9 +382,7 @@ def validate_inference_client_config() -> None:
                     f"❌ Task '{task}' not in task_model_map.\n"
                     f"   Check config/models.yaml\n"
                 )
-            model = client.task_model_map[task]
-            provider = client.task_provider_map.get(task, 'unknown')
-            logger.info(f"   ✓ {task}: {model} ({provider})")
+            logger.info(f"   ✓ {task}: {client.task_model_map[task]}")
 
         chat_model = client.task_model_map.get("chat", client.default_model)
         chat_chain = client._model_chain_for_task("chat", chat_model)

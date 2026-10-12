@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
+from services.ai_client import SUPPORTED_MODELS
 from services.inference_client import (
     set_runtime_model_profile, set_runtime_model_override,
     reset_runtime_overrides, get_current_runtime_config, _MODEL_PROFILES,
@@ -37,9 +38,9 @@ def get_model_config(_admin=Depends(require_admin)):
         **get_current_runtime_config(),
         "availableProfiles": list(_MODEL_PROFILES.keys()),
         "profileDescriptions": {
-            "dev":    "deepseek-flash everywhere - fast, $0.30/M input",
-            "budget": "deepseek-flash for all tasks - minimal cost",
-            "prod":   "deepseek-v4-pro for RAG, deepseek-flash for chat - best quality",
+            "dev":    "claude-haiku-5-5 everywhere - fast, $0.10/M input, $0.50/M output",
+            "budget": "claude-haiku-5-5 for all tasks - minimal cost",
+            "prod":   "claude-opus-5-5 for RAG lessons only ($4/M input, $20/M output), claude-haiku-5-5 for everything else - best lesson quality",
         },
     }
 
@@ -57,6 +58,11 @@ def switch_profile(req: ProfileSwitchRequest, _admin=Depends(require_admin)):
 def set_override(req: OverrideRequest, _admin=Depends(require_admin)):
     if req.key not in ALLOWED_OVERRIDE_KEYS:
         raise HTTPException(status_code=400, detail=f"Key '{req.key}' is not overridable.")
+    if req.value not in SUPPORTED_MODELS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Model '{req.value}' is not supported. Use one of: {', '.join(sorted(SUPPORTED_MODELS))}.",
+        )
     set_runtime_model_override(req.key, req.value)
     return {"success": True, "applied": get_current_runtime_config()}
 

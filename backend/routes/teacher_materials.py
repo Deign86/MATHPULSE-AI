@@ -4,7 +4,7 @@ Teacher-uploaded course material ingestion router.
 POST /api/teacher-materials/upload
 - Parses PDF/DOCX/TXT files
 - Retrieves DepEd RAG context
-- Generates a teacher_uploaded curriculum module via DeepSeek
+- Generates a teacher_uploaded curriculum module via Claude
 - Stores module in Firestore `modules` collection
 - Indexes chunks in teacher-materials vector store
 """
@@ -18,11 +18,15 @@ import logging
 import os
 import re
 import uuid
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Request
 from fastapi import File, Form, UploadFile
 from pydantic import BaseModel, Field
+
+from services.ai_client import CHAT_MODEL
+from services.llm_json import extract_dict_list, extract_json_value
 
 logger = logging.getLogger("mathpulse.teacher_materials")
 
@@ -207,14 +211,14 @@ async def _generate_teacher_module(
     rag_results: str,
     metadata: Dict[str, Any],
 ) -> Dict[str, Any]:
-    """Async wrapper delegating to _generate_module_via_deepseek.
+    """Async wrapper delegating to _generate_module_via_claude.
 
     Exists as a stable patch target for tests and future override points.
     """
-    return await _generate_module_via_deepseek(course_material_text, rag_results, metadata)
+    return await _generate_module_via_claude(course_material_text, rag_results, metadata)
 
 
-# ─── DeepSeek Module Generation ───────────────────────────────────────────────
+# ─── Claude Module Generation ─────────────────────────────────────────────────
 
 
 TEACHER_MATERIAL_MODULE_SYSTEM_PROMPT = """You are the curriculum ingestion and lesson-design assistant inside MathPulse AI, an AI-powered math education platform aligned with the Philippine DepEd curriculum. A teacher has uploaded a lesson file (PDF or DOCX).
@@ -242,13 +246,13 @@ Rules:
 """
 
 
-async def _generate_module_via_deepseek(
+async def _generate_module_via_claude(
     course_material_text: str,
     rag_results: str,
     metadata: Dict[str, Any],
 ) -> Dict[str, Any]:
     """
-    Call DeepSeek to generate a teacher-uploaded module JSON.
+    Call Claude to generate a teacher-uploaded module JSON.
     Returns the parsed JSON dict or raises an exception.
     """
     # Build the user prompt
@@ -307,7 +311,7 @@ Generate a teacher_uploaded module JSON following this exact schema:
   ],
   "aiSafety": {{
     "requiresGrounding": true,
-    "allowedModels": ["deepseek-flash"],
+    "allowedModels": ["{CHAT_MODEL}"],
     "groundingSources": ["teacher_file", "deped_rag"]
   }}
 }}
@@ -320,12 +324,11 @@ Respond with JSON only, no markdown or extra text."""
     ]
 
     try:
-        # Call DeepSeek via inference_client (test-friendly patch target)
+        # Call Claude via inference_client (test-friendly patch target)
         from services.inference_client import call_hf_chat_async  # type: ignore[import-not-found]
         raw_response = await call_hf_chat_async(
             messages=messages,
             max_tokens=4096,
-            temperature=0.3,
             task_type="chat",
         )
 
@@ -333,16 +336,16 @@ Respond with JSON only, no markdown or extra text."""
         json_start = raw_response.find("{")
         json_end = raw_response.rfind("}") + 1
         if json_start < 0 or json_end <= json_start:
-            raise ValueError(f"Could not find JSON in DeepSeek response: {raw_response[:200]}")
+            raise ValueError(f"Could not find JSON in AI response: {raw_response[:200]}")
 
         module_json = json.loads(raw_response[json_start:json_end])
         return module_json
 
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse DeepSeek module JSON: {e}\nRaw: {raw_response[:500]}")
+        logger.error(f"Failed to parse Claude module JSON: {e}\nRaw: {raw_response[:500]}")
         raise
     except Exception as e:
-        logger.error(f"DeepSeek module generation failed: {e}")
+        logger.error(f"Claude module generation failed: {e}")
         raise
 
 
@@ -449,7 +452,7 @@ async def upload_teacher_material(
     Steps:
     1. Parse file (extract text + headings)
     2. Retrieve DepEd RAG context
-    3. Generate module JSON via DeepSeek
+    3. Generate module JSON via Claude
     4. Persist module to Firestore `modules` collection
     5. Index chunks in teacher-materials vector store
     """
@@ -525,7 +528,7 @@ async def upload_teacher_material(
             "fileType": file_type,
         }
 
-        # ── Generate module via DeepSeek ─────────────────────────────────────
+        # ── Generate module via Claude ───────────────────────────────────────
         try:
             module_data = await _generate_teacher_module(
                 course_material_text=extracted_text,
@@ -585,7 +588,6 @@ async def upload_teacher_material(
 
 # ─── ENDPOINT 2: POST /api/teacher-materials/{moduleId}/generate-quiz ──────
 
-import json as _json
 
 @router.post("/{moduleId}/generate-quiz")
 async def generate_module_quiz(request: Request, moduleId: str):
@@ -615,7 +617,8 @@ async def generate_module_quiz(request: Request, moduleId: str):
     module_text = f"Title: {title}\nGrade: {grade_level}\nSubject: {subject}\nQuarter: {quarter}\n\n"
     module_text += "Learning Objectives:\n" + "\n".join(objectives[:5]) + "\n\n" if objectives else ""
     for s in sections[:3]:
-        module_text += f"Section: {s.get('title','')}\n{s.get('content','')[:800]}\n\n"
+        # Generated modules keep the section text under `body`; `content` is the older field.
+        module_text += f"Section: {s.get('title','')}\n{(s.get('body') or s.get('content') or '')[:800]}\n\n"
 
     prompt = (
         "You are a DepEd math teacher. Based on the following curriculum module content, "
@@ -627,15 +630,18 @@ async def generate_module_quiz(request: Request, moduleId: str):
     )
 
     try:
+        from services.inference_client import call_hf_chat_async  # type: ignore[import-not-found]
         response_text = await call_hf_chat_async(
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=2000, temperature=0.7, task_type="quiz_generation"
+            max_tokens=4096, task_type="quiz_generation"
         )
-        parsed = _json.loads(response_text)
-        questions = parsed.get("questions", [])
+        questions = extract_dict_list(extract_json_value(response_text, preferred=(dict, list)))
     except Exception as e:
         logger.error(f"Quiz generation failed: {e}")
         questions = []
+
+    if not questions:
+        raise HTTPException(status_code=502, detail="The AI did not return any quiz questions. Please try again.")
 
     quiz_id = uuid.uuid4().hex
     quiz_doc = {
@@ -646,7 +652,7 @@ async def generate_module_quiz(request: Request, moduleId: str):
         "subject": subject,
         "quarter": quarter,
         "questions": questions,
-        "createdAt": datetime.utcnow().isoformat(),
+        "createdAt": datetime.now(timezone.utc).isoformat(),
         "source": "teacher_module",
     }
 

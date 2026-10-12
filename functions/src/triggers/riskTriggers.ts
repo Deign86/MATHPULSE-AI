@@ -212,7 +212,7 @@ async function generateTutorCheckIn(
 
   let message = messages[status];
 
-  // Try DeepSeek-powered AI tutor check-in via backend API
+  // Try Claude-powered AI tutor check-in via backend API
   try {
     const backendUrl = process.env.BACKEND_URL || "https://deign86-mathpulse-api-v3test.hf.space";
     const topFactors = studentData?.topFactors || studentData?.struggles || [];

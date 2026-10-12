@@ -11,7 +11,6 @@ interface ModelConfigData {
   provider?: string;
   endpoint?: string;
   maxTokens?: number;
-  temperature?: number;
   contextWindow?: number;
   fineTuneStatus?: string;
   lastUpdated?: { toDate?: () => Date } | Date;
@@ -128,10 +127,6 @@ export function ModelConfigPanel() {
         <InfoCard
           label="Max Tokens"
           value={formatValue(config?.maxTokens)}
-        />
-        <InfoCard
-          label="Temperature"
-          value={formatValue(config?.temperature)}
         />
         <InfoCard
           label="Context Window"

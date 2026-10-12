@@ -1,116 +1,77 @@
 # backend/tests/test_cost_calculator.py
-"""Tests for services/cost_calculator.py covering promo active, promo expired, Flash, and edge cases."""
+"""Tests for services/cost_calculator.py covering each Claude model's rates and unknown models."""
 import sys
 import os
-from unittest.mock import patch
-from datetime import datetime, timezone
 
 import pytest
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from services.cost_calculator import calculate_feature_cost, calculate_full_price_cost
-from config.ai_pricing import get_active_pricing, DEEPSEEK_PRICING
+from services.cost_calculator import calculate_feature_cost
+from config.ai_pricing import CLAUDE_PRICING, get_full_pricing
 
 
-ACTIVE_PROMO_TIME = datetime(2026, 5, 1, 0, 0, 0, tzinfo=timezone.utc)
+# model -> (cache read, uncached input, output) in USD per 1M tokens
+RATES_PER_MILLION = {
+    "claude-opus-5-5": (0.20, 4.00, 20.00),
+    "claude-sonnet-5-5": (0.20, 2.00, 10.00),
+    "claude-haiku-5-5": (0.01, 0.10, 0.50),
+}
 
 
-@pytest.fixture
-def active_promo_datetime():
-    """Keep promotional-price assertions independent of the wall clock."""
-    with patch("config.ai_pricing.datetime") as mock_dt:
-        mock_dt.now.return_value = ACTIVE_PROMO_TIME
-        mock_dt.side_effect = datetime
-        yield mock_dt
+@pytest.mark.parametrize("model_id", RATES_PER_MILLION)
+class TestCalculateFeatureCost:
+    """One million tokens of each kind costs exactly that model's per-million rates."""
 
-
-class TestCalculateFeatureCostPromoActive:
-    """Tests when promotional pricing is active (before 2026-05-31)."""
-
-    def test_basic_calculation(self, active_promo_datetime):
-        result = calculate_feature_cost(
-            "deepseek-v4-pro",
+    def test_basic_calculation(self, model_id):
+        cache_hit_rate, cache_miss_rate, output_rate = RATES_PER_MILLION[model_id]
+        cost = calculate_feature_cost(
+            model_id,
             cache_hit_tokens=1_000_000,
             cache_miss_tokens=1_000_000,
             output_tokens=1_000_000,
         )
-        assert result["is_promotional"] is True
-        assert result["cache_hit_cost"] == round(0.003625, 6)
-        assert result["cache_miss_cost"] == round(0.435, 6)
-        assert result["output_cost"] == round(0.87, 6)
-        expected_total = 0.003625 + 0.435 + 0.87
-        assert abs(result["total_usd"] - expected_total) < 1e-5
+        assert cost["cache_hit_cost"] == round(cache_hit_rate, 6)
+        assert cost["cache_miss_cost"] == round(cache_miss_rate, 6)
+        assert cost["output_cost"] == round(output_rate, 6)
+        assert abs(cost["total_usd"] - (cache_hit_rate + cache_miss_rate + output_rate)) < 1e-5
 
-    def test_zero_tokens(self, active_promo_datetime):
-        result = calculate_feature_cost("deepseek-v4-pro", 0, 0, 0)
-        assert result["total_usd"] == 0.0
-        assert result["cache_hit_cost"] == 0.0
-        assert result["cache_miss_cost"] == 0.0
-        assert result["output_cost"] == 0.0
-        assert result["is_promotional"] is True
+    def test_zero_tokens(self, model_id):
+        cost = calculate_feature_cost(model_id, 0, 0, 0)
+        assert cost["total_usd"] == 0.0
+        assert cost["cache_hit_cost"] == 0.0
+        assert cost["cache_miss_cost"] == 0.0
+        assert cost["output_cost"] == 0.0
 
-    def test_only_cache_hits(self, active_promo_datetime):
-        result = calculate_feature_cost("deepseek-v4-pro", 5_000_000, 0, 0)
-        expected = (5_000_000 / 1_000_000) * 0.003625
-        assert abs(result["total_usd"] - expected) < 1e-5
+    def test_only_cache_hits(self, model_id):
+        cache_hit_rate = RATES_PER_MILLION[model_id][0]
+        cost = calculate_feature_cost(model_id, 5_000_000, 0, 0)
+        assert abs(cost["total_usd"] - 5 * cache_hit_rate) < 1e-5
 
 
-class TestCalculateFeatureCostPromoExpired:
-    """Tests when promotional pricing has expired."""
-
-    def test_full_price_after_expiry(self):
-        expired_time = datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
-        with patch("config.ai_pricing.datetime") as mock_dt:
-            mock_dt.now.return_value = expired_time
-            mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
-            pricing = get_active_pricing("deepseek-v4-pro")
-            assert pricing["is_promotional"] is False
-
-
-class TestCalculateFeatureCostFlash:
-    """Tests for deepseek-flash (no promotional pricing)."""
-
-    def test_flash_pricing(self):
-        result = calculate_feature_cost(
-            "deepseek-flash",
-            cache_hit_tokens=1_000_000,
-            cache_miss_tokens=1_000_000,
-            output_tokens=1_000_000,
+class TestCalculateFeatureCostMixedUsage:
+    def test_opus_request_with_partial_cache_hit(self):
+        cost = calculate_feature_cost(
+            "claude-opus-5-5", cache_hit_tokens=2_000, cache_miss_tokens=10_000, output_tokens=1_500
         )
-        assert result["is_promotional"] is False
-        assert result["cache_hit_cost"] == round(0.006, 6)
-        assert result["cache_miss_cost"] == round(0.3, 6)
-        assert result["output_cost"] == round(1.2, 6)
-
-    def test_flash_zero_tokens(self):
-        result = calculate_feature_cost("deepseek-flash", 0, 0, 0)
-        assert result["total_usd"] == 0.0
+        assert cost["total_usd"] == round(0.0004 + 0.04 + 0.03, 6)
 
 
-class TestCalculateFullPriceCost:
-    """Tests for calculate_full_price_cost."""
+class TestPricingTable:
+    def test_five_minute_cache_write_rates(self):
+        assert get_full_pricing("claude-opus-5-5")["cache_write_5m_per_1m"] == 5.00
+        assert get_full_pricing("claude-sonnet-5-5")["cache_write_5m_per_1m"] == 2.50
+        assert get_full_pricing("claude-haiku-5-5")["cache_write_5m_per_1m"] == 0.125
 
-    def test_full_price_v4_pro(self):
-        cost = calculate_full_price_cost("deepseek-v4-pro", 1_000_000, 1_000_000, 1_000_000)
-        expected = 0.044 + 1.32 + 3.96
-        assert abs(cost - expected) < 1e-5
-
-    def test_full_price_flash(self):
-        cost = calculate_full_price_cost("deepseek-flash", 1_000_000, 1_000_000, 1_000_000)
-        expected = 0.006 + 0.3 + 1.2
-        assert abs(cost - expected) < 1e-5
+    def test_returned_pricing_is_a_copy(self):
+        pricing = get_full_pricing("claude-haiku-5-5")
+        pricing["output_per_1m"] = 999
+        assert CLAUDE_PRICING["claude-haiku-5-5"]["output_per_1m"] == 0.50
 
 
 class TestUnknownModel:
     """Tests for unknown model IDs."""
 
     def test_unknown_model_raises(self):
-        import pytest
         with pytest.raises(ValueError, match="Unknown model"):
             calculate_feature_cost("nonexistent-model", 100, 100, 100)
-
-    def test_unknown_model_full_price_raises(self):
-        import pytest
-        with pytest.raises(ValueError, match="Unknown model"):
-            calculate_full_price_cost("nonexistent-model", 100, 100, 100)

@@ -1,7 +1,7 @@
 """A slow RAG lesson must not block the server's event loop.
 
 rag_lesson used to call the synchronous retrieval and inference client directly inside an async
-handler, so a 15-18 s DeepSeek call froze every other request (health checks, learning paths,
+handler, so a 15-18 s Claude call froze every other request (health checks, learning paths,
 lists) until it returned.
 """
 from __future__ import annotations
@@ -14,10 +14,11 @@ from unittest.mock import patch
 
 import httpx
 
-os.environ["DEEPSEEK_API_KEY"] = "mock-key-for-testing"
+os.environ["ANTHROPIC_API_KEY"] = "mock-key-for-testing"
 
 import main as main_module
 from main import app
+from services.ai_client import REASONER_MODEL
 
 BLOCKING_SECONDS = 1.0
 CHUNKS = [
@@ -93,7 +94,7 @@ def test_health_answers_while_a_rag_lesson_is_blocked_in_retrieval_and_inference
     ), patch("routes.rag_routes.retrieve_lesson_pdf_context", _blocking_retrieval), patch(
         "routes.rag_routes._get_inference_client", return_value=_BlockingInferenceClient()
     ), patch("routes.rag_routes._stream_reasoner_lesson", _blocking_reasoner_stream), patch(
-        "routes.rag_routes._lesson_primary_model", return_value="deepseek-v4-pro"
+        "routes.rag_routes._lesson_primary_model", return_value=REASONER_MODEL
     ), patch("routes.rag_routes.verify_lesson_factuality", _verified), patch(
         "routes.rag_routes._fetch_youtube_videos", return_value=[]
     ), patch("routes.rag_routes._log_rag_usage", return_value=None):

@@ -34,7 +34,7 @@ Keep native write/edit/delete tools for file mutations when no lean-ctx replacem
 - Firebase Functions use Node.js 22 runtime, deployed to `mathpulse-ai-2026` project
 - Quiz Battle uses Firebase Realtime Database for matchmaking queue
 - IAR workflow states: `not_started`, `in_progress`, `completed`, `skipped_unassessed`, `deep_diagnostic_required`, `deep_diagnostic_in_progress`, `placed`
-- AI model routing: `prod` profile uses deepseek-v4-pro for RAG lessons, deepseek-flash for other tasks
+- AI model routing: `prod` profile uses claude-opus-5-5 for RAG lessons, claude-haiku-5-5 for other tasks
 - RAG source of truth: `datasets/curriculum/sshs_learning_resources/` (DepEd SSHS modules, LiteParse Markdown/PDF); Chroma vector store at `datasets/vectorstore/` uses `BAAI/bge-small-en-v1.5` embeddings
 
 ## Known Scripts
@@ -91,7 +91,7 @@ MATHPULSE-AI/
 The project requires secrets in two places:
 
 ### Local (.env.local)
-Copied from `.env.example` — contains Firebase config, DeepSeek API keys, and HF token.
+Copied from `.env.example` — contains Firebase config, Anthropic API key, and HF token.
 
 ### Local Secrets Directory (.secrets/)
 Sensitive credentials stored in `.secrets/` (gitignored). NEVER commit this directory.
@@ -108,7 +108,7 @@ api = HfApi()
 api.add_space_secret('deign86/mathpulse-api-v3test', 'KEY', 'value')
 api.restart_space('deign86/mathpulse-api-v3test')
 ```
-**Required secrets:** `FIREBASE_SERVICE_ACCOUNT_JSON`, `DEEPSEEK_API_KEY`, `DEEPSEEK_BASE_URL`, `INFERENCE_PROVIDER`
+**Required secrets:** `FIREBASE_SERVICE_ACCOUNT_JSON`, `ANTHROPIC_API_KEY` (+ `ANTHROPIC_WORKSPACE_ID` when the key is not workspace-scoped)
 
 ## Layer 2: Code Intelligence MCPs
 

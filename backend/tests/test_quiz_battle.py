@@ -2,6 +2,8 @@
 Tests for Quiz Battle RAG-powered question bank.
 """
 
+import json
+
 import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from datetime import datetime, timezone, timedelta
@@ -74,7 +76,7 @@ class TestPdfIngestion:
              patch("rag.pdf_ingestion._save_questions_batch") as mock_save, \
              patch("rag.pdf_ingestion._save_embeddings_batch") as mock_save_emb, \
              patch("rag.pdf_ingestion._save_processing_manifest") as mock_save_status, \
-             patch("rag.pdf_ingestion.get_deepseek_client") as mock_deepseek:
+             patch("rag.pdf_ingestion.get_anthropic_client") as mock_claude_client:
 
             mock_doc = MagicMock()
             mock_doc.exists = True
@@ -102,12 +104,39 @@ class TestPdfIngestion:
                 "source_chunk_id": "chunk1",
             }]
             mock_save.return_value = 1
-            mock_deepseek.return_value = MagicMock()
+            mock_claude_client.return_value = MagicMock()
 
             from rag.pdf_ingestion import ingest_pdf
             result = await ingest_pdf("quiz_pdfs/grade_8/test.pdf", 8, "linear_equations", force_reingest=True)
             assert result.processed is True
             assert result.question_count == 1
+
+    @pytest.mark.asyncio
+    async def test_ingest_pdf_fails_fast_without_api_key(self):
+        """A missing API key aborts ingestion before an empty manifest is saved."""
+        with patch("rag.pdf_ingestion.Client"), \
+             patch("rag.pdf_ingestion._init_firebase_storage", return_value=(None, MagicMock())), \
+             patch("rag.pdf_ingestion._extract_pdf_text", return_value="Some math content"), \
+             patch("rag.pdf_ingestion._chunk_text", return_value=["chunk1"]), \
+             patch("rag.pdf_ingestion.SentenceTransformer"), \
+             patch("rag.pdf_ingestion.get_anthropic_client", side_effect=ValueError("ANTHROPIC_API_KEY environment variable not set")), \
+             patch("rag.pdf_ingestion._save_processing_manifest") as mock_save_status:
+            from rag.pdf_ingestion import ingest_pdf
+            with pytest.raises(ValueError):
+                await ingest_pdf("quiz_pdfs/grade_8/test.pdf", 8, "linear_equations", force_reingest=True)
+            mock_save_status.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_generate_questions_for_chunk_requests_json(self):
+        """Chunk questions come from complete_text in JSON mode; an unparseable reply yields none."""
+        from rag.pdf_ingestion import _generate_questions_for_chunk
+        questions = [{"question": "What is 2+2?", "correct_answer": "B"}]
+        with patch("rag.pdf_ingestion.complete_text", return_value=json.dumps(questions)) as mock_complete:
+            result = await _generate_questions_for_chunk("chunk text", "chunk1", "linear_equations", 8)
+        assert result == questions
+        assert mock_complete.call_args.kwargs["json_output"] is True
+        with patch("rag.pdf_ingestion.complete_text", return_value="not json"):
+            assert await _generate_questions_for_chunk("chunk text", "chunk1", "linear_equations", 8) == []
 
 
 # ── Question Bank Service Tests ──────────────────────────────────────
@@ -174,13 +203,37 @@ class TestVarianceEngine:
             assert result[0]["question"] == "Cached?"
 
     @pytest.mark.asyncio
-    async def test_apply_variance_fallback_shuffle(self):
-        """If DeepSeek fails, fallback to pure Python shuffle."""
+    async def test_apply_variance_uses_ai_reply(self):
+        """A valid JSON reply from Claude replaces the original questions."""
+        question = {
+            "question": "What is 2+2?",
+            "choices": ["A) 3", "B) 4", "C) 5", "D) 6"],
+            "correct_answer": "B",
+            "difficulty": "easy",
+            "topic": "math",
+            "grade_level": 8,
+            "source_chunk_id": "c1",
+        }
+        varied = [{**question, "question": "Compute 2+2.", "variance_applied": ["paraphrase"]}]
         with patch("services.variance_engine.get_cached_session") as mock_cache, \
-             patch("services.variance_engine.get_deepseek_client") as mock_client, \
+             patch("services.variance_engine.complete_text", return_value=json.dumps(varied)) as mock_complete, \
              patch("services.variance_engine.cache_session_questions") as mock_save:
             mock_cache.return_value = None
-            mock_client.return_value.chat.completions.create.side_effect = Exception("API error")
+            mock_save.return_value = None
+
+            from services.variance_engine import apply_variance
+            result = await apply_variance([question], "session_123")
+            assert result[0]["question"] == "Compute 2+2."
+            assert result[0]["variance_applied"] == ["paraphrase"]
+            assert mock_complete.call_args.kwargs["json_output"] is True
+
+    @pytest.mark.asyncio
+    async def test_apply_variance_fallback_shuffle(self):
+        """If Claude fails, fallback to pure Python shuffle."""
+        with patch("services.variance_engine.get_cached_session") as mock_cache, \
+             patch("services.variance_engine.complete_text", side_effect=Exception("API error")), \
+             patch("services.variance_engine.cache_session_questions") as mock_save:
+            mock_cache.return_value = None
             mock_save.return_value = None
 
             from services.variance_engine import apply_variance

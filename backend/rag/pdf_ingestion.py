@@ -2,7 +2,7 @@
 PDF Ingestion Module for Quiz Battle RAG Question Bank.
 
 Ingests PDFs from Firebase Storage, extracts text, chunks content,
-generates embeddings, calls DeepSeek to produce base questions,
+generates embeddings, calls Claude to produce base questions,
 and stores results in Firestore.
 """
 
@@ -23,7 +23,7 @@ from sentence_transformers import SentenceTransformer
 import pypdf
 
 from rag.firebase_storage_loader import _init_firebase_storage
-from services.ai_client import get_deepseek_client, CHAT_MODEL
+from services.ai_client import complete_text, get_anthropic_client, CHAT_MODEL
 
 logger = logging.getLogger(__name__)
 
@@ -54,26 +54,13 @@ def _generate_chunk_id(source_chunk_id: str, question_text: str) -> str:
     return hashlib.md5(f"{source_chunk_id}:{question_text}".encode()).hexdigest()
 
 
-def _strip_json_fences(text: str) -> str:
-    """Strip markdown JSON fences from text."""
-    text = text.strip()
-    if text.startswith("```json"):
-        text = text[7:]
-    if text.startswith("```"):
-        text = text[3:]
-    if text.endswith("```"):
-        text = text[:-3]
-    return text.strip()
-
-
 async def _generate_questions_for_chunk(
     chunk_text: str,
     chunk_id: str,
     topic: str,
     grade_level: int,
-    deepseek_client,
 ) -> list[dict]:
-    """Call DeepSeek to generate MCQs for a text chunk."""
+    """Call Claude to generate MCQs for a text chunk."""
     system_prompt = (
         "You are a DepEd-aligned math question generator for Filipino students. "
         "Given a curriculum excerpt, generate 5 multiple-choice questions. "
@@ -99,23 +86,23 @@ Generate 5 multiple-choice questions. For each question output JSON:
 Return a JSON array only, no extra text."""
 
     try:
-        response = deepseek_client.chat.completions.create(
-            model=CHAT_MODEL,
-            messages=[
+        raw_response = await asyncio.to_thread(
+            complete_text,
+            [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            temperature=0.7,
+            model=CHAT_MODEL,
+            json_output=True,
+            timeout=120.0,
         )
-        raw_response = response.choices[0].message.content
-        clean_response = _strip_json_fences(raw_response)
-        questions = json.loads(clean_response)
+        questions = json.loads(raw_response)
         return questions if isinstance(questions, list) else []
     except json.JSONDecodeError as e:
-        logger.error(f"Failed to parse DeepSeek response as JSON for chunk {chunk_id}: {e}")
+        logger.error(f"Failed to parse Claude response as JSON for chunk {chunk_id}: {e}")
         return []
     except Exception as e:
-        logger.error(f"Error calling DeepSeek for chunk {chunk_id}: {e}")
+        logger.error(f"Error calling Claude for chunk {chunk_id}: {e}")
         return []
 
 
@@ -324,15 +311,16 @@ async def ingest_pdf(
             "embedding": embedding,
         })
 
-    # Step 6: Initialize DeepSeek client
-    deepseek_client = get_deepseek_client()
+    # Step 6: Fail fast on a missing API key. Per-chunk errors are swallowed, so
+    # without this a misconfigured key would store an empty manifest.
+    get_anthropic_client()
 
     # Step 7: Generate questions for each chunk
     all_questions = []
     for i, chunk_text in enumerate(chunks):
         chunk_id = chunk_ids[i]
         questions = await _generate_questions_for_chunk(
-            chunk_text, chunk_id, topic, grade_level, deepseek_client
+            chunk_text, chunk_id, topic, grade_level
         )
         for q in questions:
             q["id"] = _generate_chunk_id(chunk_id, q.get("question", ""))

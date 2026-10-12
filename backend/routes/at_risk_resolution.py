@@ -5,6 +5,7 @@ POST /api/at-risk/resolve       — Classify flagged topics into resolution stat
 GET  /api/at-risk/fallback/{uid}/{topic_id} — Fetch cached fallback study brief
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Any, Optional
@@ -236,7 +237,7 @@ def _generate_fallback_content(
     confidence_info = summarize_retrieval_confidence(merged)
     rag_band = confidence_info.get("band", "low")
 
-    # STEP 2 — DeepSeek call
+    # STEP 2 — Claude call
     system_prompt = (
         "You are a DepEd SHS math tutor. A student has been flagged as at-risk on a topic "
         "but the full module is not yet available. Generate a compact, self-contained "
@@ -258,7 +259,7 @@ def _generate_fallback_content(
         "Return ONLY valid JSON."
     )
 
-    raw = rag_grounded_completion(CHAT_MODEL, system_prompt, user_prompt, temperature=0.2)
+    raw = rag_grounded_completion(CHAT_MODEL, system_prompt, user_prompt)
     parsed = parse_json_response(raw)
 
     if parsed:
@@ -304,7 +305,8 @@ async def resolve_at_risk_topics(request: ResolveRequest, http_request: Request)
 
         # Generate fallback content for non-accessible topics
         if result.resolution_state != "accessible":
-            fallback = _generate_fallback_content(topic, result.resolution_state)
+            # Retrieval and the Claude call (with its retry sleeps) are blocking; keep them off the event loop.
+            fallback = await asyncio.to_thread(_generate_fallback_content, topic, result.resolution_state)
             if fallback:
                 try:
                     firestore_client.collection("students").document(request.uid).collection(

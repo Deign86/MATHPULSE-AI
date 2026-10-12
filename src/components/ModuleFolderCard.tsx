@@ -3,7 +3,7 @@ import { BookOpen, Clock, AlertTriangle, Link2, Lock, Hourglass, Info, Graduatio
 import { motion } from 'motion/react';
 import { useSubjectAvailability } from '../hooks/useSubjectAvailability';
 import type { ModuleStatus } from '../data/curriculumModules';
-import { fetchModulePreview } from '../services/deepseekRagService';
+import { fetchModulePreview } from '../services/aiInsightsService';
 import { pluralize } from '../utils/display';
 
 export const THEMES = [

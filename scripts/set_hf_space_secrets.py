@@ -3,8 +3,8 @@
 
 This sets all required backend secrets:
 - FIREBASE_SERVICE_ACCOUNT_JSON (from .secrets/firebase-service-account.json)
-- DEEPSEEK_API_KEY
-- DEEPSEEK_BASE_URL
+- ANTHROPIC_API_KEY
+- ANTHROPIC_WORKSPACE_ID (only when set in the environment)
 """
 
 from __future__ import annotations
@@ -43,11 +43,14 @@ except json.JSONDecodeError as e:
     print(f"ERROR: {FIREBASE_SA_FILE} is not valid JSON: {e}")
     sys.exit(1)
 
-# Read DEEPSEEK_API_KEY from environment
-DEEPSEEK_API_KEY = os.environ.get("DEEPSEEK_API_KEY", "")
-if not DEEPSEEK_API_KEY:
-    print("ERROR: DEEPSEEK_API_KEY not set in environment.")
+# Read ANTHROPIC_API_KEY from environment
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+if not ANTHROPIC_API_KEY:
+    print("ERROR: ANTHROPIC_API_KEY not set in environment.")
     sys.exit(1)
+
+# Only needed when the API key is not scoped to a workspace
+ANTHROPIC_WORKSPACE_ID = os.environ.get("ANTHROPIC_WORKSPACE_ID", "").strip()
 
 print(f"Setting secrets for {SPACE_ID}...")
 
@@ -66,14 +69,14 @@ def _delete_secret(key: str) -> None:
 
 
 # Secrets (sensitive values - use add_space_secret)
-# NOTE: INFERENCE_PROVIDER is a VARIABLE only — never set as secret to avoid collision
 secrets = {
     "FIREBASE_SERVICE_ACCOUNT_JSON": FIREBASE_SERVICE_ACCOUNT_JSON,
-    "DEEPSEEK_API_KEY": DEEPSEEK_API_KEY,
-    "DEEPSEEK_BASE_URL": "https://api.deepseek.com",
+    "ANTHROPIC_API_KEY": ANTHROPIC_API_KEY,
     # Keep deployments aligned with the canonical curriculum embedding model.
     "EMBEDDING_MODEL": "BAAI/bge-small-en-v1.5",
 }
+if ANTHROPIC_WORKSPACE_ID:
+    secrets["ANTHROPIC_WORKSPACE_ID"] = ANTHROPIC_WORKSPACE_ID
 
 for key, value in secrets.items():
     # Clean up any existing secret/variable with same name FIRST
@@ -85,16 +88,8 @@ for key, value in secrets.items():
 variables = {
     "INFERENCE_INTERACTIVE_TIMEOUT_SEC": "120",
     "INFERENCE_MAX_NEW_TOKENS": "2048",
-    "INFERENCE_CHAT_HARD_PROMPT_CHARS": "32000",
-    "INFERENCE_CHAT_MODEL_ID": "deepseek-flash",
-    "INFERENCE_MODEL_ID_BACKUP": "deepseek-v4-pro",
-    "INFERENCE_CHAT_MODEL_ID_BACKUP": "deepseek-v4-pro",
-    "INFERENCE_PROVIDER": "deepseek",
-    "INFERENCE_ENABLE_PROVIDER_FALLBACK": "false",
-    "INFERENCE_GPU_PROVIDER": "deepseek",
-    "INFERENCE_CPU_PROVIDER": "deepseek",
+    "INFERENCE_CHAT_MODEL_ID": "claude-haiku-5-5",
     "CHAT_MAX_NEW_TOKENS": "2048",
-    "LOCAL_STREAM_CHUNK_SIZE": "8",
     "CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC": "30",
     "MODEL_PROFILE": "prod",
     "FIREBASE_AUTH_PROJECT_ID": "mathpulse-ai-2026",

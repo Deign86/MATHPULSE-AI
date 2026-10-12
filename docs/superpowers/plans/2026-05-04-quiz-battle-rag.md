@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recommended) or `superpowers:executing-plans` to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a RAG-backed question bank for Quiz Battle with PDF ingestion, per-session DeepSeek variance, and transparent Cloud Function integration — without changing the frontend battle page.
+**Goal:** Build a RAG-backed question bank for Quiz Battle with PDF ingestion, per-session LLM variance, and transparent Cloud Function integration — without changing the frontend battle page.
 
 **Architecture:** FastAPI backend provides questions to Firebase Cloud Functions via `/api/quiz-battle/generate`. Cloud Functions embed questions in match state as before. Frontend sees only shuffled choices, never correct answers. Teacher dashboard gets an ingest-pdf panel.
 
-**Tech Stack:** Python 3.10+, FastAPI, Firestore, Firebase Storage, DeepSeek API, pypdf, sentence-transformers, TypeScript (Cloud Functions + frontend panel)
+**Tech Stack:** Python 3.10+, FastAPI, Firestore, Firebase Storage, LLM API, pypdf, sentence-transformers, TypeScript (Cloud Functions + frontend panel)
 
 ---
 
@@ -15,9 +15,9 @@
 ### New Files (Backend)
 | File | Responsibility |
 |------|--------------|
-| `backend/rag/pdf_ingestion.py` | Download PDF from Storage, chunk, embed, generate base questions via DeepSeek, write to Firestore |
+| `backend/rag/pdf_ingestion.py` | Download PDF from Storage, chunk, embed, generate base questions via the LLM provider, write to Firestore |
 | `backend/services/question_bank_service.py` | Query question bank with random ordering, cache session questions, 24h debounce |
-| `backend/services/variance_engine.py` | Apply per-session variance via DeepSeek, fallback shuffle, cache results |
+| `backend/services/variance_engine.py` | Apply per-session variance via the LLM provider, fallback shuffle, cache results |
 | `backend/routes/quiz_battle.py` | Three FastAPI endpoints: generate, ingest-pdf, bank-status |
 | `backend/tests/test_quiz_battle.py` | pytest suite for ingestion, service, variance, route integration |
 
@@ -26,7 +26,7 @@
 |------|--------|
 | `backend/main.py` | Import quiz_battle router, register in app, add ROLE_POLICIES entries |
 | `backend/requirements.txt` | Add pypdf, sentence-transformers, numpy, openai |
-| `backend/.env.example` | Add DEEPSEEK_API_KEY, DEEPSEEK_BASE_URL, DEEPSEEK_MODEL |
+| `backend/.env.example` | Add ANTHROPIC_API_KEY, CLAUDE_CHAT_MODEL |
 
 ### Modified Files (Firebase)
 | File | Change |
@@ -69,10 +69,10 @@ openai>=1.30.0
 
 Append to `backend/.env.example`:
 ```
-# ── DeepSeek AI Inference (Quiz Battle Variance) ──────────────────
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
-DEEPSEEK_MODEL=deepseek-chat
+# ── AI Inference (Quiz Battle Variance) ──────────────────
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+CLAUDE_CHAT_MODEL=claude-haiku-5-5
 ```
 
 - [ ] **Step 3: Commit**
@@ -114,7 +114,7 @@ from pypdf import PdfReader
 from sentence_transformers import SentenceTransformer
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 
-from services.ai_client import get_deepseek_client, CHAT_MODEL
+from services.ai_client import get_anthropic_client, CHAT_MODEL
 from rag.firebase_storage_loader import _init_firebase_storage
 
 
@@ -178,8 +178,8 @@ def _generate_embeddings(chunks: List[str]) -> List[List[float]]:
 
 
 def _generate_questions_from_chunk(chunk: str, grade_level: int, topic: str, chunk_id: str) -> List[dict]:
-    """Call DeepSeek to generate 5 MCQs from a text chunk."""
-    client = get_deepseek_client()
+    """Call the LLM provider to generate 5 MCQs from a text chunk."""
+    client = get_anthropic_client()
     system_prompt = (
         "You are a DepEd-aligned math question generator for Filipino students. "
         "Given a curriculum excerpt, generate 5 multiple-choice questions. "
@@ -227,7 +227,7 @@ Return a JSON array only, no extra text."""
                 valid_questions.append(q)
         return valid_questions
     except Exception as e:
-        print(f"[pdf_ingestion] DeepSeek question generation failed for chunk {chunk_id}: {e}")
+        print(f"[pdf_ingestion] LLM question generation failed for chunk {chunk_id}: {e}")
         return []
 
 
@@ -519,7 +519,7 @@ Create `backend/services/variance_engine.py`:
 """
 Variance Engine for Quiz Battle Questions.
 
-Applies per-session variance techniques via DeepSeek,
+Applies per-session variance techniques via the LLM provider,
 with pure-Python fallback for choice shuffling.
 """
 
@@ -529,7 +529,7 @@ import random
 import re
 from typing import List
 
-from services.ai_client import get_deepseek_client, CHAT_MODEL
+from services.ai_client import get_anthropic_client, CHAT_MODEL
 from services.question_bank_service import get_cached_session, cache_session_questions
 
 
@@ -555,9 +555,9 @@ async def apply_variance(questions: List[dict], session_id: str) -> List[dict]:
     Apply per-session variance to a list of questions.
 
     1. Check 24h Firestore cache first
-    2. Call DeepSeek with variance prompt
+    2. Call the LLM provider with variance prompt
     3. Parse JSON response
-    4. Fall back to pure-Python shuffle if DeepSeek fails
+    4. Fall back to pure-Python shuffle if the LLM provider fails
     5. Cache result for 24 hours
     """
     # 1. Check cache
@@ -568,8 +568,8 @@ async def apply_variance(questions: List[dict], session_id: str) -> List[dict]:
     # 2. Generate deterministic seed from session_id
     seed = hash(session_id) % (2**32)
 
-    # 3. Call DeepSeek
-    client = get_deepseek_client()
+    # 3. Call the LLM provider
+    client = get_anthropic_client()
     system_prompt = (
         "You are a math quiz variance engine for MathPulse AI, an educational platform for "
         "Filipino high school students following the DepEd K-12 curriculum. "
@@ -613,7 +613,7 @@ Do NOT change "topic", "difficulty", "grade_level", or "source_chunk_id"."""
         varied_questions = json.loads(content)
 
         if not isinstance(varied_questions, list) or len(varied_questions) != len(questions):
-            raise ValueError("Invalid response format from DeepSeek")
+            raise ValueError("Invalid response format from the LLM provider")
 
         # Validate required fields
         for q in varied_questions:
@@ -621,7 +621,7 @@ Do NOT change "topic", "difficulty", "grade_level", or "source_chunk_id"."""
                 raise ValueError("Missing required fields in varied question")
 
     except Exception as e:
-        print(f"[variance_engine] DeepSeek variance failed, falling back to shuffle: {e}")
+        print(f"[variance_engine] LLM variance failed, falling back to shuffle: {e}")
         varied_questions = _fallback_shuffle(questions, seed)
 
     # 4. Cache for 24 hours
@@ -638,7 +638,7 @@ Do NOT change "topic", "difficulty", "grade_level", or "source_chunk_id"."""
 
 ```bash
 git add backend/services/variance_engine.py
-git commit -m "feat: add variance engine with DeepSeek and fallback shuffle"
+git commit -m "feat: add variance engine with the LLM provider and fallback shuffle"
 ```
 
 ---
@@ -1041,9 +1041,9 @@ class TestVarianceEngine:
 
     @pytest.mark.asyncio
     async def test_apply_variance_fallback_shuffle(self):
-        """If DeepSeek fails, fallback to pure Python shuffle."""
+        """If the LLM provider fails, fallback to pure Python shuffle."""
         with patch("services.variance_engine.get_cached_session") as mock_cache, \
-             patch("services.variance_engine.get_deepseek_client") as mock_client, \
+             patch("services.variance_engine.get_anthropic_client") as mock_client, \
              patch("services.variance_engine.cache_session_questions") as mock_save:
             mock_cache.return_value = None
             mock_client.return_value.chat.completions.create.side_effect = Exception("API error")
@@ -1662,7 +1662,7 @@ git commit -m "feat: complete quiz battle RAG question bank integration"
 ### Spec Coverage
 - [x] PDF ingestion with chunking + embeddings
 - [x] Question bank service with random fetch + cache
-- [x] Variance engine with DeepSeek + fallback
+- [x] Variance engine with the LLM provider + fallback
 - [x] FastAPI routes (generate, ingest-pdf, bank-status)
 - [x] Cloud Functions integration
 - [x] Firestore rules

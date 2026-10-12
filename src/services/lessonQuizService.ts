@@ -38,11 +38,11 @@ type SubjectName =
 
 
 /**
- * Generate lesson quiz questions via DeepSeek AI + RAG curriculum context.
+ * Generate lesson quiz questions via Claude + RAG curriculum context.
  *
  * This function calls the backend API which:
  * 1. Retrieves relevant curriculum chunks from the vectorstore via RAG
- * 2. Calls DeepSeek to generate varied quiz questions from that context
+ * 2. Calls Claude to generate varied quiz questions from that context
  * 3. Applies variance (choice shuffling, paraphrasing)
  * 4. Returns structured questions in InteractiveLesson-compatible format
  *

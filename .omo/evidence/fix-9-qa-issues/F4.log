@@ -70,7 +70,7 @@ Output:
 Result: FAIL — same blocking vectorstore drift.
 
 Command: forbidden source-content grep over TypeScript/TSX/MJS/JSON diff
-Pattern covered: SQL/schema migration, rules, auth initialization/sign-in, inference/model routing, DeepSeek/RAG, Chroma, notification snapshot migration.
+Pattern covered: SQL/schema migration, rules, auth initialization/sign-in, inference/model routing, LLM/RAG, Chroma, notification snapshot migration.
 Output: `GREP_CLEAN`
 Result: PASS.
 

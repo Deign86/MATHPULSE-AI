@@ -1,10 +1,11 @@
 """
 MathPulse AI — Tutor Nudge Service
 
-Generates proactive AI tutor nudges for at-risk students using DeepSeek,
+Generates proactive AI tutor nudges for at-risk students using Claude,
 then writes them to Firestore for the floating tutor to surface.
 """
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 
@@ -51,7 +52,7 @@ async def generate_tutor_nudge_for_student(
     grade_level: str = "Grade 11",
     recent_score: float | None = None,
 ) -> dict | None:
-    """Generate a nudge message via DeepSeek and write to Firestore."""
+    """Generate a nudge message via Claude and write to Firestore."""
     if not weak_topics:
         return None
 
@@ -70,11 +71,10 @@ async def generate_tutor_nudge_for_student(
     if not topic:
         return None  # All topics have recent nudges
 
-    # Generate nudge via DeepSeek
+    # Generate nudge via Claude
     try:
-        from services.ai_client import get_deepseek_client, CHAT_MODEL
+        from services.ai_client import complete_text, CHAT_MODEL
 
-        client = get_deepseek_client()
         user_content = (
             f"Student grade: {grade_level}. "
             f"Weak topic: {topic}. "
@@ -82,21 +82,21 @@ async def generate_tutor_nudge_for_student(
             f"Write a short nudge to encourage them to practice this topic."
         )
 
-        response = client.chat.completions.create(
-            model=CHAT_MODEL,
-            messages=[
+        message = await asyncio.to_thread(
+            complete_text,
+            [
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_content},
             ],
-            temperature=0.7,
+            model=CHAT_MODEL,
             max_tokens=100,
+            timeout=60.0,
         )
-        message = (response.choices[0].message.content or "").strip()
         if not message:
             return None
 
     except Exception as e:
-        logger.error(f"DeepSeek nudge generation failed for {student_id}: {e}")
+        logger.error(f"Claude nudge generation failed for {student_id}: {e}")
         return None
 
     # Write to Firestore

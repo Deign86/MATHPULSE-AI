@@ -11,7 +11,7 @@
 
 1. **Ingest DepEd math curriculum PDFs** into a reusable, queryable question bank stored in Firestore.
 2. **Cache the question bank** to avoid re-generation on every quiz session.
-3. **Apply per-session variance** via DeepSeek (paraphrasing, choice shuffling, distractor regeneration, Filipino context swaps, numeric scaling).
+3. **Apply per-session variance** via the LLM provider (paraphrasing, choice shuffling, distractor regeneration, Filipino context swaps, numeric scaling).
 4. **Integrate transparently** with existing Quiz Battle Cloud Functions so the 1,500-line frontend `QuizBattlePage.tsx` requires **zero changes**.
 
 ---
@@ -74,12 +74,12 @@ async def ingest_pdf(
 4. Extract text with `pypdf.PdfReader`
 5. Chunk with `RecursiveCharacterTextSplitter` (~500 tokens, 50-token overlap)
 6. Generate embeddings with `sentence-transformers` (`all-MiniLM-L6-v2`)
-7. For each chunk, call DeepSeek with extraction prompt → 5 MCQs as JSON
+7. For each chunk, call the LLM provider with extraction prompt → 5 MCQs as JSON
 8. Store questions in `question_bank/{grade_level}/{topic}/questions/{doc_id}`
 9. Store embeddings in `question_bank_embeddings/{doc_id}` (float array)
 10. Write manifest to `pdf_processing_status/{filename}`
 
-**DeepSeek extraction prompt** (system + user):
+**LLM extraction prompt** (system + user):
 ```
 You are a DepEd-aligned math question generator for Filipino students.
 Given this curriculum excerpt:
@@ -171,7 +171,7 @@ async def get_cached_session(session_id: str) -> Optional[dict]:
 
 ### 3.3 `backend/services/variance_engine.py`
 
-**Purpose**: Per-session question variance via DeepSeek.
+**Purpose**: Per-session question variance via the LLM provider.
 
 **Key function**:
 ```python
@@ -185,19 +185,19 @@ async def apply_variance(
 1. Check `quiz_battle_sessions/{session_id}` for 24h cached variance result
 2. If cache hit → return cached questions
 3. Generate `session_seed = hash(session_id) % (2**32)`
-4. Call DeepSeek with system + user prompt
+4. Call the LLM provider with system + user prompt
 5. Parse JSON response
 6. If malformed JSON → fallback to pure-Python choice shuffling
 7. Cache result in Firestore for 24 hours
 8. Return varied questions
 
-**DeepSeek system prompt**:
+**LLM system prompt**:
 ```
 You are a math quiz variance engine for MathPulse AI, an educational platform for Filipino high school students following the DepEd K-12 curriculum.
 Your job is to make quiz questions feel fresh each session WITHOUT changing the correct answer or difficulty level.
 ```
 
-**DeepSeek user prompt**:
+**LLM user prompt**:
 ```
 Given these {count} quiz battle questions as JSON:
 <questions_json>
@@ -483,9 +483,9 @@ openai>=1.30.0
 
 ### `backend/.env.example` additions:
 ```
-DEEPSEEK_API_KEY=your_deepseek_api_key_here
-DEEPSEEK_BASE_URL=https://api.deepseek.com/v1
-DEEPSEEK_MODEL=deepseek-chat
+ANTHROPIC_API_KEY=your_anthropic_api_key_here
+
+CLAUDE_CHAT_MODEL=claude-haiku-5-5
 ```
 
 ### Cloud Functions `.env` additions:
@@ -502,7 +502,7 @@ QUIZ_BATTLE_INTERNAL_SECRET=shared_secret_between_cf_and_fastapi
 | 1 | Never re-ingest unless `force_reingest=true` | `pdf_ingestion.py` checks `pdf_processing_status/{filename}.processed` before any work |
 | 2 | Variance is per-session, bank stays canonical | `variance_engine.py` reads from `question_bank`, writes varied copy to `quiz_battle_sessions` |
 | 3 | Fallback if variance engine fails | `_fallback_shuffle()` — pure Python, no LLM call |
-| 4 | Rate limit DeepSeek variance calls | 24h Firestore cache keyed by `session_id` |
+| 4 | Rate limit LLM variance calls | 24h Firestore cache keyed by `session_id` |
 | 5 | All new routes respect existing Firebase Auth | Add to `ROLE_POLICIES` dict in `main.py` |
 | 6 | Follow existing code style | Snake_case Python, Pydantic models, FastAPI `APIRouter`, module-level Firestore client |
 
@@ -512,9 +512,9 @@ QUIZ_BATTLE_INTERNAL_SECRET=shared_secret_between_cf_and_fastapi
 
 | Test | Location | Scope |
 |---|---|---|
-| PDF ingestion unit test | `backend/tests/test_quiz_battle.py` | Mock Firebase Storage, mock DeepSeek, verify Firestore writes |
+| PDF ingestion unit test | `backend/tests/test_quiz_battle.py` | Mock Firebase Storage, mock the LLM provider, verify Firestore writes |
 | Question bank service unit test | `backend/tests/test_quiz_battle.py` | Mock Firestore, verify random query + cache logic |
-| Variance engine unit test | `backend/tests/test_quiz_battle.py` | Mock DeepSeek, verify JSON parse + fallback shuffle |
+| Variance engine unit test | `backend/tests/test_quiz_battle.py` | Mock the LLM provider, verify JSON parse + fallback shuffle |
 | Route integration test | `backend/tests/test_quiz_battle.py` | FastAPI TestClient, verify auth + response shape |
 | Cloud Functions integration | `functions/src/triggers/quizBattleApi.test.ts` | Verify FastAPI call mock + question mapping |
 

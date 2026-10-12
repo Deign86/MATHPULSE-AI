@@ -1,3 +1,4 @@
+import type Anthropic from "@anthropic-ai/sdk";
 import axios from "axios";
 import { createHash } from "crypto";
 import * as admin from "firebase-admin";
@@ -459,7 +460,7 @@ interface QuestionSetBundle {
 
 type QuizBattleGenerationFailureReason =
   | "missing_ai_token"
-  | "non_qwen_model_override"
+  | "invalid_model_override"
   | "ai_timeout"
   | "ai_upstream_error"
   | "ai_payload_invalid"
@@ -832,14 +833,9 @@ type SubjectLabelKey = keyof typeof SUBJECT_LABELS;
 const subjectLabelFor = (subjectId: string): string =>
   SUBJECT_LABELS[subjectId as SubjectLabelKey] ?? "Mathematics";
 
-const QUIZ_BATTLE_AI_CHAT_URL =
-  process.env.QUIZ_BATTLE_AI_CHAT_URL ||
-  process.env.INFERENCE_HF_CHAT_URL ||
-  "https://router.huggingface.co/v1/chat/completions";
-
 const QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE =
   "Question generation temporarily unavailable. Please retry in a moment.";
-const DEFAULT_QUIZ_BATTLE_AI_MODEL = "Qwen/Qwen3-32B";
+const DEFAULT_QUIZ_BATTLE_AI_MODEL = "claude-haiku-5-5";
 const QUIZ_BATTLE_AI_BACKOFF_BASE_MS = 300;
 const QUIZ_BATTLE_AI_BACKOFF_MAX_MS = 3200;
 const QUIZ_BATTLE_AI_BACKOFF_JITTER_MS = 250;
@@ -855,73 +851,22 @@ const QUIZ_BATTLE_AI_MAX_RETRIES = Number.isFinite(quizBattleAiRetriesRaw)
   ? Math.max(1, Math.min(4, Math.floor(quizBattleAiRetriesRaw)))
   : 2;
 
-const quizBattleAiMaxTokensRaw = Number(process.env.QUIZ_BATTLE_AI_MAX_TOKENS || "640");
+// Ceiling only (a reply ends at end_turn): sized so a 15-round battle, the UI maximum, plus the
+// 2 spare questions fits at ~150 tokens per question.
+const quizBattleAiMaxTokensRaw = Number(process.env.QUIZ_BATTLE_AI_MAX_TOKENS || "3000");
 const QUIZ_BATTLE_AI_MAX_TOKENS = Number.isFinite(quizBattleAiMaxTokensRaw)
   ? Math.max(256, Math.min(4096, Math.floor(quizBattleAiMaxTokensRaw)))
-  : 640;
+  : 3000;
 
-const extractAiErrorDetail = <T>(data: T): string => {
-  if (!data) {
-    return "";
-  }
-
-  if (isString(data)) {
-    return data.trim();
-  }
-
-  if (!isRecord(data)) {
-    return "";
-  }
-
-  const direct = asString(data.message, "") || asString(data.error_description, "") || asString(data.detail, "");
-  if (direct) {
-    return direct;
-  }
-
-  if (isRecord(data.error)) {
-    const nested = asString(data.error.message, "") || asString(data.error.detail, "");
-    if (nested) {
-      return nested;
-    }
-  }
-
-  return "";
-};
-
-const shouldRetryWithoutStructuredJsonMode = <T>(error: T, structuredJsonModeEnabled: boolean): boolean => {
-  if (!structuredJsonModeEnabled || !axios.isAxiosError(error)) {
-    return false;
-  }
-
-  const statusCode = error.response?.status ?? 0;
-  return statusCode === 400;
-};
-
-const resolveQuizBattleAiToken = (): string => {
-  return asString(
-    process.env.QUIZ_BATTLE_AI_TOKEN ||
-    process.env.HF_TOKEN ||
-    process.env.HUGGING_FACE_API_TOKEN ||
-    process.env.HUGGINGFACE_API_TOKEN ||
-    "",
-  );
-};
-
-const normalizeModelBaseId = (modelId: string): string => {
-  return asString(modelId).split(":")[0].trim();
-};
-
-const isQwenFamilyModel = (modelId: string): boolean => {
-  return /^qwen\//i.test(normalizeModelBaseId(modelId));
-};
+const resolveAnthropicApiKey = (): string => asString(process.env.ANTHROPIC_API_KEY, "");
 
 const resolveQuizBattleAiModel = (): string => {
   const explicitOverride = asString(process.env.QUIZ_BATTLE_AI_MODEL, "");
   if (explicitOverride) {
-    if (!isQwenFamilyModel(explicitOverride)) {
+    if (!explicitOverride.startsWith("claude-")) {
       throw new QuizBattleGenerationError(
-        "non_qwen_model_override",
-        `QUIZ_BATTLE_AI_MODEL must be a Qwen-family model for Quiz Battle. Received '${explicitOverride}'.`,
+        "invalid_model_override",
+        `QUIZ_BATTLE_AI_MODEL must be a Claude model id (claude-...). Received '${explicitOverride}'.`,
         false,
       );
     }
@@ -929,11 +874,6 @@ const resolveQuizBattleAiModel = (): string => {
   }
 
   return DEFAULT_QUIZ_BATTLE_AI_MODEL;
-};
-
-const resolveQuizBattleAiModelName = (): string => {
-  const resolved = resolveQuizBattleAiModel();
-  return resolved.includes(":") ? resolved : `${resolved}:fastest`;
 };
 
 const waitForMs = async (durationMs: number): Promise<void> => {
@@ -1053,97 +993,12 @@ const materializeQuestionSet = (
   };
 };
 
-const extractMessageContentText = <T extends string | JsonObject | readonly JsonObject[]>(content: T): string => {
-  if (isString(content)) {
-    return content;
-  }
-
-  if (Array.isArray(content)) {
-    const joined = content
-      .map((entry) => {
-        if (isString(entry)) {
-          return entry;
-        }
-
-        if (!isRecord(entry)) {
-          return "";
-        }
-
-        const fields: JsonObject = entry;
-        return asString(fields["text"], "") || asString(fields["content"], "") || asString(fields["value"], "");
-      })
-      .filter((entry) => entry.length > 0)
-      .join("\n")
-      .trim();
-
-    return joined;
-  }
-
-  if (isRecord(content)) {
-    return asString(content.text, "") || asString(content.content, "") || asString(content.value, "");
-  }
-
-  return "";
-};
-
-const extractChatCompletionText = <T>(raw: T): string => {
-  if (!isRecord(raw)) return "";
-
-  const choicesRaw = raw.choices;
-  if (Array.isArray(choicesRaw) && choicesRaw.length > 0) {
-    for (const choice of choicesRaw) {
-      if (!isRecord(choice)) {
-        continue;
-      }
-
-      const message = choice.message;
-      if (isRecord(message)) {
-        const content = extractMessageContentText(message.content);
-        if (content) {
-          return content;
-        }
-
-        const parsed = extractMessageContentText(message.parsed);
-        if (parsed) {
-          return parsed;
-        }
-      }
-
-      const delta = choice.delta;
-      if (isRecord(delta)) {
-        const deltaContent = extractMessageContentText(delta.content);
-        if (deltaContent) {
-          return deltaContent;
-        }
-      }
-
-      const text = asString(choice.text, "");
-      if (text) {
-        return text;
-      }
-    }
-  }
-
-  const outputText = asString(raw.output_text, "");
-  if (outputText) {
-    return outputText;
-  }
-
-  const generatedText = asString(raw.generated_text, "");
-  if (generatedText) {
-    return generatedText;
-  }
-
-  const message = raw.message;
-  if (isRecord(message)) {
-    const content = extractMessageContentText(message.content);
-    if (content) {
-      return content;
-    }
-  }
-
-  return "";
-};
+// A reply can open with thinking blocks, so the answer is read from the text blocks by type.
+const extractReplyText = (reply: AiGenerationReply): string =>
+  reply.content
+    .flatMap((block) => (block.type === "text" ? [block.text] : []))
+    .join("")
+    .trim();
 
 const extractJsonPayloadCandidate = (rawText: string): string | null => {
   const trimmed = rawText.trim();
@@ -1348,37 +1203,38 @@ const dedupeAiQuestionCandidates = (
   return deduped.slice(0, requiredRounds);
 };
 
-const classifyGenerationError = <T>(error: T): QuizBattleGenerationError => {
+const classifyGenerationError = async <T>(error: T): Promise<QuizBattleGenerationError> => {
   if (error instanceof QuizBattleGenerationError) {
     return error;
   }
 
-  if (axios.isAxiosError(error)) {
-    const statusCode = error.response?.status ?? 0;
-    const errorDetail = extractAiErrorDetail(error.response?.data);
-    const errorMessage = [error.message || "AI request failed.", errorDetail]
-      .filter((entry) => entry && entry.trim().length > 0)
-      .join(" | ");
+  const { APIConnectionError, APIConnectionTimeoutError, APIError } = await import("@anthropic-ai/sdk");
 
-    if (error.code === "ECONNABORTED" || /timeout/i.test(errorMessage)) {
-      return new QuizBattleGenerationError("ai_timeout", errorMessage, true);
-    }
+  // Subclass order matters: a timeout is a connection error, which is an APIError without a status.
+  if (error instanceof APIConnectionTimeoutError) {
+    return new QuizBattleGenerationError("ai_timeout", error.message, true);
+  }
 
-    if (statusCode === 408 || statusCode === 429 || statusCode >= 500) {
+  if (error instanceof APIConnectionError) {
+    return new QuizBattleGenerationError("ai_upstream_error", `AI connection error. ${error.message}`, true);
+  }
+
+  if (error instanceof APIError) {
+    const statusCode = error.status ?? 0;
+
+    if (statusCode === 408 || statusCode === 409 || statusCode === 429 || statusCode >= 500) {
       return new QuizBattleGenerationError(
         "ai_upstream_error",
-        `AI upstream error (${statusCode || "unknown"}). ${errorMessage}`,
+        `AI upstream error (${statusCode}). ${error.message}`,
         true,
       );
     }
 
-    if (statusCode >= 400) {
-      return new QuizBattleGenerationError(
-        "ai_upstream_error",
-        `AI request rejected (${statusCode}). ${errorMessage}`,
-        false,
-      );
-    }
+    return new QuizBattleGenerationError(
+      "ai_upstream_error",
+      `AI request rejected (${statusCode || "unknown"}). ${error.message}`,
+      false,
+    );
   }
 
   const fallbackMessage = error instanceof Error ? error.message : String(error);
@@ -1389,11 +1245,12 @@ const classifyGenerationError = <T>(error: T): QuizBattleGenerationError => {
   );
 };
 
+/** The part of a Claude Messages response that question generation reads. */
+type AiGenerationReply = Pick<Anthropic.Message, "content" | "stop_reason">;
+
 type InvokeAiGenerationRequest = (
-  requestPayload: JsonObject,
-  timeoutMs: number,
-  requestHeaders: Record<string, string>,
-) => Promise<JsonValue>;
+  request: Anthropic.MessageCreateParamsNonStreaming,
+) => Promise<AiGenerationReply>;
 
 interface GenerateAiQuestionSetOptions {
   invokeRequest?: InvokeAiGenerationRequest;
@@ -1402,16 +1259,59 @@ interface GenerateAiQuestionSetOptions {
   now?: () => number;
 }
 
-const invokeQuizBattleAiRequest: InvokeAiGenerationRequest = async (
-  requestPayload,
-  timeoutMs,
-  requestHeaders,
-): Promise<JsonValue> => {
-  const response = await axios.post(QUIZ_BATTLE_AI_CHAT_URL, requestPayload, {
-    timeout: timeoutMs,
-    headers: requestHeaders,
+// Structured outputs constrain Claude's reply to this schema. The API supports neither minItems nor
+// minimum/maximum, so the 4-choice rule is stated in the descriptions and enforced again by
+// normalizeAiQuestionCandidate.
+const QUIZ_BATTLE_QUESTIONS_SCHEMA = {
+  type: "object",
+  properties: {
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          prompt: { type: "string", description: "The question text." },
+          choices: {
+            type: "array",
+            items: { type: "string" },
+            description: "Exactly 4 answer choices, exactly 1 of them correct.",
+          },
+          correctOptionIndex: {
+            type: "integer",
+            description: "Zero-based index (0 to 3) of the correct choice within choices.",
+          },
+        },
+        required: ["prompt", "choices", "correctOptionIndex"],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ["questions"],
+  additionalProperties: false,
+};
+
+let quizBattleAiClient: Anthropic | null = null;
+
+const resetQuizBattleAiClient = (): void => {
+  quizBattleAiClient = null;
+};
+
+const createQuizBattleAiClient = async (apiKey: string): Promise<Anthropic> => {
+  // Only Quiz Battle generation uses the SDK and loading it costs ~130 ms, so it stays out of every function's cold start.
+  const { default: AnthropicClient } = await import("@anthropic-ai/sdk");
+  // User-level API keys belong to no workspace, so every request has to name one.
+  const workspaceId = asString(process.env.ANTHROPIC_WORKSPACE_ID, "");
+  return new AnthropicClient({
+    apiKey,
+    maxRetries: 0, // generateAiQuestionSet owns retry and backoff; SDK retries would stack under it.
+    timeout: QUIZ_BATTLE_AI_TIMEOUT_MS,
+    defaultHeaders: workspaceId ? { "anthropic-workspace-id": workspaceId } : undefined,
   });
-  return response.data;
+};
+
+const invokeQuizBattleAiRequest: InvokeAiGenerationRequest = async (request) => {
+  quizBattleAiClient ??= await createQuizBattleAiClient(resolveAnthropicApiKey());
+  return quizBattleAiClient.messages.create(request);
 };
 
 const buildAiQuestionPrompt = (setup: NormalizedBattleSetup, requestedQuestionCount: number): string => {
@@ -1427,10 +1327,6 @@ const buildAiQuestionPrompt = (setup: NormalizedBattleSetup, requestedQuestionCo
     "Each question must have exactly 4 choices and exactly 1 correct choice.",
     "Correct answers must not follow a fixed index pattern.",
     `Return at least ${setup.rounds} valid questions in the questions array.`,
-    "Return ONLY valid JSON in this exact shape:",
-    "{\"questions\":[{\"prompt\":\"...\",\"choices\":[\"...\",\"...\",\"...\",\"...\"],\"correctOptionIndex\":0}]}",
-    "No markdown fences. No explanations. JSON only.",
-    "Do not include <think> tags, reasoning traces, or text outside the JSON object.",
   ].join("\n");
 };
 
@@ -1438,36 +1334,36 @@ const generateAiQuestionSet = async (
   setup: NormalizedBattleSetup,
   options: GenerateAiQuestionSetOptions = {},
 ): Promise<GeneratedAiQuestionSet> => {
-  const quizBattleToken = resolveQuizBattleAiToken();
-  if (!quizBattleToken) {
+  if (!resolveAnthropicApiKey()) {
     throw new QuizBattleGenerationError(
       "missing_ai_token",
-      "Missing QUIZ_BATTLE_AI_TOKEN/HF_TOKEN for quiz battle AI generation.",
+      "Missing ANTHROPIC_API_KEY for quiz battle AI generation.",
       false,
     );
   }
 
-  const modelName = resolveQuizBattleAiModelName();
+  const modelName = resolveQuizBattleAiModel();
   const invokeRequest = options.invokeRequest || invokeQuizBattleAiRequest;
   const sleepMs = options.sleepMs || waitForMs;
   const randomInt = options.randomInt || randomInRange;
   const now = options.now || (() => Date.now());
 
   const requestedQuestionCount = Math.max(setup.rounds + 2, setup.rounds);
-  const requestedMaxTokens = Math.max(320, requestedQuestionCount * 90);
+  const requestedMaxTokens = Math.max(320, requestedQuestionCount * 150);
   const maxTokens = Math.min(QUIZ_BATTLE_AI_MAX_TOKENS, requestedMaxTokens);
-  let structuredJsonModeEnabled = true;
 
-  const messages = [
-    {
-      role: "system",
-      content: "You generate strict JSON for Grade 11 multiple-choice math battle questions.",
-    },
-    {
-      role: "user",
-      content: buildAiQuestionPrompt(setup, requestedQuestionCount),
-    },
-  ];
+  const request: Anthropic.MessageCreateParamsNonStreaming = {
+    model: modelName,
+    max_tokens: maxTokens,
+    system: "You write Grade 11 multiple-choice math battle questions.",
+    messages: [{ role: "user", content: buildAiQuestionPrompt(setup, requestedQuestionCount) }],
+    output_config: { format: { type: "json_schema", schema: QUIZ_BATTLE_QUESTIONS_SCHEMA } },
+  };
+  if (modelName.startsWith("claude-haiku")) {
+    // Haiku skips thinking: lower latency, and the whole token budget goes to the questions.
+    // Opus 5.5 and Sonnet 5.5 reject "disabled", so a QUIZ_BATTLE_AI_MODEL override to one of them thinks by default.
+    request.thinking = { type: "disabled" };
+  }
 
   const generationStartedAtMs = now();
   let lastError = new QuizBattleGenerationError(
@@ -1478,7 +1374,6 @@ const generateAiQuestionSet = async (
 
   for (let attempt = 1; attempt <= QUIZ_BATTLE_AI_MAX_RETRIES; attempt += 1) {
     const attemptStartedAtMs = now();
-    const structuredJsonModeEnabledAtStart = structuredJsonModeEnabled;
     functions.logger.info("[QUIZ_BATTLE] AI generation attempt started", {
       attempt,
       maxAttempts: QUIZ_BATTLE_AI_MAX_RETRIES,
@@ -1489,32 +1384,9 @@ const generateAiQuestionSet = async (
     });
 
     try {
-      const requestPayload: JsonObject = {
-        model: modelName,
-        messages,
-        stream: false,
-        max_tokens: maxTokens,
-        temperature: 0.2,
-        top_p: 0.9,
-      };
+      const reply = await invokeRequest(request);
 
-      if (structuredJsonModeEnabledAtStart) {
-        requestPayload.response_format = {
-          type: "json_object",
-        };
-      }
-
-      const responseData = await invokeRequest(
-        requestPayload,
-        QUIZ_BATTLE_AI_TIMEOUT_MS,
-        {
-          Authorization: `Bearer ${quizBattleToken}`,
-          "Content-Type": "application/json",
-          "X-MathPulse-Task": "quiz_generation",
-        },
-      );
-
-      const text = extractChatCompletionText(responseData);
+      const text = extractReplyText(reply);
       const payload = parseJsonValue(text);
       const payloadQuestions = extractQuestionsArrayFromPayload(payload);
 
@@ -1524,15 +1396,16 @@ const generateAiQuestionSet = async (
           subjectId: setup.subjectId,
           topicId: setup.topicId,
           rounds: setup.rounds,
+          stopReason: reply.stop_reason,
+          contentBlockTypes: reply.content.map((block) => block.type),
           responsePreview: text.slice(0, 1200),
           parsedPayloadType: jsonTypeName(payload),
           parsedPayloadKeys: isRecord(payload) ? Object.keys(payload).slice(0, 20) : [],
-          rawResponseKeys: isRecord(responseData) ? Object.keys(responseData).slice(0, 20) : [],
         });
 
         throw new QuizBattleGenerationError(
           "ai_payload_invalid",
-          "AI response did not contain a valid questions array.",
+          `AI response did not contain a valid questions array (stop_reason: ${reply.stop_reason}).`,
           true,
         );
       }
@@ -1581,14 +1454,8 @@ const generateAiQuestionSet = async (
         model: modelName,
       };
     } catch (error) {
-      const classified = classifyGenerationError(error);
+      const classified = await classifyGenerationError(error);
       lastError = classified;
-      const shouldRetryWithJsonModeRelaxed =
-        shouldRetryWithoutStructuredJsonMode(error, structuredJsonModeEnabledAtStart);
-
-      if (shouldRetryWithJsonModeRelaxed) {
-        structuredJsonModeEnabled = false;
-      }
 
       functions.logger.warn("[QUIZ_BATTLE] AI generation attempt failed", {
         attempt,
@@ -1597,9 +1464,6 @@ const generateAiQuestionSet = async (
         subjectId: setup.subjectId,
         topicId: setup.topicId,
         rounds: setup.rounds,
-        structuredJsonModeEnabledAtStart,
-        structuredJsonModeEnabledForNextAttempt: structuredJsonModeEnabled,
-        shouldRetryWithJsonModeRelaxed,
         maxTokens,
         latencyMs: now() - attemptStartedAtMs,
         reason: classified.reason,
@@ -1607,7 +1471,7 @@ const generateAiQuestionSet = async (
         error: classified.message,
       });
 
-      if (attempt < QUIZ_BATTLE_AI_MAX_RETRIES && (classified.retriable || shouldRetryWithJsonModeRelaxed)) {
+      if (attempt < QUIZ_BATTLE_AI_MAX_RETRIES && classified.retriable) {
         const backoffMs = computeRetryDelayMs(attempt, randomInt);
         await sleepMs(backoffMs);
         continue;
@@ -3460,7 +3324,7 @@ const ensureAiQuestionSetForLiveStart = async (
   const attemptNumber = Math.max(1, Math.floor(asNumber(lease.attemptNumber, 1)));
   const modelNameForFailure = (() => {
     try {
-      return resolveQuizBattleAiModelName();
+      return resolveQuizBattleAiModel();
     } catch {
       return "unresolved";
     }
@@ -3526,7 +3390,7 @@ const ensureAiQuestionSetForLiveStart = async (
       }
     }
   } catch (error) {
-    const classified = classifyGenerationError(error);
+    const classified = await classifyGenerationError(error);
     await persistAiGenerationFailure(
       db,
       matchRef,
@@ -6033,7 +5897,6 @@ export const quizBattleResolvePublicMatchmakingSweep = functions.pubsub
 
 export const __quizBattleTestUtils = {
   resolveQuizBattleAiModel,
-  resolveQuizBattleAiModelName,
   shouldBlockStartDueToNonAiSource,
   computeRetryDelayMs,
   shuffleChoicesPreservingCorrect,
@@ -6042,6 +5905,8 @@ export const __quizBattleTestUtils = {
   dedupeAiQuestionCandidates,
   generateAiQuestionSet,
   classifyGenerationError,
+  resetQuizBattleAiClient,
+  QUIZ_BATTLE_QUESTIONS_SCHEMA,
   QUIZ_BATTLE_GENERATION_RETRYABLE_MESSAGE,
   getPublicMatchmakingDeadlineMs,
   isPublicMatchmakingReadyMatch,

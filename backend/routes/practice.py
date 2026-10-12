@@ -19,7 +19,7 @@ from typing import Any, Dict, List, Literal, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from services.ai_client import CHAT_MODEL, get_deepseek_client
+from services.ai_client import complete_text
 from services.llm_text import sanitize_tree
 from services.llm_json import LLMJsonError, extract_dict_list, extract_json_value
 import firebase_admin
@@ -143,23 +143,23 @@ def _get_firestore():
     return None
 
 
-async def _call_deepseek(system_prompt: str, user_message: str, temperature: float = 0.7) -> str:
-    """Call DeepSeek with JSON mode for structured output."""
+async def _call_claude(system_prompt: str, user_message: str) -> str:
+    """Call Claude with JSON output for structured questions."""
     try:
-        client = get_deepseek_client().with_options(timeout=90.0, max_retries=1)
-        response = await asyncio.to_thread(
-            client.chat.completions.create,
-            model=CHAT_MODEL,
-            messages=[
+        return await asyncio.to_thread(
+            complete_text,
+            [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-            temperature=temperature,
-            response_format={"type": "json_object"},
+            # Up to 20 questions with explanations can outgrow the 4096-token default.
+            max_tokens=8192,
+            json_output=True,
+            timeout=90.0,
+            max_retries=1,
         )
-        return response.choices[0].message.content or ""
     except Exception as e:
-        logger.error(f"DeepSeek API error: {e}")
+        logger.error(f"Claude API error: {e}")
         raise HTTPException(status_code=500, detail="AI model unavailable. Please try again later.")
 
 
@@ -234,7 +234,7 @@ async def generate_practice(request: Request, body: PracticeGenerateRequest):
     )
 
     # Call AI
-    raw_response = await _call_deepseek(system_prompt, user_message, temperature=0.7)
+    raw_response = await _call_claude(system_prompt, user_message)
 
     # Parse questions
     raw_questions = _parse_questions_response(raw_response, body.count)

@@ -568,7 +568,6 @@ STRATEGIES:
         response_text = await call_hf_chat_async(
             messages=[{"role": "user", "content": prompt}],
             max_tokens=500,
-            temperature=0.7,
             task_type="intervention_plan"
         )
 
@@ -788,7 +787,7 @@ async def generate_ai_class_report(request: Request, uploadId: str):
     try:
         response_text = await call_hf_chat_async(
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=400, temperature=0.5, task_type="class_report"
+            max_tokens=400, task_type="class_report"
         )
         try:
             parsed = _json.loads(response_text)

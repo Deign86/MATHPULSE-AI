@@ -1,7 +1,7 @@
 # Repository Atlas: MATHPULSE-AI
 
 ## Project Responsibility
-MathPulse AI — installable, repo-owned PWA for AI-powered mathematics tutoring (Filipino SHS STEM Grade 11-12, teachers, admins). React 18 + TypeScript + Vite frontend, FastAPI Python backend, Firebase Hosting/Auth/Cloud Functions (Node 22), Firestore + Realtime Database. AI routing: deepseek-reasoner for RAG lessons, deepseek-chat otherwise; RAG over DepEd SSHS modules (Chroma + BAAI/bge-small-en-v1.5).
+MathPulse AI — installable, repo-owned PWA for AI-powered mathematics tutoring (Filipino SHS STEM Grade 11-12, teachers, admins). React 18 + TypeScript + Vite frontend, FastAPI Python backend, Firebase Hosting/Auth/Cloud Functions (Node 22), Firestore + Realtime Database. AI routing (`prod` profile): claude-opus-5-5 for RAG lessons, claude-haiku-5-5 otherwise; RAG over DepEd SSHS modules (Chroma + BAAI/bge-small-en-v1.5).
 
 ## System Entry Points
 - `src/main.tsx` → `src/App.tsx`: frontend bootstrap (ErrorBoundary > BrowserRouter > QueryClientProvider > AuthProvider), role-aware lazy navigation.
@@ -13,7 +13,7 @@ MathPulse AI — installable, repo-owned PWA for AI-powered mathematics tutoring
 
 ## Flow
 1. Student/teacher/admin signs in (Firebase Auth) → `AuthContext` + role policies gate routes.
-2. Pages call domain services → `apiService.ts` → FastAPI routers → services/rag → Firestore/Chroma/DeepSeek.
+2. Pages call domain services → `apiService.ts` → FastAPI routers → services/rag → Firestore/Chroma/Claude.
 3. Functions react to Firestore events/schedules (diagnostics, quiz scoring, notifications/FCM, Quiz Battle RTDB queue).
 4. IAR states drive assessment flow: `not_started`, `in_progress`, `completed`, `skipped_unassessed`, `deep_diagnostic_required`, `deep_diagnostic_in_progress`, `placed`.
 
@@ -21,11 +21,11 @@ MathPulse AI — installable, repo-owned PWA for AI-powered mathematics tutoring
 | Directory | Responsibility Summary | Detailed Map |
 |-----------|------------------------|--------------|
 | `backend/` | FastAPI entry: Firebase/Firestore init, auth + role policies, core AI/import/analytics/admin endpoints in `main.py`. | [View Map](backend/codemap.md) |
-| `backend/config/` | Model routing (`models.yaml`) + DeepSeek pricing helpers. | [View Map](backend/config/codemap.md) |
+| `backend/config/` | Model routing (`models.yaml`) + Claude pricing helpers. | [View Map](backend/config/codemap.md) |
 | `backend/middleware/` | Role-adjusted SlowAPI rate limiting, auth/request middleware. | [View Map](backend/middleware/codemap.md) |
 | `backend/utils/` | Shared helpers (e.g. SHA-256 file hashing). | [View Map](backend/utils/codemap.md) |
 | `backend/scripts/` | Standalone curriculum/profile/migration/Storage jobs. | [View Map](backend/scripts/codemap.md) |
-| `backend/routes/` | Domain API routers (incl. RAG routes) → services/Firestore/DeepSeek. | [View Map](backend/routes/codemap.md) |
+| `backend/routes/` | Domain API routers (incl. RAG routes) → services/Firestore/Claude. | [View Map](backend/routes/codemap.md) |
 | `backend/services/` | Shared domain services consumed by routers. | [View Map](backend/services/codemap.md) |
 | `backend/rag/` | Doc parsing, ingestion, Chroma retrieval. | [View Map](backend/rag/codemap.md) |
 | `backend/tests/` | Pytest coverage, fixtures, backend boundaries. | [View Map](backend/tests/codemap.md) |

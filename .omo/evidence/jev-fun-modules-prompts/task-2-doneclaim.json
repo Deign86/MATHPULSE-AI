@@ -18,7 +18,7 @@
     }
   ],
   "manual_qa": {
-    "plan_lines_81_84": "PASS: Bloom levels 0 Recall, 1 Procedural, 2 Conceptual Transfer, and 3 Metacognitive/Evaluation have concrete descriptions; hierarchy is deterministic Python > Jev > DeepSeek; low confidence falls back to static DepEd curriculum excerpts.",
+    "plan_lines_81_84": "PASS: Bloom levels 0 Recall, 1 Procedural, 2 Conceptual Transfer, and 3 Metacognitive/Evaluation have concrete descriptions; hierarchy is deterministic Python > Jev > LLM provider; low confidence falls back to static DepEd curriculum excerpts.",
     "plan_lines_203_223": "PASS: BLOOM_MASTERY_SCORE defines all four levels and constraints state deterministic Python is final authority on disagreement.",
     "backend_routes_rag_routes_py_291_345": "PASS: _ensure_7_sections deterministically fills missing sections, replaces blank sections with grounded defaults, orders required sections, and returns the authoritative section set."
   },
@@ -29,7 +29,7 @@
   },
   "risks": [
     "The worktree was already dirty with .omo/boulder.json, .omo/drafts/, and the plan before this QA run; those files were preserved.",
-    "No live Jev or DeepSeek call was required because this Todo validates the documented deterministic protocol and anchors."
+    "No live Jev or LLM provider call was required because this Todo validates the documented deterministic protocol and anchors."
   ],
   "adversarial": {
     "stale_state": {

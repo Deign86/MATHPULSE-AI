@@ -1,5 +1,5 @@
 """
-RAG-grounded DeepSeek routes.
+RAG-grounded Claude routes.
 
 Feature 1: Topic-level weakness detection
 Feature 2: AI preview for coming_soon modules
@@ -13,7 +13,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 from fastapi import APIRouter
 
-from services.ai_client import REASONER_MODEL, CHAT_MODEL
+from services.ai_client import CHAT_MODEL
 from services.inference_client import is_enabled, rag_grounded_completion, parse_json_response
 from services.jev_client import score_student_mastery
 from services.llm_text import clean_llm_text
@@ -27,9 +27,11 @@ from rag.curriculum_rag import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter(prefix="/api/deepseek", tags=["deepseek-rag"])
+router = APIRouter(prefix="/api/ai", tags=["ai-insights"])
 
 WEAK_TOPIC_THRESHOLD = 0.60
+# The frontend (assessmentService.ts) reads these labels back from the summary and maps them to levels 0-3.
+_BLOOM_LABELS = ("remember", "understand", "apply", "analyze")
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -54,7 +56,7 @@ class WeaknessDetectionResponse(BaseModel):
     flagged_topics: list[str]
     confidence: dict[str, float] = Field(default_factory=dict)
     reasoning_summary: str = ""
-    source: str = "rule_based"  # "deepseek" or "rule_based"
+    source: str = "rule_based"  # "ai" or "rule_based"
 
 
 async def _annotate_mastery(
@@ -62,8 +64,7 @@ async def _annotate_mastery(
     flagged_topics: list[str],
     reasoning_summary: str,
 ) -> str:
-    annotations: list[str] = []
-    for topic in flagged_topics:
+    async def annotate(topic: str) -> Optional[str]:
         topic_questions = [q.model_dump() for q in req.questions if q.topic_id == topic]
         try:
             mastery = await score_student_mastery(
@@ -71,12 +72,14 @@ async def _annotate_mastery(
                 topic=topic,
             )
             if mastery.get("action") == "fallback_disabled" or "level" not in mastery:
-                continue
-            annotations.append(f"{topic} [Bloom Mastery: {mastery['level']}]")
+                return None
+            return f"{topic} [Bloom Mastery: {_BLOOM_LABELS[mastery['level']]}]"
         except Exception as exc:
             logger.warning("Jev mastery scoring failed for %s: %s", topic, exc)
-            continue
+            return None
 
+    # Judgments run concurrently so a student waits for the slowest topic, not the sum; gather keeps topic order.
+    annotations = [note for note in await asyncio.gather(*(annotate(topic) for topic in flagged_topics)) if note]
     if not annotations:
         return reasoning_summary
     return f"{reasoning_summary} {'; '.join(annotations)}"
@@ -84,7 +87,7 @@ async def _annotate_mastery(
 
 @router.post("/weakness-detection", response_model=WeaknessDetectionResponse)
 async def detect_weaknesses(req: WeaknessDetectionRequest):
-    """Detect topic-level weaknesses using RAG + DeepSeek, with rule-based fallback."""
+    """Detect topic-level weaknesses using RAG + Claude, with rule-based fallback."""
 
     # Rule-based fallback: compute per-topic accuracy
     topic_stats: dict[str, dict] = {}
@@ -136,7 +139,7 @@ async def detect_weaknesses(req: WeaknessDetectionRequest):
 
     rag_context = format_retrieved_chunks(rag_chunks)
 
-    # DeepSeek call
+    # Claude call
     system_prompt = (
         "You are a DepEd SHS math assessment expert. Analyze student quiz results and identify "
         "specific topic weaknesses at the competency level. Base your analysis ONLY on the "
@@ -154,9 +157,10 @@ async def detect_weaknesses(req: WeaknessDetectionRequest):
     )
 
     try:
+        # Under the frontend's 60 s request timeout, so no analysis keeps running after the student's request gave up.
         raw = await asyncio.to_thread(
-            rag_grounded_completion, REASONER_MODEL, system_prompt, user_prompt,
-            temperature=0.1, timeout_sec=120.0, max_tokens=8192,
+            rag_grounded_completion, CHAT_MODEL, system_prompt, user_prompt,
+            timeout_sec=55.0, max_tokens=8192,
         )
         parsed = parse_json_response(raw)
     except Exception as exc:
@@ -182,7 +186,7 @@ async def detect_weaknesses(req: WeaknessDetectionRequest):
                 for topic in flagged_topics
             },
             reasoning_summary=reasoning_summary,
-            source="deepseek",
+            source="ai",
         )
 
     # Fallback
@@ -252,7 +256,7 @@ async def generate_module_preview(req: ModulePreviewRequest):
 
     raw = await asyncio.to_thread(
         rag_grounded_completion, CHAT_MODEL, system_prompt, user_prompt,
-        temperature=0.3, timeout_sec=45.0, max_tokens=600,
+        timeout_sec=45.0, max_tokens=600,
     )
 
     if not raw:
@@ -344,7 +348,7 @@ async def generate_study_tips(req: StudyTipsRequest):
 
     raw = await asyncio.to_thread(
         rag_grounded_completion, CHAT_MODEL, system_prompt, user_prompt,
-        temperature=0.4, timeout_sec=45.0, max_tokens=800,
+        timeout_sec=45.0, max_tokens=800,
     )
 
     if not raw:

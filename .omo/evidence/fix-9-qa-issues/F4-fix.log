@@ -36,7 +36,7 @@ Command: `git log --oneline -3 -- backend/datasets/vectorstore/`
 Output:
 ```text
 e6f5637 fix(rag): resolve Chroma embedding dimension mismatch and auto-align to collection
-93a7850 feat(rag): ingest curriculum PDFs, enable DeepSeek API and enhance lesson fallback UI
+93a7850 feat(rag): ingest curriculum PDFs, enable LLM API and enhance lesson fallback UI
 e6c861d fix(ci): fix Deploy Firebase Functions build step, predeploy hook, and synchronize curriculum storage
 ```
 

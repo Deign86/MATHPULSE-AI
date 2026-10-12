@@ -13,17 +13,17 @@ import threading
 import time
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, Iterator, List, Optional, Tuple
 
 import httpx
 import pytest
 from fastapi import FastAPI, Request
 
-os.environ.setdefault("DEEPSEEK_API_KEY", "mock-key-for-testing")
+os.environ.setdefault("ANTHROPIC_API_KEY", "mock-key-for-testing")
 
 from routes import rag_routes  # noqa: E402
+from services.ai_client import REASONER_MODEL as REASONER  # noqa: E402
 
-REASONER = "deepseek-v4-pro"
 REAL_STREAM_REASONER_LESSON = rag_routes._stream_reasoner_lesson
 SSE_FIXTURE = Path(__file__).resolve().parents[2] / "src" / "services" / "__tests__" / "fixtures" / "ragLessonStream.sse"
 CHUNKS = [
@@ -486,28 +486,43 @@ def test_foolproof_lesson_below_minimums_is_never_cached(seams: LessonSeams, var
     assert seams.writes == [] and rag_routes._lesson_memory == {}
 
 
-class _TruncatingDeepSeek:
-    """Streams a reasoner answer that stops at max_tokens mid-JSON."""
+class _TruncatingStream:
+    """open_stream stand-in: a reasoner answer that stops at max_tokens mid-JSON."""
+
+    CUT_OFF_JSON = '{"sections": [{"type": "introduction", "content": "cut'
 
     def __init__(self) -> None:
-        self.create_calls = 0
-        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+        self.open_calls = 0
 
-    def with_options(self, **_options: object) -> "_TruncatingDeepSeek":
+    def open(self, *_args: object, **_kwargs: object) -> "_TruncatingStream":
+        self.open_calls += 1
         return self
 
-    def create(self, **_kwargs: object) -> List[SimpleNamespace]:
-        self.create_calls += 1
-        delta = SimpleNamespace(content='{"sections": [{"type": "introduction", "content": "cut', reasoning_content=None)
-        return [SimpleNamespace(choices=[SimpleNamespace(delta=delta, finish_reason="length")])]
+    def __enter__(self) -> "_TruncatingStream":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def __iter__(self) -> Iterator[SimpleNamespace]:
+        yield SimpleNamespace(type="content_block_delta", delta=SimpleNamespace(type="text_delta", text=self.CUT_OFF_JSON))
+
+    def get_final_message(self) -> SimpleNamespace:
+        usage = SimpleNamespace(input_tokens=1200, output_tokens=rag_routes._REASONER_LESSON_MAX_TOKENS)
+        return SimpleNamespace(
+            stop_reason="max_tokens",
+            stop_details=None,
+            usage=usage,
+            content=[SimpleNamespace(type="text", text=self.CUT_OFF_JSON)],
+        )
 
 
 def test_foolproof_truncated_reasoner_stream_falls_back_to_chat_exactly_once(
     seams: LessonSeams, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    deepseek = _TruncatingDeepSeek()
+    truncating = _TruncatingStream()
     monkeypatch.setattr(rag_routes, "_stream_reasoner_lesson", REAL_STREAM_REASONER_LESSON)
-    monkeypatch.setattr(rag_routes, "get_deepseek_client", lambda: deepseek)
+    monkeypatch.setattr(rag_routes, "open_stream", truncating.open)
 
     async def scenario(http: httpx.AsyncClient) -> Dict[str, object]:
         response = await http.post("/api/rag/lesson", json=PAYLOAD, headers=_as("alice"))
@@ -516,7 +531,7 @@ def test_foolproof_truncated_reasoner_stream_falls_back_to_chat_exactly_once(
 
     lesson = _run(scenario)
 
-    assert deepseek.create_calls == 1, "the truncated reasoner stream was retried"
+    assert truncating.open_calls == 1, "the truncated reasoner stream was retried"
     assert [request.model for request in seams.inference_requests] == [rag_routes.CHAT_MODEL]
     assert lesson["activeModel"] == rag_routes.CHAT_MODEL
     assert seams.writes == [], "a chat fallback must not be persisted as the student's lesson"
@@ -550,10 +565,18 @@ def test_config_guard_lesson_primary_model_is_reasoner_without_env(bare_model_en
 def test_config_guard_prod_profile_routes_lessons_to_the_rag_model(
     bare_model_env: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The HF Space runs MODEL_PROFILE=prod, which exports INFERENCE_MODEL_ID=deepseek-flash (overriding every
-    task in the inference client's map) and HF_RAG_MODEL_ID=deepseek-v4-pro. Lessons must follow the RAG model."""
+    """The HF Space runs MODEL_PROFILE=prod, which exports INFERENCE_MODEL_ID=claude-haiku-5-5 (overriding every
+    task in the inference client's map) and HF_RAG_MODEL_ID=claude-opus-5-5. Lessons must follow the RAG model."""
     monkeypatch.setenv("INFERENCE_MODEL_ID", rag_routes.CHAT_MODEL)
     monkeypatch.setenv("HF_RAG_MODEL_ID", REASONER)
+    assert rag_routes._lesson_primary_model() == REASONER
+
+
+def test_config_guard_stale_non_claude_rag_model_id_does_not_win(
+    bare_model_env: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Env vars and the Firestore model config can still name a model from an earlier provider."""
+    monkeypatch.setenv("HF_RAG_MODEL_ID", "legacy-reasoner-v1")
     assert rag_routes._lesson_primary_model() == REASONER
 
 

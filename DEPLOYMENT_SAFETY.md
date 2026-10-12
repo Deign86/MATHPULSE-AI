@@ -90,9 +90,10 @@ Do not use wildcard CORS with credentials in production.
 
 Which file each process reads (verified — do not re-derive):
 
-- Repository root `.env.local`: frontend `VITE_*` variables; `backend/main.py` also loads it at startup (model keys such as `DEEPSEEK_API_KEY` live here, never in `VITE_*` variables or the browser).
+- Repository root `.env.local`: frontend `VITE_*` variables; `backend/main.py` also loads it at startup (model keys such as `ANTHROPIC_API_KEY` live here, never in `VITE_*` variables or the browser).
 - `backend/.env`: backend runtime configuration (exists alongside `backend/.env.example`).
 - `functions/.env.mathpulse-ai-2026`: loaded by `firebase-tools` at deploy time for the `mathpulse-ai-2026` project.
+- `functions/.env` (gitignored): secrets merged by `firebase-tools` at deploy time — `ANTHROPIC_API_KEY` (+ `ANTHROPIC_WORKSPACE_ID` for user-level keys) for Quiz Battle generation. The Deploy Firebase Functions workflow writes it from the repository secrets of the same names.
 - E2E only: `E2E_USER_{STUDENT,TEACHER,ADMIN}_{USERNAME,PASSWORD}` process env (see `TESTING.md`); never committed.
 
 Functions deploy prerequisites (all project-owner actions, none fixable in code):

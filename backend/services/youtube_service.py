@@ -1,7 +1,7 @@
 """
 Smart YouTube Video Search Service for MathPulse AI.
 Uses YouTube Data API v3 (googleapiclient.discovery) to find relevant
-educational math videos, enriched with RAG curriculum context and DeepSeek
+educational math videos, enriched with RAG curriculum context and Claude
 query generation for contextual fallback when exact matches don't exist.
 Results are cached in Firestore video_cache/{lessonId} with 7-day TTL.
 """
@@ -434,7 +434,7 @@ def _generate_search_queries_with_ai(
     grade_level: str,
 ) -> List[str]:
     """
-    Use DeepSeek to generate multiple targeted YouTube search queries.
+    Use Claude to generate multiple targeted YouTube search queries.
     Falls back to heuristic queries if AI is unavailable.
     
     Returns a list of queries ordered from most specific to most general.
@@ -469,8 +469,6 @@ def _generate_search_queries_with_ai(
             ],
             task_type="lesson_generation",
             max_new_tokens=200,
-            temperature=0.3,
-            top_p=0.9,
         )
         response = client.generate_from_messages(request)
         
@@ -530,7 +528,7 @@ def _generate_fallback_queries(topic: str, subject: str, lesson_context: str) ->
 
 def _find_related_topics_with_ai(topic: str, subject: str) -> List[str]:
     """
-    When exact topic has no videos, ask DeepSeek for related/similar topics
+    When exact topic has no videos, ask Claude for related/similar topics
     that are more likely to have educational video content.
     """
     try:
@@ -552,8 +550,6 @@ def _find_related_topics_with_ai(topic: str, subject: str) -> List[str]:
             ],
             task_type="lesson_generation",
             max_new_tokens=150,
-            temperature=0.4,
-            top_p=0.9,
         )
         response = client.generate_from_messages(request)
         

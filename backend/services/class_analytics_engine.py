@@ -2,7 +2,7 @@
 MathPulse AI — Class Analytics Engine
 
 Fetches real quiz data from Firestore, computes per-student and class-level
-metrics, generates AI insights via DeepSeek, and caches results.
+metrics, generates AI insights via Claude, and caches results.
 """
 
 import asyncio
@@ -468,22 +468,20 @@ Generate a JSON response with these exact keys:
 Be specific to Filipino K-12 DepEd context. If data is limited, acknowledge it and suggest next steps."""
 
         try:
-            from services.ai_client import get_deepseek_client, CHAT_MODEL
+            from services.ai_client import complete_text, CHAT_MODEL
 
-            client = get_deepseek_client()
-            response = client.chat.completions.create(
-                model=CHAT_MODEL,
-                messages=[
+            content = await asyncio.to_thread(
+                complete_text,
+                [
                     {"role": "system", "content": "You are MathPulse AI, a class analytics assistant for Filipino K-12 math teachers. Respond only with valid JSON."},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.3,
+                model=CHAT_MODEL,
                 max_tokens=500,
-                response_format={"type": "json_object"},
+                json_output=True,
+                timeout=60.0,
             )
-
-            content = response.choices[0].message.content or "{}"
-            parsed = json.loads(content)
+            parsed = json.loads(content or "{}")
 
             return ClassInsights(
                 class_id=class_id,
@@ -496,7 +494,7 @@ Be specific to Filipino K-12 DepEd context. If data is limited, acknowledge it a
                 topic_performance=topic_perf,
             )
         except Exception as e:
-            logger.warning(f"DeepSeek insights generation failed: {e}")
+            logger.warning(f"Claude insights generation failed: {e}")
             # Return fallback insights
             return ClassInsights(
                 class_id=class_id,

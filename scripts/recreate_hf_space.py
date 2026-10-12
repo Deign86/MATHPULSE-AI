@@ -6,6 +6,7 @@ from __future__ import annotations
 import os
 import shutil
 import tempfile
+from fnmatch import fnmatch
 from pathlib import Path
 
 from huggingface_hub import HfApi
@@ -14,6 +15,9 @@ SPACE_ID = "Deign86/mathpulse-api-v3test"
 HF_TOKEN = os.environ.get("HF_TOKEN")
 if not HF_TOKEN:
     raise SystemExit("HF_TOKEN not set in environment")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+if not ANTHROPIC_API_KEY:
+    raise SystemExit("ANTHROPIC_API_KEY not set in environment")
 
 api = HfApi(token=HF_TOKEN)
 
@@ -67,9 +71,9 @@ try:
     def copy_dir(src: Path, dst: Path, excludes: list[str]):
         dst.mkdir(parents=True, exist_ok=True)
         for item in src.rglob("*"):
-            if any(ex in item.parts for ex in excludes):
-                continue
             rel = item.relative_to(src)
+            if any(fnmatch(part, ex) for part in rel.parts for ex in excludes):
+                continue
             dst_item = dst / rel
             if item.is_dir():
                 dst_item.mkdir(parents=True, exist_ok=True)
@@ -77,7 +81,8 @@ try:
                 dst_item.parent.mkdir(parents=True, exist_ok=True)
                 shutil.copy2(item, dst_item)
 
-    excludes = [".git", "__pycache__"]
+    # backend/.env holds tokens; the venv and tool caches are local-only state.
+    excludes = [".git", "__pycache__", ".env*", ".venv", ".mypy_cache", ".pytest_cache"]
     copy_dir(backend_dir, hf_dir, excludes)
     for pyc in hf_dir.rglob("*.pyc"):
         pyc.unlink()
@@ -103,8 +108,9 @@ secrets_to_set = {
     "FIREBASE_AUTH_PROJECT_ID": os.environ.get("FIREBASE_AUTH_PROJECT_ID", ""),
     "HUGGING_FACE_API_TOKEN": os.environ.get("HUGGING_FACE_API_TOKEN", ""),
     "HUGGINGFACE_API_TOKEN": os.environ.get("HUGGINGFACE_API_TOKEN", ""),
-    "NVIDIA_API_KEY": os.environ.get("NVIDIA_API_KEY", ""),
-    "LLM_API_KEY": os.environ.get("LLM_API_KEY", ""),
+    "ANTHROPIC_API_KEY": ANTHROPIC_API_KEY,
+    "ANTHROPIC_WORKSPACE_ID": os.environ.get("ANTHROPIC_WORKSPACE_ID", "").strip(),
+    "EMBEDDING_MODEL": "BAAI/bge-small-en-v1.5",
 }
 
 for key, value in secrets_to_set.items():
@@ -119,37 +125,11 @@ print("\nStep 7: Set space variables (non-secret env vars)...")
 variables_to_set = {
     "INFERENCE_INTERACTIVE_TIMEOUT_SEC": "120",
     "INFERENCE_MAX_NEW_TOKENS": "2048",
-    "INFERENCE_CHAT_HARD_PROMPT_CHARS": "32000",
-    "INFERENCE_CHAT_HARD_HISTORY_CHARS": "16000",
-    "INFERENCE_CHAT_HARD_KEYWORDS": "Qwen,Qwen3,Qwen3-32B",
     "CHAT_MAX_NEW_TOKENS": "2048",
-    "INFERENCE_CHAT_MODEL_ID": "Qwen/Qwen3-32B",
-    "INFERENCE_MODEL_ID_BACKUP": "Qwen/Qwen2.5-72B-Instruct",
-    "INFERENCE_CHAT_MODEL_ID_BACKUP": "Qwen/Qwen2.5-72B-Instruct",
-    "INFERENCE_PROVIDER": "hf_inference",
-    "INFERENCE_ENABLE_PROVIDER_FALLBACK": "true",
-    "INFERENCE_GPU_PROVIDER": "sgl",
-    "INFERENCE_CPU_PROVIDER": "hf_inference",
-    "LORA_BASE_MODEL_ID": "Qwen/Qwen3-32B",
-    "LORA_ADAPTER_MODEL_ID": "",
-    "LORA_LOAD_IN_4BIT": "false",
-    "LORA_DEVICE_MAP": "auto",
-    "LORA_DTYPE": "auto",
-    "LORA_MAX_NEW_TOKENS": "2048",
-    "LOCAL_STREAM_CHUNK_SIZE": "8",
+    "INFERENCE_CHAT_MODEL_ID": "claude-haiku-5-5",
+    "MODEL_PROFILE": "prod",
     "CHAT_STREAM_NO_TOKEN_TIMEOUT_SEC": "30",
     "CHAT_STREAM_TOTAL_TIMEOUT_SEC": "300",
-    "LOCAL_PEFT_STREAM_TOKEN_TIMEOUT_SEC": "30",
-    "LOCAL_PEFT_WORKER_JOIN_TIMEOUT_SEC": "30",
-    "LOCAL_PEFT_GENERATE_MAX_TIME_SEC": "180",
-    "LOCAL_PEFT_LOG_MEMORY": "false",
-    "LORA_CACHE_DIR": "/tmp/lora_cache",
-    "LLM_PROVIDER": "sgl",
-    "LLM_BASE_URL": "https://api.nvcf.nvidia.com/v2",
-    "LLM_MODEL": "meta/llama-4-maverick-17b-128e-instruct",
-    "LLM_FALLBACK_PROVIDER": "openai",
-    "LLM_ENABLE_THINKING": "true",
-    "INFERENCE_LOCAL_SPACE_URL": "https://deign86-mathpulse-api-v3test.hf.space",
 }
 
 for key, value in variables_to_set.items():

@@ -13,12 +13,11 @@ from datetime import datetime, timezone
 from threading import Lock
 from typing import Any, AsyncIterator, Callable, Dict, List, Optional, Set, Tuple
 
-import httpx
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field, field_validator
 
-from services.ai_client import CHAT_MODEL, get_deepseek_client
+from services.ai_client import CHAT_MODEL, EFFORT_LEVELS, Timeout, open_stream, reply_text
 from services.llm_json import extract_json_object
 from services.jev_client import verify_lesson_factuality
 
@@ -69,9 +68,10 @@ def _lesson_primary_model() -> str:
     """Model for rag_lesson generation.
 
     An explicit RAG model (HF_RAG_MODEL_ID via admin override, MODEL_PROFILE or env) wins: the prod profile
-    also exports INFERENCE_MODEL_ID=deepseek-flash, which overrides every task in the inference client's map.
-    With no RAG model configured, fall back to the client's task map (config/models.yaml → deepseek-v4-pro),
-    since get_model_for_task() would otherwise resolve to deepseek-flash.
+    also exports INFERENCE_MODEL_ID=claude-haiku-5-5 (CHAT_MODEL), which overrides every task in the inference
+    client's map. With no RAG model configured, fall back to the client's task map (config/models.yaml →
+    claude-opus-5-5, REASONER_MODEL), since get_model_for_task() would otherwise resolve to claude-haiku-5-5.
+    A stale non-Claude id in HF_RAG_MODEL_ID resolves to "" (current_model_id), so it never counts as configured.
     """
     if get_current_runtime_config()["resolved"].get("HF_RAG_MODEL_ID"):
         return get_model_for_task("rag_lesson")
@@ -90,7 +90,6 @@ async def _generate_text(
     prompt: str,
     task_type: str,
     max_new_tokens: int = 900,
-    enable_thinking: bool = False,
     model: Optional[str] = None,
     timeout_sec: Optional[int] = None,
     max_retries: Optional[int] = None,
@@ -100,10 +99,7 @@ async def _generate_text(
         model=model,
         task_type=task_type,
         max_new_tokens=max_new_tokens,
-        temperature=0.2,
-        top_p=0.9,
         timeout_sec=timeout_sec,
-        enable_thinking=enable_thinking,
         max_retries=max_retries,
     )
     # The inference client is synchronous; keep its network call off the event loop.
@@ -394,12 +390,12 @@ _LEARNER_PROFILE_MAX_CHARS = 1500
 _LESSON_PROGRESS_INTERVAL_SEC = 1.0
 _LESSON_PING_INTERVAL_SEC = 15.0
 _REASONER_LESSON_MAX_TOKENS = 32768
-# The lesson is rewritten from retrieved curriculum text, so deep reasoning adds little; DeepSeek's default
-# "high" effort took 61-221 s per lesson. Override with RAG_LESSON_REASONING_EFFORT=high|max if quality needs it.
+# The lesson is rewritten from retrieved curriculum text, so deep reasoning adds little for the latency it costs.
+# Override with RAG_LESSON_REASONING_EFFORT=medium|high|xhigh|max if quality needs it.
 _REASONER_LESSON_EFFORT = os.getenv("RAG_LESSON_REASONING_EFFORT", "low").strip().lower()
-if _REASONER_LESSON_EFFORT not in {"low", "high", "max"}:
+if _REASONER_LESSON_EFFORT not in EFFORT_LEVELS:
     _REASONER_LESSON_EFFORT = "low"
-_REASONER_STREAM_TIMEOUT = httpx.Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
+_REASONER_STREAM_TIMEOUT = Timeout(connect=10.0, read=60.0, write=30.0, pool=10.0)
 _STUDENT_LESSONS_COLLECTION = "studentLessons"
 GENERIC_LEARNER_PROFILE = (
     "Grade 11 Senior High School STEM student (DepEd). No individual learning data is available: "
@@ -642,52 +638,40 @@ def _stream_reasoner_lesson(
     report_progress: Callable[[str, int], None],
     stop: threading.Event,
 ) -> str:
-    """Stream a lesson from DeepSeek in a worker thread; returns the accumulated answer content."""
-    client = get_deepseek_client().with_options(max_retries=0)
-    # Thinking mode ignores sampling params, and its reasoning tokens count toward max_tokens:
-    # 8192 ran out mid-JSON on most lessons, so the budget leaves room for reasoning plus the lesson.
-    stream = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        max_tokens=_REASONER_LESSON_MAX_TOKENS,
-        reasoning_effort=_REASONER_LESSON_EFFORT,
-        stream=True,
-        timeout=_REASONER_STREAM_TIMEOUT,
-        extra_body={"thinking": {"type": "enabled"}},
-    )
-    parts: List[str] = []
-    content_chars = 0
-    reasoning_chars = 0
-    finish_reason: Optional[str] = None
+    """Stream a lesson from Claude in a worker thread; returns the answer text."""
+    text_chars = 0
+    thinking_chars = 0
     last_report = 0.0
-    try:
-        for chunk in stream:
+    # Thinking tokens count toward max_tokens, so the budget leaves room for thinking plus the whole lesson JSON.
+    with open_stream(
+        messages,
+        model=model,
+        max_tokens=_REASONER_LESSON_MAX_TOKENS,
+        effort=_REASONER_LESSON_EFFORT,
+        timeout=_REASONER_STREAM_TIMEOUT,
+    ) as stream:
+        for event in stream:
             if stop.is_set():
                 raise TimeoutError(f"Lesson generation exceeded {int(_LESSON_GENERATION_CAP_SEC)}s")
-            if not chunk.choices:
+            if event.type != "content_block_delta":
                 continue
-            choice = chunk.choices[0]
-            reasoning = getattr(choice.delta, "reasoning_content", None)
-            if reasoning:
-                reasoning_chars += len(reasoning)
-            if choice.delta.content:
-                parts.append(choice.delta.content)
-                content_chars += len(choice.delta.content)
-            finish_reason = choice.finish_reason or finish_reason
+            if event.delta.type == "thinking_delta":
+                thinking_chars += len(event.delta.thinking)
+            elif event.delta.type == "text_delta":
+                text_chars += len(event.delta.text)
+            else:
+                continue
             now = time.monotonic()
             if now - last_report >= _LESSON_PROGRESS_INTERVAL_SEC:
                 last_report = now
-                if content_chars:
-                    report_progress("writing", content_chars)
+                if text_chars:
+                    report_progress("writing", text_chars)
                 else:
-                    report_progress("thinking", reasoning_chars)
-    finally:
-        close = getattr(stream, "close", None)
-        if callable(close):
-            close()
-    if finish_reason == "length":
+                    report_progress("thinking", thinking_chars)
+        final = stream.get_final_message()
+    if final.stop_reason == "max_tokens":
         raise RuntimeError("Lesson stream hit max_tokens before the JSON was complete")
-    text = "".join(parts).strip()
+    text = reply_text(final)  # raises AIRefusalError when Claude declined
     if not text:
         raise RuntimeError("Lesson stream returned no content")
     return text
@@ -1220,7 +1204,6 @@ async def rag_generate_problem(request: Request, payload: RagProblemRequest):
         prompt,
         task_type="quiz_generation",
         max_new_tokens=600,
-        enable_thinking=False,
     )
 
     parsed = _strip_thinking_and_parse(raw)

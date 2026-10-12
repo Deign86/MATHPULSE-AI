@@ -9,18 +9,18 @@ import threading
 import time
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, Iterator, List, Optional, Tuple
 
 import httpx
 import pytest
 from fastapi import FastAPI, Request
 from fastapi.testclient import TestClient
 
-os.environ.setdefault("DEEPSEEK_API_KEY", "mock-key-for-testing")
+os.environ.setdefault("ANTHROPIC_API_KEY", "mock-key-for-testing")
 
 from routes import rag_routes  # noqa: E402
+from services.ai_client import REASONER_MODEL as REASONER, AIRefusalError, Timeout  # noqa: E402
 
-REASONER = "deepseek-v4-pro"
 CHUNKS = [
     {
         "content": "A rational function is a quotient of two polynomial functions.",
@@ -554,6 +554,7 @@ def test_fallback_to_chat_once_when_reasoner_stream_fails(client: TestClient, pi
     assert fallback.max_new_tokens == 4096
     assert fallback.timeout_sec == 120
     assert fallback.max_retries == 1
+    assert not {"temperature", "top_p"} & vars(fallback).keys()
     # A chat fallback is not persisted indefinitely: the next open retries the reasoner.
     assert pipeline.writes == []
 
@@ -571,30 +572,48 @@ def test_fallback_when_stream_exceeds_overall_cap(client: TestClient, pipeline: 
     assert len(pipeline.inference_requests) == 1
 
 
-def _chunk(content: Optional[str] = None, reasoning: Optional[str] = None, finish: Optional[str] = None) -> SimpleNamespace:
-    delta = SimpleNamespace(content=content, reasoning_content=reasoning)
-    return SimpleNamespace(choices=[SimpleNamespace(delta=delta, finish_reason=finish)])
+def _thinking(text: str) -> SimpleNamespace:
+    return SimpleNamespace(type="content_block_delta", delta=SimpleNamespace(type="thinking_delta", thinking=text))
 
 
-class FakeDeepSeek:
-    def __init__(self, chunks: List[SimpleNamespace]) -> None:
-        self.chunks = chunks
-        self.options: Dict[str, object] = {}
-        self.create_kwargs: Dict[str, object] = {}
-        self.chat = SimpleNamespace(completions=SimpleNamespace(create=self.create))
+def _text(text: str) -> SimpleNamespace:
+    return SimpleNamespace(type="content_block_delta", delta=SimpleNamespace(type="text_delta", text=text))
 
-    def with_options(self, **options: object) -> "FakeDeepSeek":
-        self.options = options
+
+class FakeClaudeStream:
+    """Stands in for open_stream(): a context manager that iterates raw events, then reports the final message."""
+
+    def __init__(self, events: List[SimpleNamespace], stop_reason: str = "end_turn") -> None:
+        self.events = events
+        self.stop_reason = stop_reason
+        self.open_kwargs: Dict[str, object] = {}
+        self.closed = False
+
+    def open(self, messages: List[Dict[str, str]], **kwargs: object) -> "FakeClaudeStream":
+        self.open_kwargs = {"messages": messages, **kwargs}
         return self
 
-    def create(self, **kwargs: object) -> List[SimpleNamespace]:
-        self.create_kwargs = kwargs
-        return self.chunks
+    def __enter__(self) -> "FakeClaudeStream":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        self.closed = True
+
+    def __iter__(self) -> Iterator[SimpleNamespace]:
+        return iter(self.events)
+
+    def get_final_message(self) -> SimpleNamespace:
+        thinking = "".join(event.delta.thinking for event in self.events if event.delta.type == "thinking_delta")
+        text = "".join(event.delta.text for event in self.events if event.delta.type == "text_delta")
+        blocks = [SimpleNamespace(type="thinking", thinking=thinking)] if thinking else []
+        blocks += [SimpleNamespace(type="text", text=text)] if text else []
+        usage = SimpleNamespace(input_tokens=1200, output_tokens=len(thinking) + len(text))
+        return SimpleNamespace(stop_reason=self.stop_reason, stop_details=None, usage=usage, content=blocks)
 
 
 def test_fallback_contract_reasoner_stream_request_shape(monkeypatch: pytest.MonkeyPatch) -> None:
-    fake = FakeDeepSeek([_chunk(reasoning="think " * 10), _chunk(content='{"sections": '), _chunk(content="[]}", finish="stop")])
-    monkeypatch.setattr(rag_routes, "get_deepseek_client", lambda: fake)
+    fake = FakeClaudeStream([_thinking("think " * 10), _text('{"sections": '), _text("[]}")])
+    monkeypatch.setattr(rag_routes, "open_stream", fake.open)
     monkeypatch.setattr(rag_routes, "_LESSON_PROGRESS_INTERVAL_SEC", 0.0)
     progress: List[Tuple[str, int]] = []
 
@@ -603,24 +622,46 @@ def test_fallback_contract_reasoner_stream_request_shape(monkeypatch: pytest.Mon
     )
 
     assert text == '{"sections": []}'
-    assert fake.options == {"max_retries": 0}
-    assert fake.create_kwargs["stream"] is True
-    assert fake.create_kwargs["max_tokens"] == rag_routes._REASONER_LESSON_MAX_TOKENS
-    assert fake.create_kwargs["extra_body"] == {"thinking": {"type": "enabled"}}
-    assert fake.create_kwargs["reasoning_effort"] == rag_routes._REASONER_LESSON_EFFORT == "low"
-    assert fake.create_kwargs["model"] == REASONER
-    assert "temperature" not in fake.create_kwargs and "top_p" not in fake.create_kwargs
-    timeout = fake.create_kwargs["timeout"]
-    assert isinstance(timeout, httpx.Timeout) and timeout.read == 60.0 and timeout.connect == 10.0
+    assert fake.open_kwargs["messages"] == [{"role": "user", "content": "x"}]
+    assert fake.open_kwargs["model"] == REASONER
+    assert fake.open_kwargs["max_tokens"] == rag_routes._REASONER_LESSON_MAX_TOKENS
+    assert fake.open_kwargs["effort"] == rag_routes._REASONER_LESSON_EFFORT == "low"
+    assert "temperature" not in fake.open_kwargs and "top_p" not in fake.open_kwargs
+    assert fake.open_kwargs.get("max_retries", 0) == 0
+    timeout = fake.open_kwargs["timeout"]
+    assert isinstance(timeout, Timeout) and timeout.read == 60.0 and timeout.connect == 10.0
     assert progress[0] == ("thinking", 60)
     assert progress[-1] == ("writing", len('{"sections": []}'))
+    assert fake.closed
 
 
 def test_fallback_triggered_by_truncated_or_empty_stream(monkeypatch: pytest.MonkeyPatch) -> None:
-    for chunks in ([_chunk(content='{"sections": [', finish="length")], [_chunk(reasoning="only thinking", finish="stop")]):
-        monkeypatch.setattr(rag_routes, "get_deepseek_client", lambda chunks=chunks: FakeDeepSeek(chunks))
+    truncated = FakeClaudeStream([_text('{"sections": [')], stop_reason="max_tokens")
+    only_thinking = FakeClaudeStream([_thinking("only thinking")])
+    for fake in (truncated, only_thinking):
+        monkeypatch.setattr(rag_routes, "open_stream", fake.open)
         with pytest.raises(RuntimeError):
             rag_routes._stream_reasoner_lesson([], REASONER, lambda phase, chars: None, threading.Event())
+
+
+def test_fallback_triggered_by_refused_stream(monkeypatch: pytest.MonkeyPatch) -> None:
+    refused = FakeClaudeStream([_text("I can't help with that.")], stop_reason="refusal")
+    monkeypatch.setattr(rag_routes, "open_stream", refused.open)
+
+    with pytest.raises(AIRefusalError):
+        rag_routes._stream_reasoner_lesson([], REASONER, lambda phase, chars: None, threading.Event())
+
+
+def test_stop_event_aborts_the_reasoner_stream_and_closes_it(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = FakeClaudeStream([_text('{"sections": '), _text("[]}")])
+    monkeypatch.setattr(rag_routes, "open_stream", fake.open)
+    stop = threading.Event()
+    stop.set()
+
+    with pytest.raises(TimeoutError):
+        rag_routes._stream_reasoner_lesson([], REASONER, lambda phase, chars: None, stop)
+
+    assert fake.closed
 
 
 # ─── validate / repair ─────────────────────────────────────────────────────────

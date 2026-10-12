@@ -4,22 +4,22 @@
 <!-- Plain English for a non-engineer: NO file paths, NO todo numbers, NO wave/agent/tool names. -->
 
 **What you'll get:** Two production-grade, copy-paste ready AI prompts formatted for your capstone project:
-1. **Prompt 1 (Jev Hybrid Decision Layer):** Integrates TypeSafe's Jev classifier model (`Choice` for intent routing, `Noul` for hallucination/citation verification, and `Score` for student mastery) as an intelligent decision layer while keeping DeepSeek as the generative tutor, backed by strict Python fallback safety.
+1. **Prompt 1 (Jev Hybrid Decision Layer):** Integrates TypeSafe's Jev classifier model (`Choice` for intent routing, `Noul` for hallucination/citation verification, and `Score` for student mastery) as an intelligent decision layer while keeping the LLM provider as the generative tutor, backed by strict Python fallback safety.
 2. **Prompt 2 (Additive Enjoyable Modules Overhaul):** Transforms the barren curriculum into an engaging learning quest, led by a Duolingo-style progression system (unlocking subsequent modules only upon achieving $\ge 75\%$ on checkpoint quizzes) and an honest, effort-based XP economy, followed by interactive manipulatives and bite-sized micro-lessons.
 
 **Why this approach:** 
-- Jev is a fast, calibrated semantic classifier, not a text generator. Pairing Jev's discrete judgments with DeepSeek's conversational synthesis gives you the ideal System 1 / System 2 architecture for your capstone defense.
+- Jev is a fast, calibrated semantic classifier, not a text generator. Pairing Jev's discrete judgments with the LLM provider's conversational synthesis gives you the ideal System 1 / System 2 architecture for your capstone defense.
 - MathPulse AI's current learning experience feels empty because everything is unlocked by default, half the subjects are unpopulated shells, and lessons reward a flat 50 XP regardless of effort. Introducing progressive unlocking and honest XP immediately restores pacing, accomplishment, and pedagogical value without breaking existing database schemas or routes.
 
 **What it will NOT do:** 
-- It will NOT remove or replace DeepSeek as your core text generator.
+- It will NOT remove or replace the LLM provider as your core text generator.
 - It will NOT modify existing database records, breaking API contracts, or historical student XP.
 - It will NOT write or commit unverified code in this planning session; execution occurs in a separate, isolated worker session (`$start-work`).
 
 **Effort:** Large (covers full backend routing, verification gates, frontend progression, and gamification).
 **Risk:** Low (strictly additive architecture with zero changes to existing production schemas or deployed routes).
 **Decisions to sanity-check:**
-- P1 uses a full hybrid design: Jev makes all routing, verification, and mastery decisions; DeepSeek generates text; deterministic Python code remains the final authority on conflict.
+- P1 uses a full hybrid design: Jev makes all routing, verification, and mastery decisions; the LLM provider generates text; deterministic Python code remains the final authority on conflict.
 - P2 focuses first on progression gating ($\ge 75\%$ checkpoint quiz) and honest XP calculation, keeping `stats-prob` and `business-math` shelved until DepEd PDFs are available.
 - Both prompts are packaged with exact file and line references, explicit acceptance criteria, and automated test scenarios.
 
@@ -31,13 +31,13 @@ Your next move: start work now, or run a high-accuracy review first? Full execut
 
 ## Scope
 ### Must have
-- P1 prompt block (PASTE-P1, verbatim-fenced): Full-hybrid Jev decision layer — Choice intent/tool routing, Noul citation+correctness verification gate, Score mastery tracking; DeepSeek stays default generator (prod profile `deepseek-reasoner` for RAG, `deepseek-chat` elsewhere); deterministic Python validators remain authoritative on disagreement; starting thresholds pinned (Choice auto≥0.80, Noul escalate band, Score levels defined) with calibration note; `scripts/jev_collate.py` cited as pattern reference only, never reused as a service.
+- P1 prompt block (PASTE-P1, verbatim-fenced): Full-hybrid Jev decision layer — Choice intent/tool routing, Noul citation+correctness verification gate, Score mastery tracking; the LLM provider stays default generator (prod profile: the reasoning model for RAG, the chat model elsewhere); deterministic Python validators remain authoritative on disagreement; starting thresholds pinned (Choice auto≥0.80, Noul escalate band, Score levels defined) with calibration note; `scripts/jev_collate.py` cited as pattern reference only, never reused as a service.
 - P2 prompt block (PASTE-P2, verbatim-fenced): Additive enjoyable-modules overhaul led by Wave-1 progression + honest XP — per-module checkpoint quiz ≥75% unlocks next module (active subjects `gen-math`, `finite-math` only; `stats-prob`/`business-math` stay shelved); forward-only honest-XP formulas with idempotent no-double-award; new Firestore event/unlock collections with named schemas + rules deltas; manipulatives, micro-lessons, duels/boss, mascot reactivity specified as ordered follow waves (not Wave-1).
 - Shared appendix in plan: concrete additive endpoint list (max 3 new: `POST /api/curriculum/generate-module`, `POST /api/mastery/record`, `POST /api/jev/verify` — names fixed, worker implements exact contracts), RAG failure map (preserve 404/503/502/500 from `rag_routes.py:371-391,418-470`; Jev gate degrades to deterministic fallback, never raw errors), PDF fallback preserved (`LessonViewer.tsx:485-550`), secrets server-side only (`TYPESAFE_API_KEY`, never committed), regression commands with expected results.
 - Plan-deliverable proof: worker shows both blocks byte-identical between plan and evidence, every pinned decision traceable to a repo file:line, zero reopened owner decisions.
 ### Must NOT have (guardrails, anti-slop, scope boundaries)
 - No product-code edits in this planning session; worker adds NEW files/routes/collections only — no edits to existing contracts (`rag_routes.py` endpoints, `progressService.ts` history, `subjects.ts` availability, `firestore.rules` existing grants).
-- No DeepSeek removal or model-identity enforcement beyond prod-default assertion; runtime `MODEL_PROFILE`/override behavior (`inference_client.py:208-229`) stays intact with P1 boundary test.
+- No LLM provider removal or model-identity enforcement beyond prod-default assertion; runtime `MODEL_PROFILE`/override behavior (`inference_client.py:208-229`) stays intact with P1 boundary test.
 - No shelved-subject activation; no historical-XP recomputation (forward-only); no duplicate progress state (extend `progressService.ts` patterns, never parallel ledger for legacy XP).
 - No secrets in repo (`.secrets/`, `.env.local`, API key values); no committing service-account JSON; no global-config writes.
 
@@ -68,22 +68,22 @@ Your next move: start work now, or run a high-accuracy review first? Full execut
 > Implementation + Test = ONE todo. Never separate.
 <!-- APPEND TASK BATCHES BELOW THIS LINE WITH edit/apply_patch - never rewrite the headers above. -->
 - [x] 1. Craft P1 routing and verification specifications
-  What to do / Must NOT do: Draft the P1 prompt's Choice intent/tool routing and Noul citation+correctness verification gate. Define exact Choice criteria keys (`direct_answer_request`, `conceptual_confusion`, `calculation_error`, `off_topic_or_frustrated`) with non-overlapping descriptions and auto-accept threshold `confidence >= 0.80`; define Noul propositions for curriculum factuality and anti-answer-leak (`p(leak) < 0.15`). Map directly onto `backend/routes/rag_routes.py:347-460` and `backend/routes/deepseek_rag_routes.py:57-136`. Do NOT enforce DeepSeek removal; do NOT invent uncalibrated confidence math; cite `scripts/jev_collate.py` as pattern precedent only, not as a live service.
+  What to do / Must NOT do: Draft the P1 prompt's Choice intent/tool routing and Noul citation+correctness verification gate. Define exact Choice criteria keys (`direct_answer_request`, `conceptual_confusion`, `calculation_error`, `off_topic_or_frustrated`) with non-overlapping descriptions and auto-accept threshold `confidence >= 0.80`; define Noul propositions for curriculum factuality and anti-answer-leak (`p(leak) < 0.15`). Map directly onto `backend/routes/rag_routes.py:347-460` and `backend/routes/ai_insight_routes.py:57-136`. Do NOT enforce LLM provider removal; do NOT invent uncalibrated confidence math; cite `scripts/jev_collate.py` as pattern precedent only, not as a live service.
   Parallelization: Wave 1 | Blocked by: — | Blocks: 5, F1-F4
-  References (executor has NO interview context - be exhaustive): `backend/routes/rag_routes.py:347-460` (current RAG lesson generation and prompt construction); `backend/routes/deepseek_rag_routes.py:57-136` (weakness-detection 60% rule seam); `backend/services/inference_client.py:208-229` (model routing task mapping); `scripts/jev_collate.py:1-40` (TypeSafe SDK Choice/Noul usage precedent in repo); live TypeSafe docs `primitives/choice.md`, `primitives/noul.md`, `cookbooks/citation_check.md`.
-  Acceptance criteria (agent-executable): The drafted P1 routing spec specifies exact Choice criteria with 4 keys and auto-accept `>=0.80`; the Noul verification spec specifies factual check + leak threshold `<0.15`; both cite exact file:line references in `rag_routes.py` and `deepseek_rag_routes.py`.
+  References (executor has NO interview context - be exhaustive): `backend/routes/rag_routes.py:347-460` (current RAG lesson generation and prompt construction); `backend/routes/ai_insight_routes.py:57-136` (weakness-detection 60% rule seam); `backend/services/inference_client.py:208-229` (model routing task mapping); `scripts/jev_collate.py:1-40` (TypeSafe SDK Choice/Noul usage precedent in repo); live TypeSafe docs `primitives/choice.md`, `primitives/noul.md`, `cookbooks/citation_check.md`.
+  Acceptance criteria (agent-executable): The drafted P1 routing spec specifies exact Choice criteria with 4 keys and auto-accept `>=0.80`; the Noul verification spec specifies factual check + leak threshold `<0.15`; both cite exact file:line references in `rag_routes.py` and `ai_insight_routes.py`.
   QA scenarios (name the exact tool + invocation):
     - Happy: PowerShell `Select-String -Pattern "Choice" -Path .omo/plans/jev-fun-modules-prompts.md` returns matches showing criteria keys and `>=0.80` threshold. Evidence: `.omo/evidence/jev-fun-modules-prompts/task-1-p1-routing.log`
-    - Failure: PowerShell `if (Select-String -Pattern "remove DeepSeek" -Path .omo/plans/jev-fun-modules-prompts.md) { throw "FAIL: found forbidden removal" } else { "PASS: boundary preserved" }` outputs PASS. Evidence: `.omo/evidence/jev-fun-modules-prompts/task-1-p1-boundary.log`
+    - Failure: PowerShell `if (Select-String -Pattern "remove the LLM provider" -Path .omo/plans/jev-fun-modules-prompts.md) { throw "FAIL: found forbidden removal" } else { "PASS: boundary preserved" }` outputs PASS. Evidence: `.omo/evidence/jev-fun-modules-prompts/task-1-p1-boundary.log`
   Commit: Y | docs(plan): draft p1 routing and verification spec
 
 - [x] 2. Craft P1 mastery scoring and disagreement protocol
-  What to do / Must NOT do: Draft the P1 prompt's Score mastery tracking across Bloom taxonomy levels (0: Recall, 1: Procedural, 2: Conceptual Transfer, 3: Metacognitive Evaluation) with concrete level descriptions. Define the disagreement resolution hierarchy: deterministic Python code (`_ensure_7_sections` in `backend/routes/rag_routes.py:291-345`) is ALWAYS authoritative over Jev outputs; Jev decisions are authoritative over DeepSeek generator outputs. Define escalation on low confidence (<0.50): fall back to static DepEd curriculum excerpts, never raw errors. Do NOT create circular dependencies between Score and runtime unlock state.
+  What to do / Must NOT do: Draft the P1 prompt's Score mastery tracking across Bloom taxonomy levels (0: Recall, 1: Procedural, 2: Conceptual Transfer, 3: Metacognitive Evaluation) with concrete level descriptions. Define the disagreement resolution hierarchy: deterministic Python code (`_ensure_7_sections` in `backend/routes/rag_routes.py:291-345`) is ALWAYS authoritative over Jev outputs; Jev decisions are authoritative over LLM generator outputs. Define escalation on low confidence (<0.50): fall back to static DepEd curriculum excerpts, never raw errors. Do NOT create circular dependencies between Score and runtime unlock state.
   Parallelization: Wave 1 | Blocked by: — | Blocks: 5, F1-F4
   References (executor has NO interview context - be exhaustive): `backend/routes/rag_routes.py:291-345` (`_ensure_7_sections` deterministic fallback logic); `backend/config/models.yaml:39` (task mapping for verification); live TypeSafe docs `primitives/score.md`, `patterns/composite-scoring.md`.
-  Acceptance criteria (agent-executable): The P1 mastery spec defines 4 distinct Bloom levels for Score with concrete descriptions; disagreement hierarchy explicitly ranks Python deterministic > Jev classifier > DeepSeek generator; escalation fallback preserves curriculum defaults.
+  Acceptance criteria (agent-executable): The P1 mastery spec defines 4 distinct Bloom levels for Score with concrete descriptions; disagreement hierarchy explicitly ranks Python deterministic > Jev classifier > LLM generator; escalation fallback preserves curriculum defaults.
   QA scenarios (name the exact tool + invocation):
-    - Happy: PowerShell `Select-String -Pattern "disagreement" -Path .omo/plans/jev-fun-modules-prompts.md` returns text asserting Python deterministic code overrides Jev and DeepSeek. Evidence: `.omo/evidence/jev-fun-modules-prompts/task-2-p1-mastery.log`
+    - Happy: PowerShell `Select-String -Pattern "disagreement" -Path .omo/plans/jev-fun-modules-prompts.md` returns text asserting Python deterministic code overrides Jev and the LLM provider. Evidence: `.omo/evidence/jev-fun-modules-prompts/task-2-p1-mastery.log`
     - Failure: PowerShell `if (-not (Select-String -Pattern "_ensure_7_sections" -Path .omo/plans/jev-fun-modules-prompts.md)) { throw "FAIL: missing anchor" } else { "PASS: anchored" }` outputs PASS. Evidence: `.omo/evidence/jev-fun-modules-prompts/task-2-p1-anchor.log`
   Commit: Y | docs(plan): draft p1 mastery and disagreement protocol
 
@@ -126,7 +126,7 @@ Your next move: start work now, or run a high-accuracy review first? Full execut
 - [x] F3. Real manual QA (prompt truth & repo grounding verification)
   Agent-executable (no human): execute PowerShell checks verifying every cited file path exists (`Test-Path`), every cited line range exists in current working tree, both prompt blocks extract cleanly to disk without syntax/encoding errors, and no secrets or API keys are hardcoded in the plan or evidence. Evidence: `.omo/evidence/jev-fun-modules-prompts/final-F3-grounding.log`
 - [x] F4. Scope fidelity
-  Agent-executable: verify zero product code or configuration files were edited during the planning session (`git status --porcelain` shows only `.omo/plans/` and `.omo/drafts/` modified or untracked); verify no DeepSeek removal instructions exist; verify shelved subjects remain shelved; verify all additive seams are strictly additive. Evidence: `.omo/evidence/jev-fun-modules-prompts/final-F4-fidelity.log`
+  Agent-executable: verify zero product code or configuration files were edited during the planning session (`git status --porcelain` shows only `.omo/plans/` and `.omo/drafts/` modified or untracked); verify no LLM provider removal instructions exist; verify shelved subjects remain shelved; verify all additive seams are strictly additive. Evidence: `.omo/evidence/jev-fun-modules-prompts/final-F4-fidelity.log`
 
 ## Commit strategy
 - Atomic commit for this planning session: `docs(plan): add decision-complete jev and fun-modules prompt specifications`.
@@ -141,21 +141,21 @@ Your next move: start work now, or run a high-accuracy review first? Full execut
 # TASK: Integrate TypeSafe Jev as the Hybrid Decision Layer in MATHPULSE-AI
 
 ## 1. OBJECTIVE & ARCHITECTURAL SPLIT
-Implement TypeSafe Jev (System One) as the semantic decision, intent-routing, and verification engine for MathPulse AI, while keeping DeepSeek (`deepseek-reasoner` / `deepseek-chat`) strictly as the constrained text generator. Code and deterministic Python logic own the workflow; Jev provides fast, typed, probabilistic judgments; DeepSeek synthesizes explanations.
+Implement TypeSafe Jev (System One) as the semantic decision, intent-routing, and verification engine for MathPulse AI, while keeping the LLM provider (the reasoning model and the chat model) strictly as the constrained text generator. Code and deterministic Python logic own the workflow; Jev provides fast, typed, probabilistic judgments; the LLM provider synthesizes explanations.
 
 - **TypeSafe Jev (System 1)**: Evaluates structured application state against discrete typed questions (`Choice`, `Noul`, `Score`), returning calibrated probabilities and confidence metrics. Jev handles intent routing, factuality/hallucination verification, and cognitive mastery tracking.
-- **DeepSeek (System 2)**: Constrained text synthesizer invoked ONLY after Jev routing approves. Generates conversational Socratic explanations and LaTeX math steps.
-- **Python Deterministic Code**: The ultimate authority. Always enforces schemas and overrides both Jev and DeepSeek on conflict.
+- **LLM provider (System 2)**: Constrained text synthesizer invoked ONLY after Jev routing approves. Generates conversational Socratic explanations and LaTeX math steps.
+- **Python Deterministic Code**: The ultimate authority. Always enforces schemas and overrides both Jev and the LLM provider on conflict.
 
 ## 2. INTEGRATION POINTS & TARGET FILES
 1. **`backend/routes/rag_routes.py:347-460` (`rag_lesson`)**:
    - Wrap the lesson generation flow with Jev verification before returning the payload.
-   - Run a `Noul` citation and factual alignment check over DeepSeek's generated 7-section notebook output against the retrieved DepEd curriculum context (`curriculum_rag.py:463-574`).
+   - Run a `Noul` citation and factual alignment check over the LLM provider's generated 7-section notebook output against the retrieved DepEd curriculum context (`curriculum_rag.py:463-574`).
    - If Jev detects hallucination or factuality failure (`p(correct) < 0.70`), automatically fall back to deterministic grounded defaults via `_ensure_7_sections` (`rag_routes.py:291-345`).
-2. **`backend/routes/deepseek_rag_routes.py:57-136` (`weakness-detection`)**:
+2. **`backend/routes/ai_insight_routes.py:57-136` (`weakness-detection`)**:
    - Replace or augment the static 60% rule (`WEAK_TOPIC_THRESHOLD = 0.60`) with a Jev `Score` primitive that computes multidimensional mastery (algebraic rigor, conceptual depth, error taxonomy).
 3. **`backend/services/inference_client.py:208-229` (`get_model_for_task`)**:
-   - Preserve default production routing where `rag_lesson` maps to `deepseek-reasoner`. Add task types for `jev_triage`, `jev_verification`, and `jev_mastery` routing to the TypeSafe SDK client.
+   - Preserve default production routing where `rag_lesson` maps to the reasoning model. Add task types for `jev_triage`, `jev_verification`, and `jev_mastery` routing to the TypeSafe SDK client.
 4. **`backend/services/jev_client.py` (NEW FILE)**:
    - Encapsulate the `typesafe_sdk` client instantiation using `TYPESAFE_API_KEY` (server-side only from environment).
    - Export helper functions: `route_student_intent()`, `verify_lesson_factuality()`, and `score_student_mastery()`.
@@ -176,7 +176,7 @@ INTENT_ROUTING = Choice(
     }
 )
 ```
-- **Execution Policy**: If `confidence >= 0.80`, route autonomously. If `choice == "direct_answer_request"`, return a deterministic Socratic scaffold without invoking DeepSeek. If `confidence < 0.50`, fall back to standard curriculum review.
+- **Execution Policy**: If `confidence >= 0.80`, route autonomously. If `choice == "direct_answer_request"`, return a deterministic Socratic scaffold without invoking the LLM provider. If `confidence < 0.50`, fall back to standard curriculum review.
 
 ### B. Lesson Verification & Anti-Answer Leak (`Noul`)
 ```python
@@ -216,8 +216,8 @@ BLOOM_MASTERY_SCORE = Score(
 ```
 
 ## 4. CONSTRAINTS & MUST-NOT-HAVE
-- DO NOT remove DeepSeek. DeepSeek remains the core text and lesson generator.
-- DO NOT commit any API keys (`TYPESAFE_API_KEY`, `DEEPSEEK_API_KEY`). Load exclusively from environment variables.
+- DO NOT remove the LLM provider. The LLM provider remains the core text and lesson generator.
+- DO NOT commit any API keys (`TYPESAFE_API_KEY`, `ANTHROPIC_API_KEY`). Load exclusively from environment variables.
 - Deterministic Python logic ALWAYS overrides Jev on disagreement (`_ensure_7_sections` is final authority).
 - If TypeSafe API fails or times out (503/504), fail open to deterministic curriculum defaults—never crash the student interface.
 ```
@@ -304,6 +304,6 @@ match /user_streaks/{userId} {
 |---|---|---|---|
 | ChromaDB Vector Retrieval Empty | 404 / 503 | Fallback to keyword search in `curriculum_rag.py` | Display pre-compiled module blueprint summary |
 | Jev Classification Timeout / Error | 504 / 500 | Fail open to deterministic Python rule (`_ensure_7_sections`) | Lesson delivered with verified static curriculum excerpts |
-| DeepSeek Rate Limited (429) | 429 | Exponential backoff retry (3 attempts) | Spinner with reassuring pedagogical tip |
+| LLM Rate Limited (429) | 429 | Exponential backoff retry (3 attempts) | Spinner with reassuring pedagogical tip |
 | Complete Service Outage | 500 | Fallback to `PdfFallbackPanel` (`LessonViewer.tsx:485`) | Clean PDF reader displaying original DepEd module document |
 

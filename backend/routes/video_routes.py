@@ -5,6 +5,7 @@ POST /api/lessons/videos/search — smart YouTube video search with RAG enrichme
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import List, Optional
 
@@ -76,7 +77,9 @@ async def search_videos(request: Request, payload: VideoSearchRequest):
         )
 
     try:
-        result = get_video_search_results(
+        # The cache read, Claude query generation and YouTube calls are blocking; keep them off the event loop.
+        result = await asyncio.to_thread(
+            get_video_search_results,
             topic=payload.topic,
             subject=payload.subject,
             lesson_context=payload.lesson_context,

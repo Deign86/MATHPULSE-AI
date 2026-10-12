@@ -2,9 +2,10 @@
 MathPulse AI — Intervention Engine
 
 Generates personalized intervention plans for at-risk students using
-real quiz data from Firestore and DeepSeek AI for learning path generation.
+real quiz data from Firestore and Claude for learning path generation.
 """
 
+import asyncio
 import json
 from services.llm_text import sanitize_tree, to_plain_text
 import logging
@@ -398,7 +399,7 @@ class InterventionEngine:
             return False
 
     async def _generate_insights(self, **kwargs) -> Dict[str, str]:
-        """Generate learning_strengths and next_steps_summary via DeepSeek."""
+        """Generate learning_strengths and next_steps_summary via Claude."""
         prompt = f"""You are MathPulse AI analyzing a Filipino K-12 student's performance data.
 
 Student: Grade {kwargs['grade_level']}, Section {kwargs['section']}
@@ -418,30 +419,29 @@ Return as JSON:
 {{"learning_strengths": "...", "next_steps_summary": "..."}}"""
 
         try:
-            from services.ai_client import get_deepseek_client, CHAT_MODEL
-            client = get_deepseek_client()
-            response = client.chat.completions.create(
-                model=CHAT_MODEL,
-                messages=[
+            from services.ai_client import complete_text, CHAT_MODEL
+            content = await asyncio.to_thread(
+                complete_text,
+                [
                     {"role": "system", "content": "You are MathPulse AI. Respond only with valid JSON."},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.3,
+                model=CHAT_MODEL,
                 max_tokens=200,
-                response_format={"type": "json_object"},
+                json_output=True,
+                timeout=60.0,
             )
-            content = response.choices[0].message.content or "{}"
-            insights = json.loads(content)
+            insights = json.loads(content or "{}")
             return {k: to_plain_text(v, strip_bullets=False) if isinstance(v, str) else v for k, v in insights.items()}
         except Exception as e:
-            logger.warning(f"DeepSeek insights failed: {e}")
+            logger.warning(f"Claude insights failed: {e}")
             return {
                 "learning_strengths": "Shows willingness to engage with the platform." if kwargs['quiz_count'] > 0 else (f"Completed {kwargs.get('lessons_completed', 0)} lessons; consistent study habits developing." if kwargs.get('lessons_completed', 0) >= 2 else "No assessment data yet — potential to be discovered."),
                 "next_steps_summary": f"Begin with foundational practice in {kwargs['weak_topics'][0] if kwargs['weak_topics'] else 'core topics'}.",
             }
 
     async def _generate_learning_path(self, **kwargs) -> LearningPath:
-        """Generate a structured learning path via DeepSeek."""
+        """Generate a structured learning path via Claude."""
         student_id = kwargs["student_id"]
         weak_topics = kwargs["weak_topics"]
         weakest_topic = kwargs["weakest_topic"]
@@ -492,20 +492,19 @@ Return ONLY valid JSON:
 }}"""
 
         try:
-            from services.ai_client import get_deepseek_client, CHAT_MODEL
-            client = get_deepseek_client()
-            response = client.chat.completions.create(
-                model=CHAT_MODEL,
-                messages=[
+            from services.ai_client import complete_text, CHAT_MODEL
+            content = await asyncio.to_thread(
+                complete_text,
+                [
                     {"role": "system", "content": "You are a curriculum designer for Filipino K-12 DepEd math. Respond only with valid JSON."},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.4,
-                max_tokens=800,
-                response_format={"type": "json_object"},
+                model=CHAT_MODEL,
+                max_tokens=1500,
+                json_output=True,
+                timeout=60.0,
             )
-            content = response.choices[0].message.content or "{}"
-            parsed = sanitize_tree(json.loads(content))
+            parsed = sanitize_tree(json.loads(content or "{}"))
 
             steps = []
             for s in parsed.get("steps", []):
@@ -533,7 +532,7 @@ Return ONLY valid JSON:
                 ai_rationale=parsed.get("ai_rationale", f"Focused on {weakest_topic} as the primary area needing improvement."),
             )
         except Exception as e:
-            logger.warning(f"DeepSeek learning path generation failed: {e}")
+            logger.warning(f"Claude learning path generation failed: {e}")
             # Fallback: generate a basic path
             return self._fallback_learning_path(student_id, weakest_topic, weak_topics)
 
@@ -565,7 +564,7 @@ Return ONLY valid JSON:
         )
 
     async def _generate_recommendations(self, **kwargs) -> List[str]:
-        """Generate teacher recommendations via DeepSeek."""
+        """Generate teacher recommendations via Claude."""
         prompt = f"""Generate 3-5 concise, actionable recommendations for a teacher working with this at-risk student.
 
 Student: Grade {kwargs['grade_level']}, Risk: {kwargs['risk_level']}
@@ -575,26 +574,25 @@ Avg Score: {kwargs['avg_score']:.0f}%
 Return as a JSON array of strings. Each recommendation max 25 words. Be specific to the weak topics."""
 
         try:
-            from services.ai_client import get_deepseek_client, CHAT_MODEL
-            client = get_deepseek_client()
-            response = client.chat.completions.create(
-                model=CHAT_MODEL,
-                messages=[
+            from services.ai_client import complete_text, CHAT_MODEL
+            content = await asyncio.to_thread(
+                complete_text,
+                [
                     {"role": "system", "content": "You are a K-12 math education advisor. Respond only with a JSON array of strings."},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.3,
+                model=CHAT_MODEL,
                 max_tokens=300,
-                response_format={"type": "json_object"},
+                json_output=True,
+                timeout=60.0,
             )
-            content = response.choices[0].message.content or "[]"
-            parsed = json.loads(content)
+            parsed = json.loads(content or "[]")
             if isinstance(parsed, dict):
                 parsed = parsed.get("recommendations", parsed.get("actions", []))
             if isinstance(parsed, list):
                 return [to_plain_text(r, single_line=True) for r in parsed[:5] if isinstance(r, str) and r.strip()]
         except Exception as e:
-            logger.warning(f"DeepSeek recommendations failed: {e}")
+            logger.warning(f"Claude recommendations failed: {e}")
 
         return [
             f"Schedule 1-on-1 review session for {kwargs['weak_topics'][0] if kwargs['weak_topics'] else 'foundational skills'}.",

@@ -151,8 +151,6 @@ Ensure moduleType is "teacher_uploaded" and sourceLabel is "Teacher Upload".
     raw_content = await call_hf_chat_async(
         messages,
         max_tokens=8192,
-        temperature=0.3,
-        top_p=0.9,
         timeout=180,
         task_type="chat",
     )

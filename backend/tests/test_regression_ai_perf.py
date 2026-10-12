@@ -21,7 +21,7 @@ import numpy as np
 import pytest
 import yaml
 
-os.environ.setdefault("DEEPSEEK_API_KEY", "mock-key-for-testing")
+os.environ.setdefault("ANTHROPIC_API_KEY", "mock-key-for-testing")
 
 import main as main_module
 from rag import curriculum_rag
@@ -35,7 +35,13 @@ MODELS_YAML = BACKEND_DIR / "config" / "models.yaml"
 
 BLOCKING_CALLEES = frozenset(
     {
-        "chat.completions.create",
+        "messages.create",
+        "complete_text",
+        "complete_json",
+        "create_message",
+        "open_stream",
+        "stream_text",
+        "call_hf_chat",
         "generate_from_messages",
         "retrieve_curriculum_context",
         "retrieve_lesson_pdf_context",
@@ -57,8 +63,8 @@ def _callee_name(call: ast.Call) -> str | None:
     if isinstance(func, ast.Name):
         return func.id
     if isinstance(func, ast.Attribute):
-        if func.attr == "create" and isinstance(func.value, ast.Attribute) and func.value.attr == "completions":
-            return "chat.completions.create"
+        if func.attr == "create" and isinstance(func.value, ast.Attribute) and func.value.attr == "messages":
+            return "messages.create"
         return func.attr
     return None
 
@@ -102,7 +108,7 @@ def find_blocking_calls_in_async_defs(source: str, file_name: str) -> list[tuple
 
 def _scanned_files() -> list[Path]:
     routes = sorted(p for p in (BACKEND_DIR / "routes").glob("*.py") if p.name not in SCAN_EXCLUDED_FILES)
-    return [BACKEND_DIR / "main.py", *routes]
+    return [BACKEND_DIR / "main.py", BACKEND_DIR / "automation_engine.py", *routes]
 
 
 def _all_blocking_calls() -> list[tuple[str, int, str, str]]:
@@ -133,22 +139,32 @@ def test_ast_guard_allowlist_is_not_stale():
 
 def test_ast_guard_scans_expected_files():
     names = {path.name for path in _scanned_files()}
-    assert {"main.py", "diagnostic.py", "practice.py", "quiz_generation_routes.py", "try_it_yourself.py",
-            "deepseek_rag_routes.py", "rag_routes.py", "fun_modules_routes.py"} <= names
+    assert {"main.py", "automation_engine.py", "diagnostic.py", "practice.py", "quiz_generation_routes.py",
+            "try_it_yourself.py", "ai_insight_routes.py", "rag_routes.py", "fun_modules_routes.py"} <= names
 
 
 @pytest.mark.parametrize(
     ("snippet", "expected_callees"),
     [
         ("async def h(q):\n    return retrieve_curriculum_context(q)\n", ["retrieve_curriculum_context"]),
-        ("async def h(c):\n    return c.chat.completions.create(model='m')\n", ["chat.completions.create"]),
+        ("async def h(c):\n    return c.beta.messages.create(model='m')\n", ["messages.create"]),
+        ("async def h(m):\n    return complete_text(m)\n", ["complete_text"]),
+        ("async def h(m):\n    return create_message(m)\n", ["create_message"]),
+        ("async def h(m):\n    return call_hf_chat(m, max_tokens=500)\n", ["call_hf_chat"]),
+        ("async def h(m, s):\n    return complete_json(m, schema=s)\n", ["complete_json"]),
+        ("async def h(m):\n    return list(stream_text(m))\n", ["stream_text"]),
+        ("async def h(m):\n    with open_stream(m) as stream:\n        return stream.get_final_message()\n", ["open_stream"]),
         ("async def h(m, t):\n    return m.encode(t)\n", ["encode"]),
         ("async def h(c, r):\n    return get_client().generate_from_messages(r)\n", ["generate_from_messages"]),
         ("async def h(q):\n    return await asyncio.to_thread(retrieve_curriculum_context, q)\n", []),
         ("async def h(c, r):\n    return await asyncio.to_thread(c.generate_from_messages, r)\n", []),
         ("async def h(q):\n    return await asyncio.to_thread(lambda: rag_grounded_completion(q))\n", []),
         ("async def h(q):\n    def work():\n        return get_vectorstore_health()\n    return await asyncio.to_thread(work)\n", []),
-        ("async def h(c):\n    return await c.chat.completions.create(model='m')\n", []),
+        ("async def h(c):\n    return await c.beta.messages.create(model='m')\n", []),
+        ("async def h(m):\n    return await asyncio.to_thread(complete_text, m)\n", []),
+        ("async def h(m):\n    return await asyncio.to_thread(call_hf_chat, m, max_tokens=500)\n", []),
+        ("async def h(m, s):\n    return await asyncio.to_thread(complete_json, m, schema=s)\n", []),
+        ("async def h(m):\n    return await asyncio.to_thread(lambda: list(stream_text(m)))\n", []),
         ("async def h(s):\n    return s.encode('utf-8')\n", []),
         ("def h(q):\n    return retrieve_curriculum_context(q)\n", []),
     ],
@@ -161,21 +177,22 @@ def test_ast_guard_detector_flags_only_direct_blocking_calls(snippet, expected_c
 # ─── 2. Config guards ────────────────────────────────────────────────────────────────────────────
 
 
-def test_config_guard_shared_deepseek_client_has_no_sdk_retries(monkeypatch):
-    monkeypatch.setenv("DEEPSEEK_API_KEY", "sk-regression-fake")
-    ai_client.get_deepseek_client.cache_clear()
+def test_config_guard_shared_claude_client_has_no_sdk_retries(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-regression-fake")
+    ai_client.get_anthropic_client.cache_clear()
     try:
-        client = ai_client.get_deepseek_client()
+        client = ai_client.get_anthropic_client()
         assert client.max_retries == 0, "SDK retries stack under InferenceClient retries and the fallback chain"
     finally:
-        ai_client.get_deepseek_client.cache_clear()
+        ai_client.get_anthropic_client.cache_clear()
 
 
 def test_config_guard_task_model_routing():
     task_models = yaml.safe_load(MODELS_YAML.read_text(encoding="utf-8"))["routing"]["task_model_map"]
-    assert task_models["rag_lesson"] == "deepseek-v4-pro", "lessons keep full reasoning depth (user requirement)"
-    assert task_models["chat"] == "deepseek-flash", "chat prefers speed (user requirement)"
-    assert task_models["verify_solution"] == "deepseek-flash", "chat verification prefers speed (user requirement)"
+    assert task_models["rag_lesson"] == ai_client.REASONER_MODEL, "lessons keep full reasoning depth (user requirement)"
+    assert task_models["chat"] == ai_client.CHAT_MODEL, "chat prefers speed (user requirement)"
+    assert task_models["verify_solution"] == ai_client.CHAT_MODEL, "chat verification prefers speed (user requirement)"
+    assert task_models["risk_narrative"] == ai_client.REASONER_MODEL, "risk narratives keep full reasoning depth"
 
 
 # ─── 3. Retrieval guards ─────────────────────────────────────────────────────────────────────────

@@ -1,60 +1,33 @@
 # backend/config/ai_pricing.py
-# DeepSeek V4 API Pricing Configuration
-# Peak-hour rates from api-docs.deepseek.com/quick_start/pricing (2026-10); off-peak is half.
+# Claude API pricing in USD per million tokens, from Anthropic's published API pricing.
+# "cache hit" is a cache read, "cache miss" is uncached input, and cache writes use the 5-minute rate.
+# Haiku rates apply to prompts up to 100K tokens; longer prompts bill input at 0.50 and output at 2.50.
 
-from datetime import datetime, timezone
-
-DEEPSEEK_PRICING = {
-    "deepseek-v4-pro": {
-        "promotional": {
-            "active": True,
-            "expires_utc": datetime(2026, 5, 31, 15, 59, 0, tzinfo=timezone.utc),
-            "input_cache_hit_per_1m": 0.003625,
-            "input_cache_miss_per_1m": 0.435,
-            "output_per_1m": 0.87,
-        },
-        "full_price": {
-            "input_cache_hit_per_1m": 0.044,
-            "input_cache_miss_per_1m": 1.32,
-            "output_per_1m": 3.96,
-        },
+CLAUDE_PRICING = {
+    "claude-opus-5-5": {
+        "input_cache_hit_per_1m": 0.20,
+        "input_cache_miss_per_1m": 4.00,
+        "cache_write_5m_per_1m": 5.00,
+        "output_per_1m": 20.00,
     },
-    "deepseek-flash": {
-        "input_cache_hit_per_1m": 0.006,
-        "input_cache_miss_per_1m": 0.3,
-        "output_per_1m": 1.2,
+    "claude-sonnet-5-5": {
+        "input_cache_hit_per_1m": 0.20,
+        "input_cache_miss_per_1m": 2.00,
+        "cache_write_5m_per_1m": 2.50,
+        "output_per_1m": 10.00,
+    },
+    "claude-haiku-5-5": {
+        "input_cache_hit_per_1m": 0.01,
+        "input_cache_miss_per_1m": 0.10,
+        "cache_write_5m_per_1m": 0.125,
+        "output_per_1m": 0.50,
     },
 }
 
 
-def get_active_pricing(model_id: str) -> dict:
-    """Returns the currently active pricing tier for a given model."""
-    model = DEEPSEEK_PRICING.get(model_id)
-    if not model:
-        raise ValueError(f"Unknown model: {model_id}")
-    if "promotional" in model:
-        promo = model["promotional"]
-        if promo["active"] and datetime.now(timezone.utc) < promo["expires_utc"]:
-            return {
-                "input_cache_hit_per_1m": promo["input_cache_hit_per_1m"],
-                "input_cache_miss_per_1m": promo["input_cache_miss_per_1m"],
-                "output_per_1m": promo["output_per_1m"],
-                "is_promotional": True,
-                "promo_expires_utc": promo["expires_utc"].isoformat(),
-            }
-        return {**model["full_price"], "is_promotional": False}
-    return {**model, "is_promotional": False}
-
-
 def get_full_pricing(model_id: str) -> dict:
-    """Returns the full (non-promotional) pricing for a model."""
-    model = DEEPSEEK_PRICING.get(model_id)
+    """Returns the per-million-token rates for a model."""
+    model = CLAUDE_PRICING.get(model_id)
     if not model:
         raise ValueError(f"Unknown model: {model_id}")
-    if "full_price" in model:
-        return model["full_price"]
-    return {
-        "input_cache_hit_per_1m": model["input_cache_hit_per_1m"],
-        "input_cache_miss_per_1m": model["input_cache_miss_per_1m"],
-        "output_per_1m": model["output_per_1m"],
-    }
+    return dict(model)

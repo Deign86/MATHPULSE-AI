@@ -94,6 +94,7 @@ EXPECTED_ROLE_POLICIES = {
     "/api/quiz-battle/ingest-pdf": TEACHER_ADMIN,
     "/api/quiz-battle/bank-status": TEACHER_ADMIN,
     "/api/class-records/upload": TEACHER_ADMIN,
+    "/api/jev/verify": TEACHER_ADMIN,
 }
 
 # Fixed route/method manifest. New endpoints require an explicit review and
@@ -170,9 +171,9 @@ EXPECTED_REGISTERED_ROUTE_METHODS = {
     "/api/pipeline/profile/{student_id}": frozenset({"GET"}),
     "/api/pipeline/profile/{student_id}/recompute": frozenset({"POST"}),
     "/api/pipeline/admin/backfill": frozenset({"POST"}),
-    "/api/deepseek/weakness-detection": frozenset({"POST"}),
-    "/api/deepseek/module-preview": frozenset({"POST"}),
-    "/api/deepseek/study-tips": frozenset({"POST"}),
+    "/api/ai/weakness-detection": frozenset({"POST"}),
+    "/api/ai/module-preview": frozenset({"POST"}),
+    "/api/ai/study-tips": frozenset({"POST"}),
     "/api/at-risk/resolve": frozenset({"POST"}),
     "/api/at-risk/fallback/{uid}/{topic_id}": frozenset({"GET"}),
     "/api/curriculum/generate-module": frozenset({"POST"}),
@@ -257,7 +258,6 @@ PUBLIC_ROUTE_EXCEPTIONS = {
     ("GET", "/api/rag/health"): "Unauthenticated RAG health endpoint",
     ("GET", "/api/templates/class-records"): "Unauthenticated static import template",
     ("GET", "/api/quiz/topics"): "Public topic catalog",
-    ("POST", "/api/jev/verify"): "Public verification endpoint; service controls availability",
     ("GET", "/debug/scope-info"): "Non-API diagnostic route bypasses AuthMiddleware",
 }
 
@@ -271,9 +271,9 @@ AUTHENTICATED_ROUTE_EXCEPTIONS = {
     ("GET", "/api/memory/health"): "Authenticated health endpoint; no role restriction",
     ("GET", "/api/rag/documents"): "Authenticated RAG document listing; no role restriction",
     ("POST", "/api/curriculum/generate-module"): "Authenticated module generation; no role restriction",
-    ("POST", "/api/deepseek/module-preview"): "Authenticated preview generation; no role restriction",
-    ("POST", "/api/deepseek/study-tips"): "Authenticated study tips; no role restriction",
-    ("POST", "/api/deepseek/weakness-detection"): "Authenticated weakness detection; no role restriction",
+    ("POST", "/api/ai/module-preview"): "Authenticated preview generation; no role restriction",
+    ("POST", "/api/ai/study-tips"): "Authenticated study tips; no role restriction",
+    ("POST", "/api/ai/weakness-detection"): "Authenticated weakness detection; no role restriction",
     ("POST", "/api/learning/path"): "Authenticated learning path; no role restriction",
     ("POST", "/api/lesson/diagnostic"): "Authenticated diagnostic lesson; no role restriction",
     ("POST", "/api/lessons/generate"): "Authenticated lesson generation; no role restriction",

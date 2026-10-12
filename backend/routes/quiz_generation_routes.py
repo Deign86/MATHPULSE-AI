@@ -1,7 +1,7 @@
 """
 Unified Quiz Generation Routes.
 
-Generates dynamic quiz questions using DeepSeek AI + RAG curriculum context.
+Generates dynamic quiz questions using Claude + RAG curriculum context.
 Used by: lesson practice quizzes, module quizzes, and quiz battle.
 
 When new PDFs are ingested into the vectorstore, this endpoint automatically
@@ -335,10 +335,10 @@ def _apply_variance(questions: List[Dict[str, Any]], seed: int) -> List[Dict[str
 @router.post("/generate", response_model=QuizGenerationResponse)
 async def generate_quiz(request: QuizGenerationRequest):
     """
-    Generate a dynamic quiz using DeepSeek AI + RAG curriculum context.
+    Generate a dynamic quiz using Claude + RAG curriculum context.
 
     This endpoint retrieves relevant curriculum chunks from the vectorstore,
-    then calls DeepSeek to generate varied quiz questions based on that context.
+    then calls Claude to generate varied quiz questions based on that context.
     When new PDFs are ingested, they automatically become available via RAG.
     """
     try:
@@ -390,7 +390,7 @@ async def generate_quiz(request: QuizGenerationRequest):
             points=1,
         )
 
-        # 3. Call DeepSeek with higher temperature for variance
+        # 3. Call Claude; the prompt carries the variance instructions
         inference_request = InferenceRequest(
             messages=[
                 {"role": "system", "content": "You are a precise DepEd-aligned curriculum quiz generator. Generate FRESH, VARIED questions each time - do not repeat patterns."},
@@ -398,8 +398,6 @@ async def generate_quiz(request: QuizGenerationRequest):
             ],
             task_type="quiz_generation",
             max_new_tokens=6000,
-            temperature=0.7,  # Higher temp for variance
-            top_p=0.9,
             timeout_sec=90,
             max_retries=1,
         )
@@ -438,5 +436,5 @@ async def quiz_generation_health():
         "status": "ok",
         "activeModel": model,
         "endpoint": "/api/quiz/generate",
-        "features": ["rag-retrieval", "deepseek-generation", "choice-shuffling", "auto-pdf-updates"],
+        "features": ["rag-retrieval", "claude-generation", "choice-shuffling", "auto-pdf-updates"],
     }
