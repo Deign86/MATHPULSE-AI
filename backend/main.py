@@ -99,7 +99,7 @@ import requests as http_requests
 import uvicorn
 from services.inference_client import (
     InferenceRequest, create_default_client,
-    get_model_for_task,
+    get_model_for_task, load_runtime_config_from_firestore,
 )
 from services.ai_client import CHAT_MODEL, complete_json, get_anthropic_client, stream_text
 from services.deterministic_cache import DeterministicResponseCache
@@ -605,6 +605,11 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     _warmup_vectorstore_task = asyncio.create_task(_warmup_vectorstore())
     _warmup_anthropic_auth_task = asyncio.create_task(_warmup_anthropic_auth())
     _interrupted_jobs_task = asyncio.create_task(asyncio.to_thread(_mark_interrupted_async_jobs))
+    if _firebase_ready:
+        # Admin-panel model overrides are saved in Firestore, which is reachable only after _init_firebase_admin().
+        # ponytail: requests that land before this read finishes use profile/env models; await it (with a timeout)
+        # before the yield if that window ever matters.
+        _model_config_restore_task = asyncio.create_task(asyncio.to_thread(load_runtime_config_from_firestore))
 
     # FIX(502): Set a readiness flag so /health reports the true state without
     # triggering heavy init on every health-check ping from HF Spaces' proxy.

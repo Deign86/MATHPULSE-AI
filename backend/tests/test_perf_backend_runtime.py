@@ -350,7 +350,9 @@ def test_executor_lifespan_installs_large_default_pool():
         loop.set_default_executor = _spy  # type: ignore[method-assign]
         with patch.object(main_module, "_init_firebase_admin", lambda: None), patch.object(
             main_module, "_mark_interrupted_async_jobs", lambda: 0
-        ), patch.object(main_module, "validate_anthropic_auth", lambda *_a, **_k: {"status": "ok", "key_suffix": "x"}), patch.object(
+        ), patch.object(main_module, "load_runtime_config_from_firestore", lambda: None), patch.object(
+            main_module, "validate_anthropic_auth", lambda *_a, **_k: {"status": "ok", "key_suffix": "x"}
+        ), patch.object(
             main_module, "get_inference_client", lambda: None
         ), patch(
             "rag.vectorstore_loader.get_vectorstore_health", lambda: {"chunkCount": 1, "subjects": {}}

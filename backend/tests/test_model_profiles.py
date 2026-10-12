@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import sys
 from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from fastapi.testclient import TestClient
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+import main as main_module
+from routes import rag_routes
 from services import inference_client as inf_client
 from services.ai_client import CHAT_MODEL, REASONER_MODEL
 from services.inference_client import (
@@ -37,6 +41,16 @@ MODEL_ENV_KEYS = (
     inf_client.TEMP_CHAT_MODEL_OVERRIDE_ENV,
     "INFERENCE_FALLBACK_MODELS",
 )
+
+
+def _firestore_holding_model_config(stored: dict) -> SimpleNamespace:
+    """Stands in for firestore.client() where system_config/active_model_config holds `stored`."""
+    document = SimpleNamespace(
+        get=lambda: SimpleNamespace(exists=True, to_dict=lambda: stored),
+        set=lambda *_args, **_kwargs: None,
+    )
+    documents = {("system_config", "active_model_config"): document}
+    return SimpleNamespace(collection=lambda name: SimpleNamespace(document=lambda doc_id: documents[(name, doc_id)]))
 
 
 class TestModelProfiles:
@@ -141,16 +155,71 @@ class TestGetCurrentRuntimeConfig:
             "profile": "prod",
             "overrides": {"INFERENCE_MODEL_ID": STALE_MODEL, "HF_RAG_MODEL_ID": STALE_MODEL},
         }
-        snapshot = SimpleNamespace(exists=True, to_dict=lambda: stored)
-        document = SimpleNamespace(get=lambda: snapshot, set=lambda *_args, **_kwargs: None)
-        fake_db = SimpleNamespace(collection=lambda _name: SimpleNamespace(document=lambda _doc_id: document))
-        monkeypatch.setattr("firebase_admin.firestore.client", lambda: fake_db)
+        monkeypatch.setattr("firebase_admin.firestore.client", lambda: _firestore_holding_model_config(stored))
 
-        inf_client._load_runtime_config_from_firestore()
+        inf_client.load_runtime_config_from_firestore()
 
         resolved = get_current_runtime_config()["resolved"]
         assert resolved["INFERENCE_MODEL_ID"] == CHAT_MODEL
         assert resolved["HF_RAG_MODEL_ID"] == REASONER_MODEL
+
+
+def _start_backend(monkeypatch: pytest.MonkeyPatch, firebase_initializes: bool) -> None:
+    """Run main's lifespan startup with its other warm-ups stubbed, and wait for the background tasks it starts."""
+
+    def init_firebase_admin() -> None:
+        main_module._firebase_ready = firebase_initializes
+
+    monkeypatch.setattr(main_module, "_firebase_ready", False)
+    monkeypatch.setattr(main_module, "_backend_ready", False)
+    monkeypatch.setattr(main_module, "_init_firebase_admin", init_firebase_admin)
+    monkeypatch.setattr(main_module, "_mark_interrupted_async_jobs", lambda: 0)
+    monkeypatch.setattr(main_module, "validate_anthropic_auth", lambda _timeout: {"status": "ok", "key_suffix": "test"})
+    monkeypatch.setattr(main_module, "get_inference_client", lambda: None)
+    monkeypatch.setattr("rag.vectorstore_loader.get_vectorstore_health", lambda: {"chunkCount": 1, "subjects": {}})
+
+    async def start_and_settle() -> None:
+        async with main_module.app_lifespan(main_module.app):
+            await asyncio.gather(*(asyncio.all_tasks() - {asyncio.current_task()}))
+
+    asyncio.run(start_and_settle())
+
+
+class TestAdminModelConfigSurvivesRestart:
+    """The model config an admin saves lives in Firestore and must be back in effect after every backend start."""
+
+    @pytest.fixture(autouse=True)
+    def _fresh_process_state(self, monkeypatch):
+        monkeypatch.setattr(inf_client, "_RUNTIME_OVERRIDES", {})
+        monkeypatch.setattr(inf_client, "_RUNTIME_PROFILE", "")
+        for key in ("HF_RAG_MODEL_ID", "INFERENCE_MODEL_ID", "INFERENCE_ENFORCE_LOCK_MODEL"):
+            monkeypatch.setenv(key, "")
+
+    def test_startup_applies_the_override_saved_in_firestore(self, monkeypatch):
+        saved_config = {"profile": "prod", "overrides": {"HF_RAG_MODEL_ID": ALTERNATE_MODEL}}
+        monkeypatch.setattr("firebase_admin.firestore.client", lambda: _firestore_holding_model_config(saved_config))
+        monkeypatch.setattr(rag_routes, "get_vectorstore_health", lambda: {"chunkCount": 1, "subjects": {}})
+        assert get_model_for_task("rag_lesson") == CHAT_MODEL, "env alone must not already route lessons to the override"
+
+        _start_backend(monkeypatch, firebase_initializes=True)
+
+        assert get_current_runtime_config()["profile"] == "prod"
+        assert get_model_for_task("rag_lesson") == ALTERNATE_MODEL
+        assert TestClient(main_module.app).get("/api/rag/health").json()["activeModel"] == ALTERNATE_MODEL
+
+    def test_startup_without_a_firebase_app_keeps_profile_and_env_routing(self, monkeypatch):
+        def missing_default_app():
+            raise ValueError(
+                "The default Firebase app does not exist. Make sure to initialize the SDK by calling initialize_app()."
+            )
+
+        monkeypatch.setattr("firebase_admin.firestore.client", missing_default_app)
+
+        _start_backend(monkeypatch, firebase_initializes=False)
+        inf_client.load_runtime_config_from_firestore()
+
+        assert get_current_runtime_config()["overrides"] == {}
+        assert get_model_for_task("rag_lesson") == CHAT_MODEL
 
 
 class TestGetModelForTask:
