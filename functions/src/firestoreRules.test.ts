@@ -39,6 +39,15 @@ test("Quiz Battle question bank answers stay hidden from students", () => {
   assert.match(body, /allow write: if false;/);
 });
 
+test("Curriculum question bank answers stay hidden from students", () => {
+  const rules = readFileSync(resolve(__dirname, "../../firestore.rules"), "utf8");
+  const header = "match /question_bank/{path=**} {";
+  const block = rules.slice(rules.indexOf(header) + header.length);
+  const body = block.slice(0, block.indexOf("}"));
+  assert.match(body, /allow read: if isTeacherOrAdmin\(\);/);
+  assert.match(body, /allow write: if false;/);
+});
+
 test("Activities feed rules stay teacher-scoped (issue #163)", () => {
   const rules = readFileSync(resolve(__dirname, "../../firestore.rules"), "utf8");
   assert.match(rules, /match \/activities\/\{activityId\}/);

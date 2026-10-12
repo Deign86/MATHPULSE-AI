@@ -613,9 +613,9 @@ service cloud.firestore {
       allow write: if false;  // Backend-only writes via firebase-admin
     }
 
-    // ── Question bank (read for all authenticated users) ──
+    // ── Question bank (teachers/admins; questions carry answers, the backend reads via firebase-admin) ──
     match /question_bank/{path=**} {
-      allow read: if isSignedIn();
+      allow read: if isTeacherOrAdmin();
       allow write: if false; // Backend-only via firebase-admin
     }
 

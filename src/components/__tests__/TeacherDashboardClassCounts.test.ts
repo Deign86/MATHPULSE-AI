@@ -7,6 +7,8 @@ import {
   countResolvedStudentsForClass,
   deriveResolvedClassCounts,
   mergeClassViews,
+  splitEnrolledStudents,
+  UnassignedStudentsNotice,
 } from '../TeacherDashboard';
 import { ClassesOverviewMenu } from '../ClassesOverviewMenu';
 
@@ -79,6 +81,39 @@ describe('TeacherDashboard class counts', () => {
 
     expect(screen.getByText('1')).toBeInTheDocument();
     expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
+  it('counts no enrolled students when the roster is the all-students fallback pool', () => {
+    const pool = [buildResolvedStudent(), { ...buildResolvedStudent(), id: 'student-b', lrn: 'lrn-b', name: 'Student B' }];
+    const split = splitEnrolledStudents(pool, [], true);
+
+    expect(split.enrolled).toHaveLength(0);
+    expect(split.unassigned).toHaveLength(2);
+    expect(deriveResolvedClassCounts([], split.enrolled).totalStudents).toBe(0);
+  });
+
+  it('keeps pool students who are already in one of the teacher classes as enrolled', () => {
+    const outsider = { ...buildResolvedStudent(), id: 'student-b', lrn: 'lrn-b', classroomId: 'other', classSectionId: 'other', className: 'Other' };
+    const split = splitEnrolledStudents([buildResolvedStudent(), outsider], [classView], true);
+
+    expect(split.enrolled).toHaveLength(1);
+    expect(split.unassigned).toEqual([outsider]);
+  });
+
+  it('leaves a real roster unchanged', () => {
+    const roster = [buildResolvedStudent()];
+    const split = splitEnrolledStudents(roster, [], false);
+
+    expect(split.enrolled).toEqual(roster);
+    expect(split.unassigned).toHaveLength(0);
+  });
+
+  it('labels unassigned students with helper text', () => {
+    render(React.createElement(UnassignedStudentsNotice, { count: 30 }));
+
+    expect(screen.getByText('Unassigned students')).toBeInTheDocument();
+    expect(screen.getByText(/30 students not in any class/)).toBeInTheDocument();
+    expect(screen.getByText(/aren't in any of your classes yet/)).toBeInTheDocument();
   });
 
   it('uses the latest imported count instead of ratcheting upward', () => {
