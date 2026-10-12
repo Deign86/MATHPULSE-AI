@@ -1,15 +1,18 @@
-# Gates: Quiz Battle serves questions from the chosen topic
+# Gates: Seed script for the Quiz Battle question bank
 
-Scope: bot and online matches draw from the Firestore question bank (currently empty) and fall back to the static bank. Two defects mixed in other topics: (1) the battle setup sends module ids (`gm-1` = Functions and Their Graphs) but the static bank is tagged by slug (`functions`), so the topic filter never matched; (2) both pickers ranked "same difficulty, any topic" above "same topic", so a short topic pool was replaced by off-topic questions. Live evidence: match rzDeI1LHGqBmPSH0PWPh (gm-1, medium, 3 rounds) served qb-gm-04 and qb-gm-07 (logic) plus qb-gm-05.
+Scope: `scripts/seed-quiz-battle-bank.ts` generates and verifies (Claude Haiku) Grade 11 multiple-choice questions for the 7 Quiz Battle modules and upserts them into `quizBattleQuestionBank`. Dry run only writes `scripts/output/quiz-battle-bank-seed.json`; `--write` (not run here) upserts it. Nothing was written to Firestore.
 
-- [x] G1: Module ids resolve to bank topics, and on-topic questions (any difficulty) outrank off-topic ones; other topics only pad rounds the topic cannot fill
-  CHECK: cd functions && npm run build && npm test 2>&1
+- [x] G1: Pure parts (validation, dedupe, quota, balance, doc mapping against the canonical shape) are unit-tested
+  CHECK: node --test scripts/seed-quiz-battle-bank.test.ts 2>&1
   EXPECT: /# fail 0/
-  EVIDENCE: # pass 80, # fail 0, # skipped 7 (red run before the fix: 3 failed — module-id mapping, topic-before-difficulty, bounded padding)
+  EVIDENCE: # tests 7, # pass 7, # fail 0
 
-- [x] G2: Functions lint and repo anti-slop lint are clean on the changed file
-  CHECK: cd functions && npm run lint 2>&1 && echo LINT_CLEAN
+- [x] G2: Anti-slop lint and typecheck are clean on the script and its test
+  CHECK: npx oxlint --quiet scripts/seed-quiz-battle-bank.ts scripts/seed-quiz-battle-bank.test.ts 2>&1 && echo LINT_CLEAN
   EXPECT: LINT_CLEAN
-  EVIDENCE: eslint no findings; npx oxlint --quiet functions/src/triggers/quizBattleApi.ts no findings
+  EVIDENCE: oxlint no findings; tsc --noEmit (strict, esnext/bundler) no errors
 
-Post-deploy check (not a pre-merge gate): play a VS Bot match on "Functions and Their Graphs" (3 questions) and confirm every question is about functions.
+- [x] G3: Dry run covered all 7 modules via Claude, kept 20-25 verified questions each, balanced answer positions, no Firestore access
+  CHECK: node scripts/seed-quiz-battle-bank.ts --dry-run 2>&1
+  EXPECT: /tokens input=\d+ output=\d+/
+  EVIDENCE: kept gm-1=19 gm-2=22 gm-3=22 sp-1=24 sp-2=25 sp-3=21 sp-4=20 (153 total); 58309 in / 50436 out tokens, about 0.31 USD; correct index spread 41/39/37/36
