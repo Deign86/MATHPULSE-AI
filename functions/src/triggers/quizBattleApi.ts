@@ -893,7 +893,25 @@ const computeRetryDelayMs = (
   return baseDelayMs + jitterMs;
 };
 
+// Battle setup sends module ids (src/data/subjects.ts); the static bank is tagged by topic slug.
+const BATTLE_MODULE_TOPICS = new Map([
+  ["gm-1", { bankTopic: "functions", label: "Functions and Their Graphs" }],
+  ["gm-2", { bankTopic: "business-math", label: "Business Mathematics" }],
+  ["gm-3", { bankTopic: "logic", label: "Logic" }],
+  ["sp-1", { bankTopic: "probability", label: "Random Variables and Probability Distributions" }],
+  ["sp-2", { bankTopic: "normal-distribution", label: "Normal Distribution" }],
+  ["sp-3", { bankTopic: "sampling", label: "Sampling and Estimation" }],
+  ["sp-4", { bankTopic: "hypothesis-testing", label: "Hypothesis Testing" }],
+]);
+
+const bankTopicFor = (topicId: string): string => {
+  const normalized = topicId.trim().toLowerCase();
+  return BATTLE_MODULE_TOPICS.get(normalized)?.bankTopic ?? normalized;
+};
+
 const normalizeTopicLabel = (topicId: string): string => {
+  const moduleLabel = BATTLE_MODULE_TOPICS.get(asString(topicId, "").trim().toLowerCase())?.label;
+  if (moduleLabel) return moduleLabel;
   const normalized = asString(topicId, "topic").replace(/[-_]+/g, " ").trim();
   if (!normalized) return "topic";
   return normalized.replace(/\b\w/g, (token) => token.toUpperCase());
@@ -1876,6 +1894,30 @@ const filterCanonicalPoolBySelector = (
   });
 };
 
+/**
+ * The chosen topic outranks difficulty: on-topic questions (matching difficulty first) fill the match,
+ * and other topics pad only the rounds the topic cannot cover, so the pool never exceeds `rounds`
+ * once padding is needed and random picks can't skip on-topic questions.
+ */
+const topicFirstPool = <T>(
+  basePool: T[],
+  isTopic: (entry: T) => boolean,
+  isDifficulty: (entry: T) => boolean,
+  rounds: number,
+): T[] => {
+  const exact = basePool.filter((entry) => isTopic(entry) && isDifficulty(entry));
+  if (exact.length >= rounds) return exact;
+
+  const onTopic = [...exact, ...basePool.filter((entry) => isTopic(entry) && !isDifficulty(entry))];
+  if (onTopic.length >= rounds) return onTopic;
+
+  const padding = [
+    ...basePool.filter((entry) => !isTopic(entry) && isDifficulty(entry)),
+    ...basePool.filter((entry) => !isTopic(entry) && !isDifficulty(entry)),
+  ];
+  return [...onTopic, ...padding.slice(0, rounds - onTopic.length)];
+};
+
 const chooseQuestionCandidates = (
   canonicalPool: CanonicalBattleQuestion[],
   selector: QuestionPoolSelector,
@@ -1884,15 +1926,17 @@ const chooseQuestionCandidates = (
 ): BattleQuestionCandidate[] => {
   const basePool = filterCanonicalPoolBySelector(canonicalPool, selector);
   const normalizedTopic = selector.topicId.trim().toLowerCase();
+  const bankTopic = bankTopicFor(selector.topicId);
 
-  const stagedPools = [
-    basePool.filter((entry) => entry.topic.toLowerCase() === normalizedTopic && entry.difficulty === selector.difficulty),
-    basePool.filter((entry) => entry.difficulty === selector.difficulty),
-    basePool.filter((entry) => entry.topic.toLowerCase() === normalizedTopic),
+  const selectedPool = topicFirstPool(
     basePool,
-  ];
-
-  const selectedPool = stagedPools.find((entry) => entry.length >= rounds) || basePool;
+    (entry) => {
+      const entryTopic = entry.topic.toLowerCase();
+      return entryTopic === normalizedTopic || entryTopic === bankTopic;
+    },
+    (entry) => entry.difficulty === selector.difficulty,
+    rounds,
+  );
   if (selectedPool.length < rounds) {
     throw new functions.https.HttpsError(
       "failed-precondition",
@@ -1931,7 +1975,7 @@ const buildStaticFallbackPool = (
   selector: QuestionPoolSelector,
   rounds: number,
 ): BattleQuestionCandidate[] => {
-  const topic = selector.topicId.trim().toLowerCase();
+  const topic = bankTopicFor(selector.topicId);
   const difficulty = selector.difficulty;
 
   const basePool = QUESTION_BANK.filter((entry) => {
@@ -1947,16 +1991,12 @@ const buildStaticFallbackPool = (
     return true;
   });
 
-  const stagedPools = [
-    basePool.filter((entry) => entry.topicId.toLowerCase() === topic && entry.difficulty === difficulty),
-    basePool.filter((entry) => entry.difficulty === difficulty),
+  const selected = topicFirstPool(
     basePool,
-  ];
-
-  const selected =
-    stagedPools.find((entry) => entry.length >= rounds) ||
-    [...stagedPools].sort((left, right) => right.length - left.length)[0] ||
-    [];
+    (entry) => entry.topicId.toLowerCase() === topic,
+    (entry) => entry.difficulty === difficulty,
+    rounds,
+  );
   return selected.map((entry) => ({
     questionId: entry.questionId,
     prompt: entry.prompt,

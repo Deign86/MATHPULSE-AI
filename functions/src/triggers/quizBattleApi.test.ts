@@ -170,40 +170,42 @@ test("allows bank source when AI source policy is enabled", () => {
   );
 });
 
-test("static fallback prefers a pool that can satisfy requested rounds", () => {
-  const selector = {
-    sharedPoolMode: "grade_strict",
-    gradeLevel: 11,
-    curriculumVersionSetId: "shs-core-v1",
-    curriculumVersion: "strengthened",
-    subjectId: "gen-math",
-    topicId: "functions",
-    difficulty: "medium",
-  } as const;
+const functionsMediumSelector = {
+  sharedPoolMode: "grade_strict",
+  gradeLevel: 11,
+  curriculumVersionSetId: "shs-core-v1",
+  curriculumVersion: "strengthened",
+  subjectId: "gen-math",
+  // The battle setup sends module ids (src/data/subjects.ts): gm-1 is "Functions and Their Graphs".
+  topicId: "gm-1",
+  difficulty: "medium",
+} as const;
 
-  const strictPool = buildStaticFallbackPool(selector, 3);
-  const strictIds = strictPool.map((entry) => entry.questionId).sort();
-  assert.deepEqual(strictIds, ["qb-gm-03", "qb-gm-04", "qb-gm-05", "qb-gm-06", "qb-gm-07", "qb-gm-08"]);
+test("static fallback maps module ids onto bank topics", () => {
+  const byModuleId = buildStaticFallbackPool(functionsMediumSelector, 1);
+  const byBankTopic = buildStaticFallbackPool({ ...functionsMediumSelector, topicId: "functions" }, 1);
+  assert.deepEqual(byModuleId.map((entry) => entry.questionId), ["qb-gm-05"]);
+  assert.deepEqual(byBankTopic.map((entry) => entry.questionId), ["qb-gm-05"]);
 
-  const relaxedPool = buildStaticFallbackPool(selector, 2);
-  const relaxedIds = relaxedPool.map((entry) => entry.questionId).sort();
-  assert.deepEqual(relaxedIds, ["qb-gm-03", "qb-gm-04", "qb-gm-05", "qb-gm-06", "qb-gm-07", "qb-gm-08"]);
+  const logicPool = buildStaticFallbackPool({ ...functionsMediumSelector, topicId: "gm-3" }, 2);
+  assert.deepEqual(logicPool.map((entry) => entry.questionId).sort(), ["qb-gm-04", "qb-gm-07"]);
 });
 
-test("static fallback picks richest staged pool when rounds exceed strict filters", () => {
-  const selector = {
-    sharedPoolMode: "grade_strict",
-    gradeLevel: 11,
-    curriculumVersionSetId: "shs-core-v1",
-    curriculumVersion: "strengthened",
-    subjectId: "gen-math",
-    topicId: "functions",
-    difficulty: "medium",
-  } as const;
+test("static fallback keeps the chosen topic before matching difficulty", () => {
+  const exactPool = buildStaticFallbackPool(functionsMediumSelector, 1);
+  assert.deepEqual(exactPool.map((entry) => entry.questionId), ["qb-gm-05"]);
 
-  const fallbackPool = buildStaticFallbackPool(selector, 5);
-  const fallbackIds = fallbackPool.map((entry) => entry.questionId).sort();
-  assert.deepEqual(fallbackIds, ["qb-gm-03", "qb-gm-04", "qb-gm-05", "qb-gm-06", "qb-gm-07", "qb-gm-08"]);
+  // Only one medium "functions" question exists: the other functions questions win over off-topic medium ones.
+  const topicPool = buildStaticFallbackPool(functionsMediumSelector, 3);
+  assert.deepEqual(topicPool.map((entry) => entry.questionId).sort(), ["qb-gm-01", "qb-gm-02", "qb-gm-05"]);
+});
+
+test("static fallback pads with other topics only for the rounds the topic cannot fill", () => {
+  const paddedPool = buildStaticFallbackPool(functionsMediumSelector, 5);
+  const paddedIds = paddedPool.map((entry) => entry.questionId);
+  assert.equal(paddedIds.length, 5);
+  assert.deepEqual(paddedIds.slice(0, 3).sort(), ["qb-gm-01", "qb-gm-02", "qb-gm-05"]);
+  assert.deepEqual(paddedIds.slice(3), ["qb-gm-03", "qb-gm-04"]);
 });
 
 test("static fallback expansion deterministically backfills missing rounds", () => {
