@@ -569,27 +569,6 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
     playSound('correct');
   };
 
-  const handleShowAnswer = () => {
-    const newAnswers = [...answers];
-    newAnswers[currentQuestionIndex] = 0; // Mark 0 pts for this question
-    setAnswers(newAnswers);
-    setLastAnswerCorrect(false);
-    setShowExplanation(true);
-    setStreak(0);
-    setComboMultiplier(1);
-    
-    const timeSpentQ = Math.round((Date.now() - questionStartTime) / 1000);
-    setAnswerRecords((prev) => [
-      ...prev,
-      {
-        questionId: currentQuestion.id,
-        answer: 'show_answer',
-        correct: false,
-        timeSpent: timeSpentQ,
-      },
-    ]);
-  };
-
   const handleAnswerSelect = (idx: number) => {
     if (isSubmittingRef.current) return;
     if (showExplanation) return;

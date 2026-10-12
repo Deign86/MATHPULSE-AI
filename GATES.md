@@ -47,3 +47,35 @@ Scope: fix the bugs from the codev's phone screenshots and the onboarding brief.
 
 - [x] G10: Each fix was adversarially reviewed and every confirmed finding was fixed or explicitly rejected with a reason
   EVIDENCE: Independent reviewers (quiz: Opus, notifications: Sonnet, onboarding: Opus) returned verdict "ship" with low findings only. The daily-rewards lane (Haiku) crashed before its review, so its diff was reviewed by hand: correct, and extended so today's card follows canClaim (claims made before claimedDays was saved). Fixed from low findings: offer shown only on the home page (useOnboardingTour.ts offerOpen), focus moves to the ? button after "Got it" (FirstUseGuidePrompt.tsx), stale hooks codemap + docs/*-onboarding-guide.md. Each new test was mutation-checked (fails with the fix removed: "Tests 3 failed | 22 passed"). Rejected: start() not answering the offer (needs a guide played from Settings before the offer appears; would need the flag split from the home-page condition); keyboard focus after a notification opens the Daily Rewards modal (the modal takes focus); questionId uniqueness (same lookup as the results screen and backend submit); repeated non-title topics (the generator stamps the quiz title, which is now hidden).
+
+## Dead code found during the fixes
+
+- [x] G11: The legacy src/components/NotificationDropdown.tsx is deleted and no source, test or codemap still names it (the live panel is features/notifications/NotificationPanel.tsx)
+  CHECK: rg -n NotificationDropdown src tests & rg -n -g codemap.md NotificationDropdown . & if not exist src\components\NotificationDropdown.tsx echo DROPDOWN_GONE
+  EXPECT: /^\s*DROPDOWN_GONE\s*$/
+  EVIDENCE: DROPDOWN_GONE
+
+- [x] G12: The never-called handleShowAnswer is removed from QuizExperience.tsx and nothing in the frontend, backend or functions still writes or special-cases 'show_answer' records
+  CHECK: rg -n "handleShowAnswer|show_answer" src tests backend functions & echo SCAN_DONE
+  EXPECT: /^\s*SCAN_DONE\s*$/
+  EVIDENCE: SCAN_DONE
+
+- [x] G13: TypeScript typecheck passes after the removals
+  CHECK: npx tsc --noEmit 2>&1 && echo TSC_CLEAN
+  EXPECT: TSC_CLEAN
+  EVIDENCE: TSC_CLEAN
+
+- [x] G14: Anti-slop oxlint reports no errors after the removals
+  CHECK: npx oxlint --quiet 2>&1 && echo OXLINT_CLEAN
+  EXPECT: OXLINT_CLEAN
+  EVIDENCE: (Use `node --trace-warnings ...` to show where the warning was created) | OXLINT_CLEAN
+
+- [x] G15: eslint passes on the touched source file
+  CHECK: npx eslint src/components/QuizExperience.tsx 2>&1 && echo ESLINT_CLEAN
+  EXPECT: ESLINT_CLEAN
+  EVIDENCE: (Use `node --trace-deprecation ...` to show where the warning was created) | ESLINT_CLEAN
+
+- [x] G16: Quiz and notification tests pass
+  CHECK: npx vitest run src/components/QuizExperience src/features/notifications 2>&1 && echo VITEST_OK
+  EXPECT: /Tests\s+\d+ passed[\s\S]*VITEST_OK/
+  EVIDENCE: Test Files  17 passed (17) | Tests  103 passed (103) | VITEST_OK
