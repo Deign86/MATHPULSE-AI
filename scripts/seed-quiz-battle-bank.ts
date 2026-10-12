@@ -24,7 +24,7 @@ const STATIC_BANK_PATH = fileURLToPath(new URL('../functions/src/triggers/quizBa
 const SUBJECTS_PATH = fileURLToPath(new URL('../src/data/subjects.ts', import.meta.url));
 const COLLECTION = 'quizBattleQuestionBank';
 const MAX_STEM_LENGTH = 220;
-const VERIFY_BATCH_SIZE = 10;
+const VERIFY_BATCH_SIZE = 5;
 const WRITE_BATCH_SIZE = 400;
 // Haiku 5.5 list price in USD per million tokens; the cost line is an estimate.
 const PRICE_PER_MTOK = { input: 1, output: 5 };
@@ -33,7 +33,7 @@ export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const;
 export type Difficulty = (typeof DIFFICULTIES)[number];
 // Kept per module: 8 easy / 9 medium / 8 hard. Generation asks for ~40% more so verification drops don't leave holes.
 const KEEP_QUOTA: Record<Difficulty, number> = { easy: 8, medium: 9, hard: 8 };
-const GENERATE_QUOTA: Record<Difficulty, number> = { easy: 11, medium: 12, hard: 11 };
+const GENERATE_QUOTA: Record<Difficulty, number> = { easy: 14, medium: 15, hard: 16 };
 
 export interface ModuleSpec {
   moduleId: string;
@@ -249,6 +249,7 @@ export type SeedFile = z.infer<typeof seedFileSchema>;
 
 const generatedSchema = z.object({
   questions: z.array(z.object({
+    work: z.string(),
     prompt: z.string(),
     choices: z.array(z.string()),
     correctOptionIndex: z.number().int(),
@@ -257,7 +258,9 @@ const generatedSchema = z.object({
     hint: z.string(),
   })),
 });
-const verifiedSchema = z.object({ answers: z.array(z.object({ number: z.number().int(), choiceIndex: z.number().int() })) });
+const verifiedSchema = z.object({
+  answers: z.array(z.object({ number: z.number().int(), work: z.string(), correctIndices: z.array(z.number().int()), issues: z.string() })),
+});
 
 const GENERATION_JSON_SCHEMA = {
   type: 'object',
@@ -267,6 +270,7 @@ const GENERATION_JSON_SCHEMA = {
       items: {
         type: 'object',
         properties: {
+          work: { type: 'string' },
           prompt: { type: 'string' },
           choices: { type: 'array', items: { type: 'string' } },
           correctOptionIndex: { type: 'integer' },
@@ -274,7 +278,7 @@ const GENERATION_JSON_SCHEMA = {
           explanation: { type: 'string' },
           hint: { type: 'string' },
         },
-        required: ['prompt', 'choices', 'correctOptionIndex', 'difficulty', 'explanation', 'hint'],
+        required: ['work', 'prompt', 'choices', 'correctOptionIndex', 'difficulty', 'explanation', 'hint'],
         additionalProperties: false,
       },
     },
@@ -290,8 +294,8 @@ const VERIFY_JSON_SCHEMA = {
       type: 'array',
       items: {
         type: 'object',
-        properties: { number: { type: 'integer' }, choiceIndex: { type: 'integer' } },
-        required: ['number', 'choiceIndex'],
+        properties: { number: { type: 'integer' }, work: { type: 'string' }, correctIndices: { type: 'array', items: { type: 'integer' } }, issues: { type: 'string' } },
+        required: ['number', 'work', 'correctIndices', 'issues'],
         additionalProperties: false,
       },
     },
@@ -344,7 +348,8 @@ function generationPrompt(module: ModuleSpec, lessonTitle: string, counts: Recor
     `Subject: ${module.subjectId === 'gen-math' ? 'General Mathematics' : 'Statistics and Probability'}. Module: ${module.title}. Lesson: ${lessonTitle}.`,
     `Write exactly ${counts.easy} easy, ${counts.medium} medium and ${counts.hard} hard questions about this lesson only (set the difficulty field accordingly).`,
     'Rules: the stem is short and answerable in 30 seconds without a calculator; plain text math only, no LaTeX (write x^2, sqrt(x), f(x), a/b); peso amounts as PHP; use Filipino contexts (jeepney fares, sari-sari store, peso) sparingly where natural.',
-    'Exactly 4 distinct choices, exactly one correct; put distractors from realistic mistakes; vary the correct index across questions; never use "all of the above" or "none of the above".',
+    'First compute the answer in the "work" field, then write the choices from it. Exactly 4 distinct choices and EXACTLY ONE correct: the computed value must appear among the choices, and correctOptionIndex must point at it.',
+    'Distractors come from realistic mistakes but must be numerically and algebraically NOT equivalent to the answer or to each other: never include an unsimplified or rearranged form of the correct answer. Never use "all of the above" or "none of the above".',
     'Hard means multi-step but still solvable in 30 seconds. Give a 1-2 sentence explanation of the right answer and a short hint that does not reveal it.',
   ].join('\n');
 }
@@ -355,7 +360,7 @@ async function generateForModule(client: AiClient, usage: TokenUsage, module: Mo
     const total = counts.easy + counts.medium + counts.hard;
     if (total === 0) return [];
     const lessonTitle = module.lessons[lessonIndex];
-    const generated = await askJson(client, usage, GENERATION_SYSTEM, generationPrompt(module, lessonTitle, counts), GENERATION_JSON_SCHEMA, generatedSchema, Math.max(1200, total * 400));
+    const generated = await askJson(client, usage, GENERATION_SYSTEM, generationPrompt(module, lessonTitle, counts), GENERATION_JSON_SCHEMA, generatedSchema, Math.max(2000, total * 600));
     return generated.questions.map((entry): SeedQuestion => ({
       moduleId: module.moduleId,
       lessonIndex,
@@ -371,6 +376,11 @@ async function generateForModule(client: AiClient, usage: TokenUsage, module: Mo
   return perLesson.flat();
 }
 
+/** A question survives a verifier pass only when the checker found exactly the generated key correct (none or 2+ correct rejects). */
+export function isSoleCorrect(correctIndices: number[], expectedIndex: number): boolean {
+  return correctIndices.length === 1 && correctIndices[0] === expectedIndex;
+}
+
 async function verifyBatch(client: AiClient, usage: TokenUsage, module: ModuleSpec, batch: SeedQuestion[]): Promise<SeedQuestion[]> {
   const listing = batch
     .map((question, index) => `${index + 1}. ${question.stem}\n${question.choices.map((choice, choiceIndex) => `   ${choiceIndex}) ${choice}`).join('\n')}`)
@@ -378,20 +388,30 @@ async function verifyBatch(client: AiClient, usage: TokenUsage, module: ModuleSp
   const { answers } = await askJson(
     client,
     usage,
-    'You are an independent math checker. Solve each question yourself and pick the single correct choice.',
-    `Module: ${module.title}. For each numbered question return the zero-based index (0-3) of the choice you believe is correct. If none or several are correct, return -1.\n\n${listing}`,
+    'You are a strict, independent math checker. You never trust a key; you work every question out yourself.',
+    [
+      `Module: ${module.title}. For each numbered question: first write your full step-by-step solution in "work", then evaluate EVERY choice against your result, including algebraically equivalent forms (a choice that simplifies to the same value or expression as another is also correct).`,
+      'Return in "correctIndices" the zero-based indices (0-3) of ALL choices that are correct (empty if none), and in "issues" any ambiguity, error or equivalent-choice problem (empty string if none).',
+      '',
+      listing,
+    ].join('\n'),
     VERIFY_JSON_SCHEMA,
     verifiedSchema,
-    Math.max(400, batch.length * 30),
+    Math.max(1200, batch.length * 900),
   );
-  const answerByNumber = new Map(answers.map((answer) => [answer.number, answer.choiceIndex]));
-  return batch.filter((question, index) => answerByNumber.get(index + 1) === question.correctIndex);
+  const answerByNumber = new Map(answers.map((answer) => [answer.number, answer.correctIndices]));
+  return batch.filter((question, index) => isSoleCorrect(answerByNumber.get(index + 1) ?? [], question.correctIndex));
 }
 
+/** Two independent passes (different batch composition and order); a question is kept only if both agree with the key. */
 async function verifyAll(client: AiClient, usage: TokenUsage, module: ModuleSpec, questions: SeedQuestion[]): Promise<SeedQuestion[]> {
-  const batches: SeedQuestion[][] = [];
-  for (let start = 0; start < questions.length; start += VERIFY_BATCH_SIZE) batches.push(questions.slice(start, start + VERIFY_BATCH_SIZE));
-  return (await Promise.all(batches.map((batch) => verifyBatch(client, usage, module, batch)))).flat();
+  const runPass = async (ordered: SeedQuestion[]): Promise<Set<SeedQuestion>> => {
+    const batches: SeedQuestion[][] = [];
+    for (let start = 0; start < ordered.length; start += VERIFY_BATCH_SIZE) batches.push(ordered.slice(start, start + VERIFY_BATCH_SIZE));
+    return new Set((await Promise.all(batches.map((batch) => verifyBatch(client, usage, module, batch)))).flat());
+  };
+  const [forward, backward] = await Promise.all([runPass(questions), runPass([...questions].reverse())]);
+  return questions.filter((question) => forward.has(question) && backward.has(question));
 }
 
 export function estimateCostUsd(usage: TokenUsage): number {

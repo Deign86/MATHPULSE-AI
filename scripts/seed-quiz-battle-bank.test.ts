@@ -6,6 +6,7 @@ import {
   docIdFor,
   balanceCorrectIndex,
   filterStructurally,
+  isSoleCorrect,
   normalizeStem,
   parseModuleLessons,
   parseStaticBankStems,
@@ -123,4 +124,11 @@ test('balancing moves the correct choice to a rotating slot without losing it', 
     assert.equal(entry.choices[entry.correctIndex], input[index].choices[input[index].correctIndex]);
     assert.deepEqual([...entry.choices].sort(), [...input[index].choices].sort());
   });
+});
+
+test('verifier result must name exactly the generated key', () => {
+  assert.equal(isSoleCorrect([2], 2), true);
+  assert.equal(isSoleCorrect([], 2), false);
+  assert.equal(isSoleCorrect([1], 2), false);
+  assert.equal(isSoleCorrect([1, 2], 2), false);
 });
