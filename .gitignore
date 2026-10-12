@@ -152,3 +152,7 @@ android/.cxx/
 
 # Quiz Battle seed output
 scripts/output/
+
+# Unlazy artifacts: test_rag_lesson_stream.py rewrites .unlazy/ on every backend run; hook state is per-checkout
+.unlazy/
+.unlazy-hook-state.json
