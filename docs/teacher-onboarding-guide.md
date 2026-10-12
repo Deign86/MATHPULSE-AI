@@ -1,13 +1,13 @@
 # Teacher guided onboarding
 
-The teacher guide reuses the student guide's engine (`GuidedTour`), hook (`useOnboardingTour`) and Settings card (`GuideReplayCard`). Engine behavior (scrolling, pinned bars, waiting for slow pages, focus, keyboard and history rules) is documented in `docs/student-onboarding-guide.md`; this file covers what is teacher-specific.
+The teacher guide reuses the student guide's engine (`GuidedTour`), hook (`useOnboardingTour`), first-use question (`FirstUseGuidePrompt`) and Settings card (`GuideReplayCard`). Engine behavior (scrolling, pinned bars, waiting for slow pages, focus, keyboard and history rules) is documented in `docs/student-onboarding-guide.md`; this file covers what is teacher-specific.
 
 ## Teacher experience
 
-- **General guide (first use):** launches once on the teacher Dashboard after data loads, when no modal or drawer is open. 12 steps: a welcome, one overview per teacher page (what it is for and where it lives in navigation), and a closing step on the **?** button. The welcome and closing steps say that step-by-step help lives in each page's guide.
+- **General guide (first use):** a new account (profile flag `guideOfferPending`) is asked "Play the tutorial now?" (**Skip** or **Play tutorial**) once on the teacher Dashboard view after data loads, when no modal or drawer is open. **Play tutorial** starts the guide; nothing plays on its own. 12 steps: a welcome, one overview per teacher page (what it is for and where it lives in navigation), and a closing step on the **?** button. The welcome and closing steps say that step-by-step help lives in each page's guide.
 - **Page guides:** the **?** button in the teacher header asks "Play the <page> guide?" (**Play guide** or **Skip**), then plays the guide for the current page. Teacher Settings → Teacher guide lists every page guide and replays the general guide. Buttons are disabled while Settings has unsaved edits, an unsubmitted password, or a save in progress.
 - A guide started from a page returns there when it finishes or is skipped.
-- First use is tracked per account and role: `mathpulse:teacher-tour:v1:<uid>` (students use `mathpulse:student-tour:v1:<uid>`).
+- First use is the Firestore field `users/{uid}.guideOfferPending`, set when the account is created (sign-up, or an admin creating the account). Play or Skip clears it, and Skip says the guide is under the **?** button and Settings. Accounts without the flag, including every account created before it existed, are never offered the guide automatically. Nothing is stored in the browser, and finishing or skipping the guide persists nothing. Details are in `docs/student-onboarding-guide.md`.
 
 ## Safety
 
@@ -20,7 +20,7 @@ The **Intervention Center is never opened** by the guide: mounting it starts AI 
 | File | Responsibility |
 | --- | --- |
 | `src/components/onboarding/teacherTourSteps.ts` | Teacher pages (`teacherTourPages`, each with an `overview` and detailed `steps`), general guide (`teacherTourSteps`), `teacherPageTour(view)`. Tabs are TeacherDashboard view ids. |
-| `src/components/TeacherDashboard.tsx` | Hook wiring (ready = data loaded; blocked = logout/create-class/add-students/insight modals, schedule drawer, delete/remove confirmations), view navigation for the guide, origin restore, phone submenu hint (`teaching` / `insights` / `tools`), the Topic Mastery tab for `view: 'mastery'` steps, header **?** button, `NavItem` `tourNav` anchors, phone popup `data-tour-nav` anchors, bottom nav `data-tour-sticky`, guide-safe outside-click handling. |
+| `src/components/TeacherDashboard.tsx` | Hook wiring (ready = data loaded; blocked = logout/create-class/add-students/insight modals, schedule drawer, delete/remove confirmations; offerPending = `guideOfferPending` while the `dashboard` view is showing) and `FirstUseGuidePrompt`, view navigation for the guide, origin restore, phone submenu hint (`teaching` / `insights` / `tools`), the Topic Mastery tab for `view: 'mastery'` steps, header **?** button, `NavItem` `tourNav` anchors, phone popup `data-tour-nav` anchors, bottom nav `data-tour-sticky`, guide-safe outside-click handling. |
 | `src/components/teacher/TeacherSettingsPage.tsx` | Teacher guide card (`GuideReplayCard`), unsaved-edit protection. |
 | Teacher feature components | `data-tour` anchors listed below. |
 

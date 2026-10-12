@@ -250,7 +250,7 @@ async def generate_practice(request: Request, body: PracticeGenerateRequest):
                 question=q.get("question", ""),
                 options=q.get("options", ["", "", "", ""]),
                 correct_index=correct_idx,
-                explanation=q.get("explanation", "No explanation available."),
+                explanation=q.get("explanation") or "",
                 competency=q.get("competency", body.competency),
                 difficulty=q.get("difficulty", body.difficulty),
                 bloomsLevel=q.get("bloomsLevel", "Apply"),

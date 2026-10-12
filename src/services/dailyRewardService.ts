@@ -239,7 +239,10 @@ export async function claimDailyReward(userId: string): Promise<ClaimResult> {
       }
 
       // ── Update claimed tracking ──────────────────────────────────────────
-      const newClaimedDays = [...state.claimedDays, dayIndex];
+      const newClaimedDays = state.claimedDays.includes(dayIndex)
+        ? state.claimedDays
+        : [...state.claimedDays, dayIndex];
+      state.claimedDays = newClaimedDays;
       state.lastClaimedDate = todayPHT;
       state.currentStreak = newStreak;
       state.longestStreak = newLongestStreak;

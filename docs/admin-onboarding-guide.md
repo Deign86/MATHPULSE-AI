@@ -1,13 +1,13 @@
 # Admin guided onboarding
 
-The admin guide reuses the shared engine (`GuidedTour`), the role-scoped hook (`useOnboardingTour('admin', …)`) and the Settings card (`GuideReplayCard`). Engine behavior is documented in `docs/student-onboarding-guide.md`; teacher specifics are in `docs/teacher-onboarding-guide.md`.
+The admin guide reuses the shared engine (`GuidedTour`), the hook (`useOnboardingTour(uid, ready, blocked, offerPending)`), the first-use question (`FirstUseGuidePrompt`) and the Settings card (`GuideReplayCard`). Engine behavior is documented in `docs/student-onboarding-guide.md`; teacher specifics are in `docs/teacher-onboarding-guide.md`.
 
 ## Admin experience
 
-- **General guide (first use):** launches once on Overview when no modal is open and no create intent is pending. 12 steps: a welcome, one overview per admin page in sidebar order (Overview; User Management, Class Management; RAG Manager; Curriculum Control, Content; Analytics, Audit Log; Profile, Settings), and a closing step on the **?** button. The welcome and closing steps say that step-by-step help lives in each page's guide.
+- **General guide (first use):** a new account (profile flag `guideOfferPending`) is asked "Play the tutorial now?" (**Skip** or **Play tutorial**) once on Overview when no modal is open and no create intent is pending. **Play tutorial** starts the guide; nothing plays on its own. 12 steps: a welcome, one overview per admin page in sidebar order (Overview; User Management, Class Management; RAG Manager; Curriculum Control, Content; Analytics, Audit Log; Profile, Settings), and a closing step on the **?** button. The welcome and closing steps say that step-by-step help lives in each page's guide.
 - **Page guides:** the **?** button in the admin header asks "Play the <page> guide?" (**Play guide** or **Skip**), then plays the current page's guide. Admin Settings → Admin guide lists every page guide and replays the general guide. Buttons are disabled while Settings has unsaved edits, an unsubmitted password, or a save or maintenance change in progress.
 - On phones and tablets, the guide opens the Manage, AI, Curriculum or Insights menu for navigation steps. On screens below 1280px, Overview shows one card row at a time; the guide reveals the row it explains. The Content guide shows the Upload tab, then the Inventory tab, and restores the admin's own tab afterwards.
-- First use is tracked per account and role: `mathpulse:admin-tour:v1:<uid>`.
+- First use is the Firestore field `users/{uid}.guideOfferPending`, set when the account is created (admin accounts are created by an existing admin). Play or Skip clears it, and Skip says the guide is under the **?** button and Settings. Accounts without the flag, including every account created before it existed, are never offered the guide automatically. Nothing is stored in the browser, and finishing or skipping the guide persists nothing. Details are in `docs/student-onboarding-guide.md`.
 
 ## Safety
 
@@ -18,7 +18,7 @@ The guide only shows screens; the overlay blocks every click. Several admin cont
 | File | Responsibility |
 | --- | --- |
 | `src/components/onboarding/adminTourSteps.ts` | Admin pages (`adminTourPages`, each with an `overview` and detailed `steps`), general guide (`adminTourSteps`), `adminPageTour(tab)`. Tabs are `ADMIN_TABS` ids. |
-| `src/components/AdminDashboard.tsx` | Hook wiring (ready = profile loaded; blocked = logout confirm, subjects help modal, pending create intent), navigation through `handleTabChange`, origin restore, Overview row reveal, header **?** button, notifications/profile anchors, Overview anchors, guide render, Content and Settings props. |
+| `src/components/AdminDashboard.tsx` | Hook wiring (ready = profile loaded; blocked = logout confirm, subjects help modal, pending create intent; offerPending = `guideOfferPending` while Overview is showing) and `FirstUseGuidePrompt`, navigation through `handleTabChange`, origin restore, Overview row reveal, header **?** button, notifications/profile anchors, Overview anchors, guide render, Content and Settings props. |
 | `src/components/Sidebar.tsx` | `data-tour-nav={item.label}` for every role that uses it (students and admins). |
 | `src/components/admin/AdminMobileBottomNav.tsx` | `tourMenu` hint, `data-tour-nav` items, `data-tour-sticky`, guide-safe outside-click handling; also fixed the Curriculum highlight for Curriculum Control. |
 | `src/components/admin/AdminPdfUpload.tsx` | `tourView` shows Upload/Inventory while explained. |

@@ -59,6 +59,7 @@ import AdminMobileBottomNav from './admin/AdminMobileBottomNav';
 import { GuidedTour, type TourStep } from './onboarding/GuidedTour';
 import { adminPageTour, adminTourPages, adminTourSteps } from './onboarding/adminTourSteps';
 import { PageGuideConfirm } from './onboarding/PageGuideConfirm';
+import { FirstUseGuidePrompt } from './onboarding/FirstUseGuidePrompt';
 import { useOnboardingTour } from '../hooks/useOnboardingTour';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, 
@@ -268,11 +269,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // Admin onboarding: a general first-use tour plus per-page guides. Modals and pending create intents block it.
   const adminTour = useOnboardingTour(
-    'admin',
     userProfile?.uid ?? null,
     Boolean(userProfile),
     showLogoutConfirm || isSubjectsHelpModalOpen || createIntentRole !== null,
-    activeTab === 'Overview',
+    userProfile?.guideOfferPending === true && activeTab === 'Overview',
   );
   const [tourStep, setTourStep] = useState<TourStep | null>(null);
   const tourOrigin = useRef<AdminTab | null>(null);
@@ -1425,6 +1425,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({
           onDismiss={handleDismissTour}
         />
       )}
+      <FirstUseGuidePrompt open={adminTour.offerOpen} onPlay={adminTour.acceptOffer} onSkip={adminTour.declineOffer} />
     </div>
   );
 };

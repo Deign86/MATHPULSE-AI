@@ -7,6 +7,7 @@ import MobileBottomNav from '../../src/components/MobileBottomNav';
 import SettingsPage from '../../src/components/SettingsPage';
 import { GuidedTour, type TourStep } from '../../src/components/onboarding/GuidedTour';
 import { PageGuideConfirm } from '../../src/components/onboarding/PageGuideConfirm';
+import { FirstUseGuidePrompt } from '../../src/components/onboarding/FirstUseGuidePrompt';
 import { studentPageTour, studentTourPages, studentTourSteps } from '../../src/components/onboarding/studentTourSteps';
 import { useOnboardingTour } from '../../src/hooks/useOnboardingTour';
 
@@ -40,7 +41,9 @@ function StudentTourFixture() {
   const [tab, setTab] = useState(() => new URLSearchParams(window.location.search).get('tab') ?? 'Dashboard');
   const [tourStep, setTourStep] = useState<TourStep | null>(null);
   const origin = useRef<string | null>(null);
-  const tour = useOnboardingTour('student', 'browser-verification', true, false, tab === 'Dashboard');
+  // ?existing simulates an account created before the first-use offer; otherwise the account is new.
+  const isNewAccount = !new URLSearchParams(window.location.search).has('existing');
+  const tour = useOnboardingTour('browser-verification', true, false, isNewAccount && tab === 'Dashboard');
   const page = tour.page ? studentPageTour(tour.page) : undefined;
   const navigate = (next: string) => {
     origin.current ??= tab;
@@ -82,6 +85,7 @@ function StudentTourFixture() {
       {tour.isOpen && (
         <GuidedTour key={tour.page ?? 'full'} label={page ? `${page.label} guide` : 'Student guide'} steps={page?.steps ?? studentTourSteps} onNavigate={navigate} onStepChange={setTourStep} onDismiss={dismiss} />
       )}
+      <FirstUseGuidePrompt open={tour.offerOpen} onPlay={tour.acceptOffer} onSkip={tour.declineOffer} />
     </div>
   );
 }

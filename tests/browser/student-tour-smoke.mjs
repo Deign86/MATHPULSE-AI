@@ -100,7 +100,12 @@ try {
     // Scroll away before the guide launches; the first step must bring its feature back into view.
     await page.getByTestId('page-scroll').evaluate(element => { element.scrollTop = element.scrollHeight; });
     const dialog = page.locator('[data-tour-dialog]');
-    await dialog.waitFor({ timeout: 60000 });
+    // A new account is asked first; the guide plays only from Play tutorial.
+    const offer = page.getByRole('alertdialog', { name: 'Play the tutorial now?' });
+    await offer.waitFor({ timeout: 60000 });
+    assert.equal(await dialog.count(), 0, 'The guide must not start before the new account answers the offer');
+    await offer.getByRole('button', { name: 'Play tutorial' }).click();
+    await dialog.waitFor();
     const full = await walkGuide(page, size, `${size.name}-full`);
     const record = { viewport: size.name, width: size.width, height: size.height, fullGuideSteps: full.length, skippedOptional: full.at(-1) - full.length };
 
@@ -136,9 +141,20 @@ try {
     await dialog.waitFor();
     await page.keyboard.press('Escape');
     await dialog.waitFor({ state: 'detached' });
+    // Skip explains where the tutorial lives and plays nothing.
     await page.goto(fixture);
+    await offer.waitFor();
+    await offer.getByRole('button', { name: 'Skip' }).click();
+    const later = page.getByRole('alertdialog', { name: 'You can play it later' });
+    await later.waitFor();
+    await later.getByRole('button', { name: 'Got it' }).click();
+    await later.waitFor({ state: 'detached' });
+    assert.equal(await dialog.count(), 0, 'Skip must not start the guide');
+    // Accounts created before the offer existed are never prompted or shown the guide automatically.
+    await page.goto(`${fixture}?existing`);
     await page.waitForTimeout(2500);
-    assert.equal(await dialog.count(), 0, 'Dismissed guide relaunched');
+    assert.equal(await page.getByRole('alertdialog').count(), 0, 'Existing account was offered the guide');
+    assert.equal(await dialog.count(), 0, 'Existing account was shown the guide');
     assert.deepEqual(errors, [], 'Browser runtime errors');
     checks.push(record);
     await context.close();

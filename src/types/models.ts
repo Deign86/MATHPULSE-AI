@@ -32,6 +32,8 @@ export interface User {
   };
   phone?: string;
   gender?: 'male' | 'female' | 'prefer_not_to_say' | null;
+  /** Set when the account is created; cleared once the user answers the first-use guide offer. */
+  guideOfferPending?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

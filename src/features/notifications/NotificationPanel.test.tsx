@@ -22,11 +22,11 @@ vi.spyOn(notificationContextNs, 'useNotifications').mockImplementation(() => ({
   deleteNotification: vi.fn(),
 }));
 
-// Item seam: rendered-but-inert stub keyed by notification id.
-// SAFETY: the stub preserves the notification prop contract consumed by the panel.
+// Item seam: stub keyed by notification id that exposes the activation callback.
+// SAFETY: the stub preserves the notification and onActivate prop contract consumed by the panel.
 vi.spyOn(notificationItemNs, 'NotificationItem').mockImplementation(
-  (({ notification }: { notification: { id: string; title: string } }) => (
-    <div data-testid={`item-${notification.id}`}>{notification.title}</div>
+  (({ notification, onActivate }: { notification: { id: string; title: string }; onActivate: () => void }) => (
+    <button type="button" data-testid={`item-${notification.id}`} onClick={onActivate}>{notification.title}</button>
   )) as typeof notificationItemNs.NotificationItem,
 );
 
@@ -109,6 +109,19 @@ describe('NotificationPanel', () => {
 
     expect(mockOnClose).not.toHaveBeenCalled();
     document.body.removeChild(triggerElement);
+  });
+
+  it('closes when a notification row is activated', () => {
+    const mockOnClose = vi.fn();
+    notificationsValue = [
+      { id: 'notif-1', userId: 'user-1', title: 'Test 1', message: 'Msg 1', isRead: false, createdAt: new Date(), type: 'daily_checkin' },
+    ];
+    unreadCountValue = 1;
+
+    render(<NotificationPanel onClose={mockOnClose} />);
+    fireEvent.click(screen.getByTestId('item-notif-1'));
+
+    expect(mockOnClose).toHaveBeenCalledTimes(1);
   });
 
   it('calls markAllAsRead when button clicked', () => {

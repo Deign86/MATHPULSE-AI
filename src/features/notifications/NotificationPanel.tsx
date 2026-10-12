@@ -102,6 +102,7 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
               <NotificationItem
                 key={notification.id}
                 notification={notification}
+                onActivate={onClose}
               />
             ))
           )}

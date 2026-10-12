@@ -1,6 +1,6 @@
 /** @vitest-environment jsdom */
 import React from 'react';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { render, screen, fireEvent, cleanup, within } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import DailyCheckInModal from '../DailyCheckInModal';
 import { RewardDefinition } from '../../types/rewards';
@@ -159,4 +159,71 @@ describe('DailyCheckInModal', () => {
 
     expect(screen.getByText(/Claimed for today/i)).toBeInTheDocument();
   });
+
+  it('shows today as Claimed once today is in claimedDays', () => {
+    render(
+      <DailyCheckInModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onClaim={vi.fn()}
+        weekRewards={mockWeekRewards}
+        todayReward={mockWeekRewards[1]}
+        canClaim={false}
+        isClaiming={false}
+        claimedDays={[1]}
+        currentDayIndex={1}
+        timeUntilReset="12:34:56"
+      />
+    );
+
+    expect(within(getDayCard('Day 2')).getByText('Claimed')).toBeInTheDocument();
+    expect(screen.queryByText('Available')).toBeNull();
+  });
+
+  it('shows a past unclaimed day as Missed instead of Available', () => {
+    render(
+      <DailyCheckInModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onClaim={vi.fn()}
+        weekRewards={mockWeekRewards}
+        todayReward={mockWeekRewards[2]}
+        canClaim={true}
+        isClaiming={false}
+        claimedDays={[1]}
+        currentDayIndex={2}
+        timeUntilReset="12:34:56"
+      />
+    );
+
+    expect(within(getDayCard('Day 1')).getByText('Missed')).toBeInTheDocument();
+    expect(screen.queryByText('Available')).toBeNull();
+  });
+
+  it('shows today as Claimed for a claim saved before claimedDays was recorded', () => {
+    render(
+      <DailyCheckInModal
+        isOpen={true}
+        onClose={vi.fn()}
+        onClaim={vi.fn()}
+        weekRewards={mockWeekRewards}
+        todayReward={mockWeekRewards[0]}
+        canClaim={false}
+        isClaiming={false}
+        claimedDays={[]}
+        currentDayIndex={0}
+        timeUntilReset="12:52:15"
+      />
+    );
+
+    expect(within(getDayCard('Day 1')).getByText('Claimed')).toBeInTheDocument();
+    expect(screen.queryByText('Available')).toBeNull();
+    expect(screen.getByText(/Claimed for today/i)).toBeInTheDocument();
+  });
 });
+
+function getDayCard(dayHeader: string): HTMLElement {
+  const card = screen.getByText(dayHeader).parentElement;
+  if (!card) throw new Error(`No card rendered under "${dayHeader}"`);
+  return card;
+}

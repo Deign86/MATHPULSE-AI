@@ -6,6 +6,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import * as firestore from 'firebase/firestore';
+import type { DocumentReference, Transaction } from 'firebase/firestore';
 import {
   mulberry32,
   seededShuffle,
@@ -17,8 +19,12 @@ import {
   getNextResetTime,
   REWARD_CATALOG,
 } from '../../data/rewardCatalog';
-import { canClaimToday, formatCountdown } from '../../services/dailyRewardService';
+import * as gamificationService from '../gamificationService';
+import { canClaimToday, claimDailyReward, formatCountdown } from '../../services/dailyRewardService';
 import { DailyRewardState } from '../../types/rewards';
+
+// SAFETY: opaque reference returned only from the mocked doc() boundary and matched by the write assertions.
+const fakeRewardDocument = { id: 'reward-doc' } as DocumentReference;
 
 describe('mulberry32 PRNG', () => {
   it('produces deterministic sequence for same seed', () => {
@@ -247,6 +253,93 @@ describe('formatCountdown', () => {
 
   it('pads single digits', () => {
     expect(formatCountdown(1000 * 61)).toBe('00:01:01');
+  });
+});
+
+describe('claimDailyReward persists claimed days', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    // 2026-05-04 is a Monday in PHT (day index 0).
+    vi.setSystemTime(new Date('2026-05-04T12:00:00+08:00'));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  async function claimWithStoredState(storedState: DailyRewardState) {
+    const transactionSet = vi.fn();
+    const transaction = {
+      get: vi
+        .fn()
+        .mockResolvedValueOnce({ exists: () => true, data: () => storedState })
+        .mockResolvedValueOnce({ exists: () => false }),
+      set: transactionSet,
+      update: vi.fn(),
+      delete: vi.fn(),
+    };
+    vi.spyOn(firestore, 'doc').mockReturnValue(fakeRewardDocument);
+    vi.spyOn(firestore, 'runTransaction').mockImplementation(async (_database, callback) => {
+      // SAFETY: the boundary mock implements only the transaction get and set calls claimDailyReward makes.
+      return callback(transaction as Transaction);
+    });
+    vi.spyOn(gamificationService, 'awardXP').mockResolvedValue({ newLevel: 1, leveledUp: false, xp: 0 });
+    vi.spyOn(gamificationService, 'unlockAvatarItem').mockResolvedValue({ success: true, message: '' });
+
+    await claimDailyReward('student-uid');
+    return transactionSet;
+  }
+
+  it('writes the claimed day index into claimedDays on the first claim of the week', async () => {
+    const transactionSet = await claimWithStoredState({
+      ...createEmptyState(),
+      lastClaimedWeekSeed: getWeekSeed(),
+    });
+
+    expect(transactionSet).toHaveBeenCalledWith(
+      fakeRewardDocument,
+      expect.objectContaining({ claimedDays: [0] }),
+      { merge: true },
+    );
+  });
+
+  it('keeps earlier claimed days and appends the new day index', async () => {
+    vi.setSystemTime(new Date('2026-05-05T12:00:00+08:00'));
+
+    const transactionSet = await claimWithStoredState({
+      ...createEmptyState(),
+      lastClaimedWeekSeed: getWeekSeed(),
+      lastClaimedDate: '2026-05-04',
+      claimedDays: [0],
+      currentStreak: 1,
+      longestStreak: 1,
+      totalClaimed: 1,
+    });
+
+    expect(transactionSet).toHaveBeenCalledWith(
+      fakeRewardDocument,
+      expect.objectContaining({ claimedDays: [0, 1] }),
+      { merge: true },
+    );
+  });
+
+  it('does not duplicate a day index that is already in claimedDays', async () => {
+    const transactionSet = await claimWithStoredState({
+      ...createEmptyState(),
+      lastClaimedWeekSeed: getWeekSeed(),
+      lastClaimedDate: '2026-05-03',
+      claimedDays: [0],
+      currentStreak: 1,
+      longestStreak: 1,
+      totalClaimed: 1,
+    });
+
+    expect(transactionSet).toHaveBeenCalledWith(
+      fakeRewardDocument,
+      expect.objectContaining({ claimedDays: [0] }),
+      { merge: true },
+    );
   });
 });
 
