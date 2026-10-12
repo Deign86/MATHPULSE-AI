@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { selectAnalyticsAttempts } from '../adminAnalyticsRange';
+import { keepCurrentLearners, selectAnalyticsAttempts } from '../adminAnalyticsRange';
+
+describe('keepCurrentLearners', () => {
+  it('drops attempts from progress docs whose account no longer exists or is not a student', () => {
+    const attempts = [
+      { learnerId: 'student-a', score: 90, occurredAt: null },
+      { learnerId: 'deleted-account', score: 40, occurredAt: null },
+      { learnerId: 'student-a', score: 70, occurredAt: null },
+    ];
+    expect(keepCurrentLearners(attempts, new Set(['student-a']))).toEqual([attempts[0], attempts[2]]);
+  });
+});
 
 describe('selectAnalyticsAttempts', () => {
   const now = new Date('2026-10-05T12:00:00.000Z');

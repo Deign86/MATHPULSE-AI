@@ -6,6 +6,14 @@ export interface AnalyticsAttempt {
   occurredAt: Date | null;
 }
 
+/** `progress` docs outlive deleted accounts; only current students count toward learner KPIs. */
+export function keepCurrentLearners<T extends AnalyticsAttempt>(
+  attempts: readonly T[],
+  studentIds: ReadonlySet<string>,
+): T[] {
+  return attempts.filter(({ learnerId }) => studentIds.has(learnerId));
+}
+
 export function selectAnalyticsAttempts<T extends AnalyticsAttempt>(
   attempts: readonly T[],
   range: AdminAnalyticsRange,
