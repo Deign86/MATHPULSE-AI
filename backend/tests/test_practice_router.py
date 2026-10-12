@@ -97,6 +97,29 @@ class TestPracticeGenerate:
         assert "generated_at" in data
         assert data["questions"][0]["id"] == "q1"
 
+    @patch("routes.practice._get_firestore", return_value=None)
+    @patch("routes.practice._call_claude")
+    def test_missing_explanation_is_left_empty_instead_of_a_shared_sentence(self, mock_call, _mock_db):
+        """An omitted or null explanation must not become the same canned text on every question."""
+        options = ["3", "4", "5", "6"]
+        mock_call.return_value = json.dumps({
+            "questions": [
+                {"id": "q1", "question": "2+2?", "options": options, "correct_index": 1, "explanation": "Add 2 and 2."},
+                {"id": "q2", "question": "3+3?", "options": options, "correct_index": 3},
+                {"id": "q3", "question": "4+4?", "options": options, "correct_index": 3, "explanation": None},
+            ]
+        })
+
+        user_id = "test_user_123"
+        response = client.post(
+            "/api/practice/generate",
+            json={"userId": user_id, "subject": "Algebra", "competency": "Linear Equations", "difficulty": "Practice", "count": 3},
+            headers=_auth_header(user_id),
+        )
+
+        assert response.status_code == 200
+        assert [q["explanation"] for q in response.json()["questions"]] == ["Add 2 and 2.", "", ""]
+
     def test_generate_rejects_mismatched_user(self):
         """Request with mismatched auth userId should return 403."""
         response = client.post(

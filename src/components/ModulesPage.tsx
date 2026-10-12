@@ -471,7 +471,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
     const handleNotificationNav = (e: Event) => {
       // SAFETY: trusted internal value already conforms to the asserted type.
       const detail = (e as CustomEvent).detail;
-      if (userProfile?.role === 'student' && detail?.tab === 'Modules' && detail?.section !== 'assigned-quizzes') {
+      if (userProfile?.role === 'student' && detail?.tab === 'Modules' && detail?.section === 'daily-rewards') {
         loadState(true);
       }
     };

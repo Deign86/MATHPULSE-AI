@@ -1,48 +1,54 @@
 import { useCallback, useEffect, useState } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../lib/firebase';
 
-/** Each role has its own guide, so first-use and dismissal are tracked per role. */
-export type TourScope = 'student' | 'teacher' | 'admin';
+// The loaded profile keeps its guideOfferPending value until the next login, so answers are remembered here.
+const answeredOffers = new Set<string>();
 
-const dismissedThisSession = new Set<string>();
-const storageKey = (scope: TourScope, uid: string) => `mathpulse:${scope}-tour:v1:${uid}`;
-
-function hasSeenTour(scope: TourScope, uid: string): boolean {
-  if (dismissedThisSession.has(storageKey(scope, uid))) return true;
+async function clearGuideOffer(uid: string) {
   try {
-    return localStorage.getItem(storageKey(scope, uid)) === 'seen';
-  } catch {
-    return false;
+    await updateDoc(doc(db, 'users', uid), { guideOfferPending: false });
+  } catch (error) {
+    // The flag stays set, so the offer comes back on the next login.
+    console.error('[onboarding] Could not clear the first-use guide offer:', error);
   }
 }
 
-/** Persistence is per account and browser; unavailable storage falls back to this session. */
-export function useOnboardingTour(scope: TourScope, uid: string | null, ready: boolean, blocked: boolean, autoStart = true) {
+/**
+ * A new account (users/{uid}.guideOfferPending) is asked once whether to play the full guide;
+ * every account can play it from the ? button or Settings with `start`.
+ * `offerPending` is true while that flag is set and the role's home page is showing.
+ */
+export function useOnboardingTour(uid: string | null, ready: boolean, blocked: boolean, offerPending: boolean) {
   const [activeUid, setActiveUid] = useState<string | null>(null);
   // null = full guide; otherwise the tab whose page guide is playing.
   const [page, setPage] = useState<string | null>(null);
+  const [offerUid, setOfferUid] = useState<string | null>(null);
   const isOpen = Boolean(uid && activeUid === uid && ready && !blocked);
+  // offerPending also carries "on the home page", so a re-armed offer never surfaces elsewhere.
+  const offerOpen = Boolean(uid && offerUid === uid && ready && !blocked && offerPending);
 
   useEffect(() => {
     if (!uid || blocked) {
       setActiveUid(null);
+      setOfferUid(null);
       return;
     }
     // An explicit request made while the profile is still loading stays queued and opens once ready.
     if (!ready) return;
-    if (!autoStart || activeUid === uid || hasSeenTour(scope, uid)) return;
+    if (!offerPending || activeUid === uid || offerUid === uid || answeredOffers.has(uid)) return;
     let timer = 0;
     const attempt = () => {
       // Other feature dialogs have their own state outside App.
       if (!document.querySelector('[role="dialog"], [role="alertdialog"], [aria-modal="true"]')) {
-        setPage(null);
-        setActiveUid(uid);
+        setOfferUid(uid);
       } else {
         timer = window.setTimeout(attempt, 500);
       }
     };
     timer = window.setTimeout(attempt, 1500);
     return () => window.clearTimeout(timer);
-  }, [scope, uid, ready, blocked, activeUid, autoStart]);
+  }, [uid, ready, blocked, activeUid, offerUid, offerPending]);
 
   const start = useCallback((pageTab: string | null = null) => {
     if (!uid || blocked) return;
@@ -50,16 +56,19 @@ export function useOnboardingTour(scope: TourScope, uid: string | null, ready: b
     setActiveUid(uid);
   }, [uid, blocked]);
 
-  const dismiss = useCallback(() => {
-    if (uid) {
-      try {
-        localStorage.setItem(storageKey(scope, uid), 'seen');
-      } catch {
-        dismissedThisSession.add(storageKey(scope, uid));
-      }
-    }
-    setActiveUid(null);
-  }, [scope, uid]);
+  const dismiss = useCallback(() => setActiveUid(null), []);
+
+  const answerOffer = useCallback(() => {
+    if (!uid) return;
+    answeredOffers.add(uid);
+    setOfferUid(null);
+    void clearGuideOffer(uid);
+  }, [uid]);
+
+  const acceptOffer = useCallback(() => {
+    answerOffer();
+    start();
+  }, [answerOffer, start]);
 
   // Tour steps replace history, so browser Back/Forward lands on the student's chosen page; keep it.
   useEffect(() => {
@@ -68,5 +77,5 @@ export function useOnboardingTour(scope: TourScope, uid: string | null, ready: b
     return () => window.removeEventListener('popstate', dismiss);
   }, [isOpen, dismiss]);
 
-  return { isOpen, page, start, dismiss };
+  return { isOpen, page, start, dismiss, offerOpen, acceptOffer, declineOffer: answerOffer };
 }

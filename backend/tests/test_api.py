@@ -2237,6 +2237,29 @@ class TestStudentAccountProvisioningImport:
         provisioned_profile = next(iter(users_store.values()))
         assert provisioned_profile.get("role") == "student"
         assert provisioned_profile.get("forcePasswordChange") is True
+        assert provisioned_profile.get("guideOfferPending") is True
+
+    def test_teacher_created_student_account_is_offered_the_first_use_guide(self):
+        firestore = _ProvisionFirestoreModule({"users": {}, "managedStudents": {}, "classSectionOwnership": {}, "accessAuditLogs": {}})
+
+        with patch.object(main_module, "firebase_firestore", firestore), patch.object(main_module, "_firebase_ready", True), patch.object(main_module.firebase_auth, "verify_id_token", return_value={
+            "uid": "teacher-uid",
+            "email": "teacher@example.com",
+            "role": "teacher",
+        }), patch.object(main_module.firebase_auth, "get_user_by_email", side_effect=Exception("user not found")), patch.object(main_module.firebase_auth, "create_user", return_value=type("AuthUser", (), {"uid": "auth-created-1"})()):
+            response = client.post(
+                "/api/teacher/create-student-account",
+                json={
+                    "name": "Ana Cruz",
+                    "email": "ana@student.com",
+                    "temporary_password": "Secure123!",
+                    "section": "STEM-A",
+                    "adviser_teacher_id": "teacher-uid",
+                },
+            )
+
+        assert response.status_code == 200
+        assert firestore.client().store["users"]["auth-created-1"]["guideOfferPending"] is True
 
     @staticmethod
     def _move_firestore() -> _ProvisionFirestoreModule:

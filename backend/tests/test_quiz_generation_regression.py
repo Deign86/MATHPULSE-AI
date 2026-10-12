@@ -4,7 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import ValidationError
 
-from main import app
+from main import _validate_quiz_questions, app
 from routes.quiz_generation_routes import QuizGenerationRequest, _build_quiz_generation_prompt
 
 pytestmark = pytest.mark.usefixtures("isolated_mock_student_auth")
@@ -49,3 +49,17 @@ def test_quiz_type_fallback_prompt_handles_empty_type_list():
         "Algebra", "Math", None, 1, [], "easy", "", grade_level="Grade 11"
     )
     assert "multiple_choice" in prompt
+
+
+def test_missing_quiz_explanation_falls_back_to_the_questions_own_answer():
+    questions = [
+        {"questionType": "identification", "question": "Define slope", "correctAnswer": "rise over run", "explanation": "Slope is rise over run."},
+        {"questionType": "identification", "question": "Define intercept", "correctAnswer": "where the line crosses an axis"},
+        {"questionType": "identification", "question": "Define vertex", "correctAnswer": "the turning point", "explanation": "  "},
+    ]
+    validated = _validate_quiz_questions(questions, [])
+    assert [q.explanation for q in validated] == [
+        "Slope is rise over run.",
+        "Correct answer: where the line crosses an axis",
+        "Correct answer: the turning point",
+    ]

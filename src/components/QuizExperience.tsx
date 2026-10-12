@@ -340,7 +340,6 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
   const [questionStartTime, setQuestionStartTime] = useState(Date.now());
   const [showResults, setShowResults] = useState(false);
   const [confettiFired, setConfettiFired] = useState(false);
-  const [selectedAnswerForHighlight, setSelectedAnswerForHighlight] = useState<number | null>(null);
   const [timeRemaining, setTimeRemaining] = useState(0);
   const [totalXP, setTotalXP] = useState(0);
   const [showCalculator, setShowCalculator] = useState(false);
@@ -570,27 +569,6 @@ const QuizExperience: React.FC<QuizExperienceProps> = ({ quiz, previewMode = fal
     playSound('correct');
   };
 
-  const handleShowAnswer = () => {
-    const newAnswers = [...answers];
-    newAnswers[currentQuestionIndex] = 0; // Mark 0 pts for this question
-    setAnswers(newAnswers);
-    setLastAnswerCorrect(false);
-    setShowExplanation(true);
-    setStreak(0);
-    setComboMultiplier(1);
-    
-    const timeSpentQ = Math.round((Date.now() - questionStartTime) / 1000);
-    setAnswerRecords((prev) => [
-      ...prev,
-      {
-        questionId: currentQuestion.id,
-        answer: 'show_answer',
-        correct: false,
-        timeSpent: timeSpentQ,
-      },
-    ]);
-  };
-
   const handleAnswerSelect = (idx: number) => {
     if (isSubmittingRef.current) return;
     if (showExplanation) return;
@@ -691,7 +669,6 @@ const newStreak = streak + 1;
       const nextIdx = currentQuestionIndex + 1;
       setCurrentQuestionIndex(nextIdx);
       setViewIndex(nextIdx);
-      setSelectedAnswerForHighlight(selectedAnswer);
       setSelectedAnswer(null);
       setTextAnswer('');
       setWrongAttempted(false);
@@ -812,6 +789,12 @@ playSound('complete');
 
   const isCurrentlyAnswered = viewIndex < currentQuestionIndex || (viewIndex === currentQuestionIndex && showExplanation);
   const viewedQuestion = questions[viewIndex] || currentQuestion;
+  // Match the record by id, not position: a question skipped after using every hint leaves no record.
+  const viewedRecord = answerRecords.find((record) => record.questionId === viewedQuestion.id);
+  const viewedPick = viewedRecord?.selectedOptionIndex;
+  const viewedCorrect = viewedRecord?.correct;
+  const viewedTopic = viewedQuestion.topic?.trim() ?? '';
+  const ownTopic = viewedTopic.toLowerCase() === (quiz.title || '').trim().toLowerCase() ? '' : viewedTopic;
 
   const toggleFullscreen = () => {
     if (!document.fullscreenElement) {
@@ -1210,7 +1193,7 @@ playSound('complete');
                 {viewedQuestion.questionType === 'multiple_choice' || !viewedQuestion.questionType ? (
                   <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3 md:gap-5">
                      {(viewedQuestion.options || []).map((opt, idx) => {
-                        const eliminatedArr = eliminatedByHint[currentQuestionIndex] || [];
+                        const eliminatedArr = eliminatedByHint[viewIndex] || [];
                         const isEliminated = eliminatedArr.includes(opt);
                         const eliminatedCount = eliminatedArr.length;
                         const wrongChoicesCount = (viewedQuestion.options || []).length - 1;
@@ -1224,24 +1207,17 @@ playSound('complete');
                            const correctOption = viewedQuestion.options?.[viewedQuestion.correctAnswer];
                            if (opt === correctOption) {
                               bgColor = 'bg-emerald-50 border-emerald-400 text-emerald-800';
+                           } else if (viewedPick === idx) {
+                              bgColor = 'bg-rose-50 border-rose-400 text-rose-800 opacity-80';
                            } else {
-                              const userAnswer = answerRecords[viewIndex]?.answer;
-                              const wasUserSelection = userAnswer === String(idx);
-                              if (wasUserSelection) {
-                                 bgColor = 'bg-rose-50 border-rose-400 text-rose-800 opacity-80';
-                              } else {
-                                 bgColor = 'bg-slate-100 border-slate-200 text-slate-400 opacity-40 line-through';
-                              }
+                              bgColor = 'bg-slate-100 border-slate-200 text-slate-400 opacity-40 line-through';
                            }
                         } else if (isEliminated) {
                            bgColor = 'bg-slate-100 border-slate-200 text-slate-400 opacity-40 line-through cursor-not-allowed';
                         } else if (isCurrentlyAnswered) {
-                            const wasCorrect = idx === viewedQuestion.correctAnswer;
-                            const wasSelected = (viewIndex === currentQuestionIndex && (selectedAnswer === idx || selectedAnswerForHighlight === idx)) ||
-                                                (viewIndex < currentQuestionIndex && answerRecords[viewIndex]?.answer === String(idx));
-                           if (wasCorrect) {
+                           if (idx === viewedQuestion.correctAnswer) {
                               bgColor = 'bg-emerald-50 border-emerald-400 text-emerald-800 shadow-[0_0_15px_rgba(16,185,129,0.2)] scale-[1.02] z-10';
-                           } else if (wasSelected) {
+                           } else if (viewedPick === idx) {
                               bgColor = 'bg-rose-50 border-rose-400 text-rose-800 opacity-80';
                            } else {
                               bgColor = 'bg-slate-50 border-slate-200 text-slate-400 opacity-60';
@@ -1260,7 +1236,7 @@ playSound('complete');
                               <span className="truncate pr-4"><MathText>{opt}</MathText></span>
                               {isEliminated && <XCircle size={20} className="text-slate-400 shrink-0" />}
                               {isCurrentlyAnswered && idx === viewedQuestion.correctAnswer && <CheckCircle size={22} className="text-emerald-500 shrink-0" />}
-                              {isCurrentlyAnswered && selectedAnswer === idx && idx !== viewedQuestion.correctAnswer && <XCircle size={22} className="text-rose-500 shrink-0" />}
+                              {isCurrentlyAnswered && viewedPick === idx && idx !== viewedQuestion.correctAnswer && <XCircle size={22} className="text-rose-500 shrink-0" />}
                            </button>
                         );
                      })}
@@ -1276,7 +1252,7 @@ playSound('complete');
                           onKeyDown={(e) => { if (e.key === 'Enter' && !showExplanation) handleSubmitAnswer(); }}
                           placeholder="Type your answer here..."
                           className={`w-full p-3 sm:p-4 md:p-5 rounded-2xl border-[3px] font-extrabold text-base sm:text-lg text-center outline-none transition-colors ${
-                             isCurrentlyAnswered ? (lastAnswerCorrect ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : 'border-rose-400 text-rose-700 bg-rose-50')
+                             isCurrentlyAnswered ? (viewedCorrect ? 'border-emerald-400 text-emerald-700 bg-emerald-50' : 'border-rose-400 text-rose-700 bg-rose-50')
                              : 'border-slate-200 focus:border-[#7C3AED] bg-white text-slate-800'
                           }`}
                        />
@@ -1284,12 +1260,12 @@ playSound('complete');
                   </div>
                  )}
 
-                  {/* Explanation Header: Topic + Module Avatar (only when explain is active) */}
+                  {/* Explanation Header: question number, own topic when it is not just the quiz title, Module Avatar */}
                   {isCurrentlyAnswered && userRequestedExplanation && (
                     <div className="w-full max-w-3xl mt-6 flex items-center justify-between gap-4">
-                      <div>
-                        <h3 className="text-lg font-bold text-[#0a1628]">{viewedQuestion.topic || quiz?.subject || 'General Math'}</h3>
-                        <p className="text-sm text-slate-500 tabular-nums">Question {viewIndex + 1} Explanation</p>
+                      <div className="min-w-0">
+                        <h3 className="text-lg font-bold text-[#0a1628] tabular-nums">Question {viewIndex + 1} Explanation</h3>
+                        {ownTopic && <p className="text-sm text-slate-500 line-clamp-2">{ownTopic}</p>}
                       </div>
                       <img 
                         src="/mascot/modules_avatar.png" 
@@ -1303,23 +1279,23 @@ playSound('complete');
                   {isCurrentlyAnswered && (
                     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-full mt-4 space-y-4 max-w-3xl">
                       <div className={`border-2 rounded-2xl p-5 flex items-start gap-4 ${
-                         (viewIndex === currentQuestionIndex ? lastAnswerCorrect : answerRecords[viewIndex]?.correct) ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
+                         viewedCorrect ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'
                       }`}>
-                        {(viewIndex === currentQuestionIndex ? lastAnswerCorrect : answerRecords[viewIndex]?.correct) ? (
+                        {viewedCorrect ? (
                           <CheckCircle size={28} className="text-emerald-500 shrink-0 mt-0.5" />
                         ) : (
                           <XCircle size={28} className="text-rose-500 shrink-0 mt-0.5" />
                         )}
                         <div>
-                          <p className={`font-extrabold text-lg mb-1 ${(viewIndex === currentQuestionIndex ? lastAnswerCorrect : answerRecords[viewIndex]?.correct) ? 'text-emerald-700' : 'text-rose-700'}`}>
-                             {(viewIndex === currentQuestionIndex ? lastAnswerCorrect : answerRecords[viewIndex]?.correct) ? 'Correct!' : 'Incorrect'}
+                          <p className={`font-extrabold text-lg mb-1 ${viewedCorrect ? 'text-emerald-700' : 'text-rose-700'}`}>
+                             {viewedCorrect ? 'Correct!' : 'Incorrect'}
                           </p>
                           {/* BACKEND HANDOFF NOTE: Placeholder answer explanation.
                                Future backend must provide:
                                - explanationText: string (markdown-supported correct answer explanation)
                                - optional explanationMedia: string (supplementary media URL)
                                - correctAnswerId: string (ID of correct choice for highlighting) */}
-                          <AiText className={`text-base leading-relaxed ${(viewIndex === currentQuestionIndex ? lastAnswerCorrect : answerRecords[viewIndex]?.correct) ? 'text-emerald-800' : 'text-rose-800'}`}>
+                          <AiText className={`text-base leading-relaxed ${viewedCorrect ? 'text-emerald-800' : 'text-rose-800'}`}>
                             {viewedQuestion.explanation || `Correct Answer: ${viewedQuestion.correctAnswerText || viewedQuestion.options?.[viewedQuestion.correctAnswer]}`}
                           </AiText>
                         </div>

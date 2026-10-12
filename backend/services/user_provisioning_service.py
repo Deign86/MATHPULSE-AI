@@ -269,6 +269,8 @@ class UserProvisioningService:
 
         profile_payload = self._build_profile_payload(user_input, role_lower, normalized_status)
         profile_payload["createdAt"] = self._firestore_server_timestamp
+        # New accounts are asked once whether to play the first-use guide; the app clears this flag.
+        profile_payload["guideOfferPending"] = True
 
         try:
             firestore_client.collection("users").document(uid).set(profile_payload, merge=True)

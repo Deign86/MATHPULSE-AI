@@ -34,6 +34,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { GuidedTour, type TourStep } from './onboarding/GuidedTour';
 import { teacherPageTour, teacherTourPages, teacherTourSteps } from './onboarding/teacherTourSteps';
 import { PageGuideConfirm } from './onboarding/PageGuideConfirm';
+import { FirstUseGuidePrompt } from './onboarding/FirstUseGuidePrompt';
 import { useOnboardingTour } from '../hooks/useOnboardingTour';
 import {
   getClassAnalytics,
@@ -857,12 +858,11 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
   // Teacher onboarding: a general first-use tour plus per-page guides. Modals and drawers block it.
   const teacherTour = useOnboardingTour(
-    'teacher',
     currentUser?.uid ?? null,
     !dataLoading,
     showLogoutConfirm || showCreateClassModal || showAddStudentsModal || insightModalOpen || showMobileCalendar
       || pendingRemoveStudent !== null || pendingDeleteClass !== null,
-    activeView === 'dashboard',
+    userProfile?.guideOfferPending === true && activeView === 'dashboard',
   );
   const [tourStep, setTourStep] = useState<TourStep | null>(null);
   const tourOrigin = useRef<View | null>(null);
@@ -2968,6 +2968,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           onDismiss={handleDismissTour}
         />
       )}
+      <FirstUseGuidePrompt open={teacherTour.offerOpen} onPlay={teacherTour.acceptOffer} onSkip={teacherTour.declineOffer} />
     </div>
   );
 };

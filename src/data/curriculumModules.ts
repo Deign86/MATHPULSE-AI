@@ -391,7 +391,7 @@ function makeAssessments(module: CurriculumModuleBlueprint): CurriculumAssessmen
     chunkIndex += 1;
     chunks.push({
       id: `${module.id}-a${chunkIndex}`,
-      title: subset.map((entry) => entry.outcome).join(' and '),
+      title: subset.map((entry) => entry.outcome.replace(/\.+$/, '')).join('; '),
       competencyCodes: subset.map((entry) => entry.code),
       type: chunkIndex === Math.ceil(module.competencies.length / chunkSize) ? 'module' : 'practice',
     });

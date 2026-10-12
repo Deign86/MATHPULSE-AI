@@ -286,6 +286,7 @@ export const createUserProfile = async (
     name: additionalData.name || firebaseUser.displayName || 'User',
     role,
     photo: firebaseUser.photoURL || '',
+    guideOfferPending: true,
     createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
   };

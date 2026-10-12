@@ -65,7 +65,9 @@ vi.spyOn(ModuleFolderCardNs, 'default').mockImplementation(
 vi.spyOn(ModulesMascotNs, 'default').mockImplementation(
   () => React.createElement('div', null, 'ModulesMascot'),
 );
-vi.spyOn(DailyCheckInModalNs, 'default').mockImplementation(() => null);
+vi.spyOn(DailyCheckInModalNs, 'default').mockImplementation(
+  ({ isOpen }) => (isOpen ? React.createElement('div', null, 'Daily Rewards Modal') : null),
+);
 vi.spyOn(PracticeCenterNs, 'default').mockImplementation(
   () => React.createElement('div', null, 'Practice Center Stub'),
 );
@@ -176,6 +178,34 @@ describe('ModulesPage', () => {
     expect(quizService.fetchPendingQuizzesForStudent).toHaveBeenCalledOnce();
     expect(quizService.fetchPendingQuizzesForStudent).toHaveBeenCalledWith('user-1');
     expect(await screen.findByText('Try It Yourself!')).toBeInTheDocument();
+  });
+
+  it('does not open Daily Rewards for a Modules navigation that is not a daily reward', () => {
+    window.history.replaceState({}, '', '/modules');
+    renderModulesPage();
+
+    fireEvent(window, new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
+
+    expect(screen.queryByText('Daily Rewards Modal')).not.toBeInTheDocument();
+  });
+
+  it('opens Daily Rewards when a daily reward notification navigates to Modules', () => {
+    window.history.replaceState({}, '', '/modules');
+    renderModulesPage();
+
+    fireEvent(window, new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules', section: 'daily-rewards' } }));
+
+    expect(screen.getByText('Daily Rewards Modal')).toBeInTheDocument();
+  });
+
+  it('does not open Daily Rewards for the assigned quizzes section', () => {
+    vi.spyOn(quizService, 'fetchPendingQuizzesForStudent').mockReset().mockResolvedValue([]);
+    window.history.replaceState({}, '', '/modules');
+    renderModulesPage();
+
+    fireEvent(window, new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules', section: 'assigned-quizzes' } }));
+
+    expect(screen.queryByText('Daily Rewards Modal')).not.toBeInTheDocument();
   });
 
   it('refreshes assignments when an assigned quiz is clicked while Practice is already open', async () => {

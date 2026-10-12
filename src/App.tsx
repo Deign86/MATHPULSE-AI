@@ -2,6 +2,7 @@ import { useOnboardingTour } from './hooks/useOnboardingTour';
 import { GuidedTour, type TourStep } from './components/onboarding/GuidedTour';
 import { studentPageTour, studentTourPages, studentTourSteps } from './components/onboarding/studentTourSteps';
 import { PageGuideConfirm } from './components/onboarding/PageGuideConfirm';
+import { FirstUseGuidePrompt } from './components/onboarding/FirstUseGuidePrompt';
 import React, { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -347,12 +348,11 @@ const App = ({ authOverride }: AppProps = {}) => {
   const [computedGpa, setComputedGpa] = useState<string>(studentProfile?.gpa || '0');
 
   const studentTour = useOnboardingTour(
-    'student',
     userRole === 'student' && isLoggedIn ? userProfile?.uid || null : null,
     profileReady && !tourDiagnosticPending,
     showDiagnosticModal || showAssessmentPage || showAssessmentResults || isInQuizMode ||
       activeModal !== null || isMobileSidebarOpen || avatarUnsavedRef.current || profileUnsavedRef.current,
-    activeTab === 'Dashboard',
+    userProfile?.guideOfferPending === true && activeTab === 'Dashboard',
   );
   const tourOrigin = useRef<string | null>(null);
   const handleTourNavigate = (tab: string) => {
@@ -1900,6 +1900,7 @@ const App = ({ authOverride }: AppProps = {}) => {
           onDismiss={handleDismissTour}
         />
       )}
+      <FirstUseGuidePrompt open={studentTour.offerOpen} onPlay={studentTour.acceptOffer} onSkip={studentTour.declineOffer} />
 
       {/* Global Modals rendered at root level outside stacking contexts */}
       {/* Rewards Modal */}

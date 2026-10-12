@@ -4,7 +4,7 @@ Implemented on `codex/student-onboarding-tour`, based on fetched `origin/main` c
 
 ## Purpose and scope
 
-This is an interactive feature walkthrough, separate from Initial Assessment & Readiness (IAR). Each step spotlights the feature region it explains (a card, toolbar, list or form, never just a page title), and Continue moves to the next feature or screen. It does not change product appearance or backend behavior.
+This is an interactive feature walkthrough, separate from Initial Assessment & Readiness (IAR). Each step spotlights the feature region it explains (a card, toolbar, list or form, never just a page title), and Continue moves to the next feature or screen. It does not change product appearance. Account creation sets a `guideOfferPending` flag that makes a new account's first dashboard visit ask whether to play the guide (see First-use offer and persistence); that flag is the only data the feature reads or writes.
 
 Students can use Back, Continue, Finish tour, or the header close button labelled Skip tour. Escape, browser Back/Forward, and the Android hardware back action dismiss the walkthrough; browser history traversal keeps the page the student navigated to. While a guide is open the page cannot be clicked or scrolled by the student; the guide does all scrolling itself. The tour never answers or submits an assessment, joins matchmaking, creates a battle room, sends a chat message, spends rewards, or edits a profile.
 
@@ -12,13 +12,13 @@ Students can use Back, Continue, Finish tour, or the header close button labelle
 
 1. Sign in and wait for profile hydration and the initial diagnostic check.
 2. Complete or dismiss the IAR workflow. A tour cannot open over an assessment, result screen, quiz, calculator, logout dialog, or open mobile sidebar.
-3. On the dashboard, an unseen general guide launches after a short settling delay. Other feature dialogs also defer launch until closed. The general guide is deliberately short (12 steps): a welcome, one overview per page (what the page is for and where it lives in navigation), and a closing step on the **?** button. Both the welcome and the closing step tell the student that step-by-step instructions live in each page's own guide.
+3. On the dashboard, a new account is asked "Play the tutorial now?" (**Skip** or **Play tutorial**) after a short settling delay. Other feature dialogs defer the question until closed. The guide never starts on its own; **Play tutorial** starts the general guide. The general guide is deliberately short (12 steps): a welcome, one overview per page (what the page is for and where it lives in navigation), and a closing step on the **?** button. Both the welcome and the closing step tell the student that step-by-step instructions live in each page's own guide.
 4. Each step scrolls its feature to the top of the page and highlights it. If the page was scrolled before launch, or drifts during a step, the guide scrolls it back. Sticky filter/tab bars, the floating Quiz Battle header, the phone's pinned leaderboard strip and the bottom navigation never cover a highlighted feature: the guide scrolls past top bars and trims the highlight above bottom bars. While a page is still loading, the card stays hidden (up to 12 s, with a "Loading this page…" indicator after 0.6 s) so it never jumps into place.
 5. Features that only exist in some account states (assessment focus topics, the AI diagnostic banner, past conversations, the floating tutor on large screens) are skipped automatically when absent.
 6. On phones, the guide opens the correct bottom-navigation submenu automatically. Tablet and desktop use their existing visible controls.
 7. Screens that are hidden by default are shown read-only while explained: Modules sub-tabs (Recommended, Practice, Teacher Uploaded), the Quiz Battle setup screen, and on AI Chat the conversation list and an existing chat (phones show only one at a time). The student's own Modules tab, chat selection and the Quiz Battle hub return when the guide ends.
 8. Pages that open a modal on their own hold it until the guide closes. The Modules Daily Check-In appears after the guide instead of covering it. The guide also layers above every app overlay.
-9. Finish or Skip records dismissal and restores the screen from which the guide started. Tour-driven navigation replaces the current history entry, preserving browser Back behavior.
+9. Finish or Skip restores the screen from which the guide started and stores nothing. Tour-driven navigation replaces the current history entry, preserving browser Back behavior.
 
 ### Page guides
 
@@ -29,7 +29,7 @@ Every page has its own short guide:
 
 A page guide stays on its page and returns there when finished. A guide requested while the profile is still loading opens as soon as it is ready. Replay and page guides are disabled while Settings has unsaved edits or a password field holds unsubmitted text.
 
-First-use means the account has not dismissed this version of the guide in this browser. Existing student accounts also receive the guide if they have no stored dismissal marker.
+First use means the account's profile has `guideOfferPending: true`, which is set when the account is created, or by `scripts/backfill-guide-offer.ts` on older accounts that have never signed in. Accounts created before the flag existed are never offered the guide automatically; they can still play it from the **?** button or Settings.
 
 ## Files and responsibilities
 
@@ -38,8 +38,9 @@ First-use means the account has not dismissed this version of the guide in this 
 | `src/components/onboarding/GuidedTour.tsx` | Role-neutral spotlight and explanation dialog. Owns step index, target discovery, scrolling, optional-step skipping, placement, progress, focus, and keyboard dismissal. |
 | `src/components/onboarding/studentTourSteps.ts` | Per-page student guides (`studentTourPages`, each with one general `overview` step and detailed `steps`), the general guide (`studentTourSteps`), and `studentPageTour(tab)`. |
 | `src/components/onboarding/PageGuideConfirm.tsx` | The question the header **?** button asks before a guide plays, shared by all three roles. It wraps the button as its trigger, so Skip and Escape return focus there; Play guide hands focus to the guide card. |
-| `src/hooks/useOnboardingTour.ts` | Student eligibility, delayed first launch, full or page replay, dismissal, browser-history dismissal, account isolation, and local persistence. |
-| `src/App.tsx` | Assessment safety, real student navigation, history replacement, original-screen restoration, hardware back, header page-guide button with its confirmation, and passing the current step's menu/view to pages. |
+| `src/components/onboarding/FirstUseGuidePrompt.tsx` | The one-time "Play the tutorial now?" question (**Skip** / **Play tutorial**) and the "You can play it later" follow-up that points to the **?** button and Settings. The owner closes the question on either answer; **Got it** moves focus to the **?** button. Shared by all three roles. |
+| `src/hooks/useOnboardingTour.ts` | Scheduling of the first-use offer for accounts with `guideOfferPending`, full or page replay, browser-history dismissal, and per-account in-memory tracking of the answer. Not role-scoped; uses no browser storage. |
+| `src/App.tsx` | Assessment safety, real student navigation, history replacement, original-screen restoration, hardware back, header page-guide button with its confirmation, passing the current step's menu/view to pages, and the offer wiring (`guideOfferPending` on the Dashboard, `FirstUseGuidePrompt`). |
 | `src/components/ModulesPage.tsx` | Holds the Daily Check-In while a guide is open (`tourActive`); shows the explained sub-tab (`tourView`) and restores the student's tab afterwards. |
 | `src/components/QuizBattlePage.tsx` | `tourPreview` blocks session resume; `tourView` shows the read-only setup screen. |
 | `src/components/SettingsPage.tsx` | Student guide card (shared `onboarding/GuideReplayCard.tsx`: full replay, page-guide grid, unsaved-change protection). Teacher/admin consumers receive no student guide. |
@@ -70,7 +71,7 @@ Props:
 - `label`: role- or page-specific progress label; defaults to Feature guide.
 - `onNavigate(tab)`: caller-owned route/tab adapter. Use real navigation, respecting existing guards.
 - `onStepChange(step)`: receives each step so the host can open menus or show a `view`.
-- `onDismiss()`: caller handles persistence and returning to the original screen.
+- `onDismiss()`: caller handles returning to the original screen. Nothing is persisted.
 
 The card stays hidden for up to 12 s while a non-optional target renders (lazy pages, slow data), showing "Loading this page…" with a **Skip guide** button after 0.6 s, then shows. A target that never renders does not trap the learner or block Continue: the instruction appears in a bounded central card without a spotlight.
 
@@ -100,21 +101,32 @@ Pages that are still loading hold the step, so a highlight never lands on a load
 - Avoid animated spotlight movement so reduced-motion users receive the same experience.
 - Keep the feature behind the spotlight inert: the walkthrough is a demonstration, not a live-action task.
 
-## Persistence and versioning
+## First-use offer and persistence
 
-Key: `mathpulse:student-tour:v1:<Firebase uid>`. Value: `seen`.
+The guide never autoplays from browser storage. No localStorage key exists (the old `mathpulse:{role}-tour:v1:<uid>` / `seen` marker is gone), and finishing, skipping, Escape, browser history traversal, and hardware-back dismissal of the guide persist nothing.
 
-Skip, Finish, Escape, browser history traversal, and hardware-back dismissal all mark the guide seen. Explicit replay, from Settings or the page-guide button, ignores that marker. Starting the tour alone does not mark it seen; interrupted tours can be offered again.
+A new account is the Firestore field `users/{uid}.guideOfferPending = true`, written when the account is created:
 
-Storage access is caught. If persistent storage is unavailable, dismissal is remembered in memory for the current app session. Clearing browser storage or moving to another browser/device shows the tour again. This implementation does not write onboarding state to Firestore. If cross-device completion is needed later, persist a versioned per-role completion record through the existing typed service and profile boundary; do not repurpose IAR fields.
+- `createUserProfile` in `src/services/authService.ts`: email sign-up, Google sign-in, and the `AuthContext` auto-create for a signed-in user with no profile.
+- `UserProvisioningService.create_user` in `backend/services/user_provisioning_service.py`: accounts an admin creates.
+- `backend/main.py`: the student bulk import commit (`/api/import/student-accounts/commit`, new profile documents only) and `/api/teacher/create-student-account`.
 
-The hook receives account identity, readiness, blocking state, and an `autoStart` flag. Automatic launch is dashboard-only so it cannot interrupt work on a deep-linked page. `start(pageTab?)` plays one page's guide, or the full guide when no tab is given. Unmounting, switching accounts, losing readiness, or entering a blocking workflow clears the active display.
+Accounts without the flag, which includes every account created before this change, are never offered the guide automatically.
+
+When the flag is true and the student Dashboard is showing on a safe screen (profile ready, no blocking workflow, no other dialog open), the hook waits 1.5 s, then polls every 500 ms while any dialog is open, and shows `FirstUseGuidePrompt`: "Play the tutorial now?" with **Skip** and **Play tutorial**.
+
+- **Play tutorial** clears the flag (`updateDoc`, `guideOfferPending: false`) and plays the full guide.
+- **Skip** or Escape clears the flag and shows "You can play it later", which points to the **?** button at the top of the screen and to Settings. **Got it** moves focus to the **?** button.
+
+The loaded profile keeps `guideOfferPending: true` until the next login, so the answer is also remembered in memory for the rest of the session. If the Firestore write fails, the error is logged, the offer is not repeated this session, and it may come back at the next login.
+
+The hook is `useOnboardingTour(uid, ready, blocked, offerPending)` and returns `{ isOpen, page, start, dismiss, offerOpen, acceptOffer, declineOffer }`. It is not role-scoped. `offerPending` is the flag set and the role's home page showing (student Dashboard, teacher dashboard view, admin Overview), so the offer cannot interrupt work on a deep-linked page. `start(pageTab?)` plays one page's guide, or the full guide when no tab is given, for any account; the header **?** button (through `PageGuideConfirm`) and Settings (`GuideReplayCard`) call it, and replay is unchanged. Unmounting, switching accounts, losing readiness, or entering a blocking workflow clears the active display. The flag is not an IAR field and never touches IAR state.
 
 ## Coverage
 
 Two kinds of guide share these steps:
 
-- **General guide** (first use, Settings → Replay student guide): welcome, one `overview` step per page in the order below, then the page-guide button. 12 steps.
+- **General guide** (offered once to a new account on first use; Settings → Replay student guide): welcome, one `overview` step per page in the order below, then the page-guide button. 12 steps.
 - **Page guides** (**?** button, Settings page list): the detailed steps below for one page. 74 steps across 10 pages (8 optional, skipped when the feature is absent for that account).
 
 | Page | Features explained (`data-tour` anchor) |
@@ -150,19 +162,29 @@ git diff --check
 node .agents/skills/unlazy/scripts/gate-check.mjs GATES.md --status
 ```
 
-The browser runner uses installed Edge by default. Set `TOUR_BROWSER_CHANNEL=chrome` to use installed Chrome. It opens a local Vite server on port 5187 and, in a fresh browser context per viewport, scrolls the page before launch, walks the full guide, checks that wheel scrolling is blocked, and on the phone and desktop viewports plays every page guide from Settings plus the header button. It closes the browser/server afterward. It stores screenshots and a JSON report under `.tmp/student-tour-browser/`.
+The browser runner uses installed Edge by default. Set `TOUR_BROWSER_CHANNEL=chrome` to use installed Chrome. It opens a local Vite server on port 5187 and, in a fresh browser context per viewport, treats the fixture account as new. Each viewport run:
 
-**Browser verification boundary:** the fixture uses the real GuidedTour, step config, Sidebar, MobileBottomNav, SettingsPage, CSS, and lifecycle hook. Other feature screens are blocks generated from each step's anchor, with optional features left out as for a new student; the anchor-coverage unit test ties those anchors to production components. This proves tour/navigation geometry, spotlight existence, control bounds, focus containment, replay, and dismissal persistence without backend writes. It is not an authenticated end-to-end test of account-specific student content. No local student E2E credentials were configured during this implementation.
+- scrolls the page before launch, waits for the "Play the tutorial now?" offer, and checks that the guide has not started;
+- clicks **Play tutorial**, walks the full guide, and checks that wheel scrolling is blocked;
+- on the phone and desktop viewports, plays every page guide from Settings and checks the header **?** button (Skip leaves the page alone, Play guide plays that page's guide, Escape closes it);
+- replays the full guide from Settings and closes it with Escape;
+- reloads the fixture, answers the offer with **Skip**, and checks that "You can play it later" appears and **Got it** closes it without starting the guide;
+- loads the fixture with `?existing` (an account without the flag) and checks that, after 2.5 s, neither the offer nor the guide appears;
+- fails on any browser runtime error.
+
+It closes the browser/server afterward. It stores screenshots and a JSON report under `.tmp/student-tour-browser/`.
+
+**Browser verification boundary:** the fixture uses the real GuidedTour, step config, FirstUseGuidePrompt, PageGuideConfirm, Sidebar, MobileBottomNav, SettingsPage, CSS, and lifecycle hook. Other feature screens are blocks generated from each step's anchor, with optional features left out as for a new student; the anchor-coverage unit test ties those anchors to production components. This proves tour/navigation geometry, spotlight existence, control bounds, focus containment, replay, and the offer's Play, Skip and existing-account behavior. The fixture passes the `guideOfferPending` value to the hook itself and does not check the Firestore write that clears it; `src/hooks/useOnboardingTour.test.tsx` covers that write. It is not an authenticated end-to-end test of account-specific student content. No local student E2E credentials were configured during this implementation.
 
 Signed-in release walkthrough:
 
 - Check first login with both an outstanding IAR and a completed diagnostic.
-- Complete/dismiss IAR, then verify automatic launch.
+- Complete/dismiss IAR, then verify the "Play the tutorial now?" offer appears on the Dashboard of a newly created account and that nothing plays until **Play tutorial** is chosen.
 - Verify module, chat, battle, ranking, avatar and profile headings/targets against real loaded content.
 - Check empty, offline, error, and loading states; Continue and Skip must remain available.
 - Replay from Settings, including after saving preference edits.
-- Check dismissal/reload and another student account on the same browser.
-- Confirm no unintended assessment, chat, battle, reward or profile writes occur.
+- Check that `guideOfferPending` is `false` on the user document after **Play tutorial** or **Skip**, that the offer does not return after a reload or the next login, and that an account created before the flag existed is never offered the guide.
+- Confirm no unintended assessment, chat, battle, reward or profile writes occur; answering the offer writes only `guideOfferPending`.
 - Check Android hardware Back and safe-area behavior on a real device.
 
 Recorded run results are in the `GATES.md` "Student guided onboarding tour" section; the browser runner writes screenshots to `.tmp/student-tour-browser/`.
@@ -176,12 +198,12 @@ Reuse the engine rather than copying it. Keep role-specific policy in the caller
 3. Add stable `data-tour` anchors to real role navigation and compact feature controls/headings.
 4. Supply a role-specific navigation adapter with history replacement and original-screen restoration.
 5. Define role readiness and blockers: unsaved work, import/upload progress, editors, destructive confirmation dialogs, or live operational workflows.
-6. Add a role-specific first-use hook/storage key. Never share the student key or eligibility state.
+6. Wire `useOnboardingTour(uid, ready, blocked, offerPending)` and `FirstUseGuidePrompt` into the role's home page. `offerPending` is `userProfile.guideOfferPending === true` while that page is showing. The hook is not role-scoped and uses no browser storage.
 7. Supply the progress label and menu preparation appropriate to the role's responsive navigation.
 8. Add a replay action to that role's Settings/Help surface; preserve unsaved-change protection.
-9. Write tests for launch, persistence, identity changes, blockers, keyboard behavior, and replay.
+9. Write tests for the first-use offer, identity changes, blockers, keyboard behavior, and replay.
 10. Extend the browser fixture/matrix with real role navigation, then run signed-in checks with role credentials.
 11. Record feature coverage, omitted account-specific states, exact verification commands, and evidence.
 12. Keep external changes out of the demonstration: no user creation, grade edits, assignments, uploads, deletions, imports, or notifications sent by advancing a tour.
 
-Do not enable teacher/admin onboarding simply by mounting the student hook under those roles. They require their own step configuration and workflow safety audit.
+Do not enable teacher/admin onboarding simply by mounting the student guide under those roles. They require their own step configuration and workflow safety audit.

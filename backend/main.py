@@ -6774,6 +6774,7 @@ async def commit_student_account_import(
             }
             if not existing_profile_doc:
                 profile_payload["createdAt"] = FIRESTORE_SERVER_TIMESTAMP
+                profile_payload["guideOfferPending"] = True
 
             client.collection("users").document(target_uid).set(profile_payload, merge=True)
 
@@ -7691,6 +7692,7 @@ async def create_student_account_for_teacher(
             "atRiskSubjects": [],
             "hasTakenDiagnostic": False,
             "adviserTeacherId": adviser_teacher_id,
+            "guideOfferPending": True,
             "createdAt": FIRESTORE_SERVER_TIMESTAMP,
             "updatedAt": FIRESTORE_SERVER_TIMESTAMP,
         }
@@ -11757,16 +11759,17 @@ def _validate_quiz_questions(
 
         if options:
             options = [to_plain_text(o, single_line=True, strip_option_label=True) for o in options]
+        correct_answer = to_plain_text(q.get("correctAnswer", ""), single_line=True, strip_option_label=True)
         validated.append(QuizQuestion(
             questionType=question_type,
             question=clean_llm_text(q.get("question", "")),
-            correctAnswer=to_plain_text(q.get("correctAnswer", ""), single_line=True, strip_option_label=True),
+            correctAnswer=correct_answer,
             options=options,
             bloomLevel=bloom_level,
             difficulty=difficulty,
             topic=question_topic,
             points=q.get("points", points_map.get(difficulty, 3)),
-            explanation=clean_llm_text(q.get("explanation", "")) or "No explanation provided.",
+            explanation=clean_llm_text(q.get("explanation", "")) or f"Correct answer: {correct_answer}",
             provenance=question_provenance,
         ))
 

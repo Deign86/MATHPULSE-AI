@@ -70,9 +70,10 @@ const badgeForType = (type: string): string => {
 
 interface NotificationItemProps {
   notification: Notification;
+  onActivate: () => void;
 }
 
-export const NotificationItem: React.FC<NotificationItemProps> = ({ notification }) => {
+export const NotificationItem: React.FC<NotificationItemProps> = ({ notification, onActivate }) => {
   const { markAsRead, deleteNotification } = useNotifications();
   const { userProfile } = useAuth();
   const Icon = iconMap[notification.type] || Bell;
@@ -82,9 +83,12 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
     if (!notification.isRead) {
       markAsRead(notification.id);
     }
+    onActivate();
     if (notification.type === 'streak_reminder' || notification.type === 'daily_checkin') {
       if (userProfile?.role === 'student') {
-        window.dispatchEvent(new CustomEvent('mathpulse:navigate', { detail: { tab: 'Modules' } }));
+        window.dispatchEvent(new CustomEvent('mathpulse:navigate', {
+          detail: { tab: 'Modules', section: 'daily-rewards' },
+        }));
       }
       return;
     }
@@ -120,7 +124,12 @@ export const NotificationItem: React.FC<NotificationItemProps> = ({ notification
       role="button"
       tabIndex={0}
       onClick={handleClick}
-      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleClick(); } }}
+      onKeyDown={(e) => {
+        if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
       className={`group text-left p-4 border-b border-slate-100 dark:border-slate-800 cursor-pointer transition-colors hover:bg-purple-50/50 dark:hover:bg-slate-800/60 ${
         notification.isRead
           ? ''
