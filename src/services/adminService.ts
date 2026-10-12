@@ -20,7 +20,7 @@ import {
 import { db } from '../lib/firebase';
 import { getDefaultAvatar } from '../utils/avatarUtils';
 import { auth } from '../lib/firebase';
-import { selectAnalyticsAttempts, type AdminAnalyticsRange, type AnalyticsAttempt } from '../utils/adminAnalyticsRange';
+import { keepCurrentLearners, selectAnalyticsAttempts, type AdminAnalyticsRange, type AnalyticsAttempt } from '../utils/adminAnalyticsRange';
 import {
   ApiError,
   ApiNetworkError,
@@ -1147,11 +1147,13 @@ export async function getAnalyticsSummary(range: AdminAnalyticsRange = 'all'): P
     let totalXPEarned = 0;
     let activeStreaks = 0;
     const atRiskIds = new Set<string>();
+    const studentIds = new Set<string>();
 
     usersSnap.docs.forEach(d => {
       const data = asDoc(d.data());
       if (data.role === 'student') {
         totalStudents++;
+        studentIds.add(d.id);
         if (data.overallRisk === 'High') { atRiskStudents++; atRiskIds.add(d.id); }
         if (num(data.streak) > 0) activeStreaks++;
         totalXPEarned += num(data.totalXP);
@@ -1202,7 +1204,7 @@ export async function getAnalyticsSummary(range: AdminAnalyticsRange = 'all'): P
           });
         });
       });
-      quizAttempts = selectAnalyticsAttempts(allAttempts, range);
+      quizAttempts = selectAnalyticsAttempts(keepCurrentLearners(allAttempts, studentIds), range);
       totalQuizzesTaken = quizAttempts.length;
       const scoredAttempts = quizAttempts.flatMap(({ score }) => score === null ? [] : [score]);
       avgQuizScore = scoredAttempts.length > 0
