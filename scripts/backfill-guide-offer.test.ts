@@ -25,8 +25,11 @@ const firstPage: AccountFixture[] = [
 const secondPage: AccountFixture[] = [
   { uid: 'fresh-teacher', email: 'ms.reyes@school.edu.ph' },
   { uid: 'raced-student', email: 'gil@gmail.com' },
+  { uid: 'signed-in-mid-run', email: 'hana@gmail.com' },
+  { uid: 'e2e-student', email: 'student1@mathpulse-qa.test' },
+  { uid: 'deleted-mid-run', email: 'ivan@gmail.com' },
 ];
-const profiles = new Map<string, { role: string; guideOfferPending?: boolean }>([
+const profiles = new Map<string, { role: string; guideOfferPending?: boolean; lastActive?: string }>([
   ['fresh-student', { role: 'student' }],
   ['returning-student', { role: 'student' }],
   ['skipped-offer', { role: 'student', guideOfferPending: false }],
@@ -35,6 +38,9 @@ const profiles = new Map<string, { role: string; guideOfferPending?: boolean }>(
   ['qa-student', { role: 'student' }],
   ['fresh-teacher', { role: 'teacher' }],
   ['raced-student', { role: 'student' }],
+  ['signed-in-mid-run', { role: 'student', lastActive: '2026-10-12T05:00:00Z' }],
+  ['e2e-student', { role: 'student' }],
+  ['deleted-mid-run', { role: 'student' }],
 ]);
 
 interface RecordedWrite {
@@ -55,7 +61,8 @@ function fakeAuth() {
           uid: account.uid,
           email: account.email,
           disabled: account.disabled ?? false,
-          metadata: { lastSignInTime: account.lastSignInTime, creationTime: 'Mon, 05 Oct 2026 01:00:00 GMT' },
+          // Firebase reports null, not undefined, for an account that never signed in.
+          metadata: { lastSignInTime: account.lastSignInTime ?? null, creationTime: 'Mon, 05 Oct 2026 01:00:00 GMT' },
         })),
         pageToken: pageToken === 'page-2' ? undefined : 'page-2',
       };
@@ -75,7 +82,7 @@ function fakeFirestore(failingUpdates = new Map<string, Error>()) {
           return {
             exists: profile !== undefined,
             updateTime: `read-at-${uid}`,
-            get: (field: 'role' | 'guideOfferPending') => profile?.[field],
+            get: (field: 'role' | 'guideOfferPending' | 'lastActive') => profile?.[field],
           };
         },
         update: async (fields: RecordedWrite['fields'], precondition: RecordedWrite['precondition']) => {
@@ -110,21 +117,23 @@ test('dry-run lists only never-signed-in accounts whose profile has no answer ye
     ['fresh-student', 'student'],
     ['fresh-teacher', 'teacher'],
     ['raced-student', 'student'],
+    ['deleted-mid-run', 'student'],
   ]);
   assert.deepEqual(writes, []);
   assert.deepEqual(pageTokens, [undefined, 'page-2']);
-  assert.equal(summary.scanned, 9);
-  assert.equal(summary.signedIn, 1);
-  assert.equal(summary.skippedInternalOrDisabled, 2);
+  assert.equal(summary.scanned, 12);
+  assert.equal(summary.signedIn, 2);
+  assert.equal(summary.skippedInternalOrDisabled, 3);
   assert.equal(summary.missingProfile, 1);
   assert.equal(summary.alreadyDecided, 2);
 });
 
-test('apply flags exactly the profiles it read, and leaves a profile that changed mid-run alone', async () => {
+test('apply flags exactly the profiles it read, and leaves a profile changed or deleted mid-run alone', async () => {
   const backfill = await import('./backfill-guide-offer.ts');
   const { auth } = fakeAuth();
   const changedProfile = Object.assign(new Error('9 FAILED_PRECONDITION: the stored version does not match'), { code: 9 });
-  const { db, writes } = fakeFirestore(new Map([['raced-student', changedProfile]]));
+  const deletedProfile = Object.assign(new Error('5 NOT_FOUND: no document to update'), { code: 5 });
+  const { db, writes } = fakeFirestore(new Map([['raced-student', changedProfile], ['deleted-mid-run', deletedProfile]]));
 
   const summary = await backfill.backfillGuideOffer(db, auth, true);
 
@@ -133,7 +142,7 @@ test('apply flags exactly the profiles it read, and leaves a profile that change
     { uid: 'fresh-teacher', fields: { guideOfferPending: true }, precondition: { lastUpdateTime: 'read-at-fresh-teacher' } },
   ]);
   assert.deepEqual(summary.candidates.map((candidate) => candidate.uid), ['fresh-student', 'fresh-teacher']);
-  assert.equal(summary.changedDuringRun, 1);
+  assert.equal(summary.changedDuringRun, 2);
 });
 
 test('apply stops on an unexpected write failure instead of reporting it as done', async () => {

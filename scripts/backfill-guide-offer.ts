@@ -2,7 +2,7 @@
  * Offer the first-use guide to accounts that existed before users/{uid}.guideOfferPending
  * and have never signed in, so their first login gets the Play / Skip question like a new account.
  * Accounts that have signed in, already carry the field (true or false), have no profile yet,
- * are disabled, or belong to the internal @mathpulse.ai seed/QA domain are left alone.
+ * are disabled, or use an internal seed/QA/e2e email domain are left alone.
  * Run with `node scripts/backfill-guide-offer.ts [--apply]` (Node 22.18+). Default: dry-run.
  */
 
@@ -16,11 +16,11 @@ import { z } from 'zod';
 const requireAdmin = createRequire(new URL('../functions/package.json', import.meta.url));
 
 const APPLY = process.argv.includes('--apply');
-// Seeded demo, QA and e2e accounts use this domain; an offer dialog would interrupt e2e runs.
-const INTERNAL_EMAIL_DOMAIN = '@mathpulse.ai';
+// Seed/QA scripts use @mathpulse.ai and the e2e suite uses @mathpulse-qa.test; an offer dialog would interrupt their logins.
+const INTERNAL_EMAIL_DOMAINS = ['@mathpulse.ai', '@mathpulse-qa.test'];
 const LIST_PAGE_SIZE = 1000;
-// Firestore FAILED_PRECONDITION: the profile changed after it was read.
-const FAILED_PRECONDITION = 9;
+// Firestore NOT_FOUND / FAILED_PRECONDITION: the profile was deleted or changed after it was read.
+const PROFILE_CHANGED_CODES = new Set([5, 9]);
 const firestoreErrorSchema = z.object({ code: z.number() });
 const roleSchema = z.string().catch('unknown');
 
@@ -52,7 +52,8 @@ export async function backfillGuideOffer(
         signedIn += 1;
         continue;
       }
-      if (account.disabled || account.email?.toLowerCase().endsWith(INTERNAL_EMAIL_DOMAIN)) {
+      const email = account.email?.toLowerCase() ?? '';
+      if (account.disabled || INTERNAL_EMAIL_DOMAINS.some((domain) => email.endsWith(domain))) {
         skippedInternalOrDisabled += 1;
         continue;
       }
@@ -61,6 +62,11 @@ export async function backfillGuideOffer(
       // No profile yet: the first login creates one through createUserProfile, which sets the flag.
       if (!profile.exists) {
         missingProfile += 1;
+        continue;
+      }
+      // AuthContext stamps lastActive at login, so this catches a sign-in after the account list was read.
+      if (profile.get('lastActive')) {
+        signedIn += 1;
         continue;
       }
       if (profile.get('guideOfferPending') !== undefined) {
@@ -73,7 +79,7 @@ export async function backfillGuideOffer(
           await profileRef.update({ guideOfferPending: true }, { lastUpdateTime: profile.updateTime });
         } catch (error) {
           const parsedError = firestoreErrorSchema.safeParse(error);
-          if (!parsedError.success || parsedError.data.code !== FAILED_PRECONDITION) throw error;
+          if (!parsedError.success || !PROFILE_CHANGED_CODES.has(parsedError.data.code)) throw error;
           changedDuringRun += 1;
           continue;
         }

@@ -29,7 +29,7 @@ Every page has its own short guide:
 
 A page guide stays on its page and returns there when finished. A guide requested while the profile is still loading opens as soon as it is ready. Replay and page guides are disabled while Settings has unsaved edits or a password field holds unsubmitted text.
 
-First use means the account's profile has `guideOfferPending: true`, which is set only when the account is created. Accounts created before the flag existed are never offered the guide automatically; they can still play it from the **?** button or Settings.
+First use means the account's profile has `guideOfferPending: true`, which is set when the account is created, or by `scripts/backfill-guide-offer.ts` on older accounts that have never signed in. Accounts created before the flag existed are never offered the guide automatically; they can still play it from the **?** button or Settings.
 
 ## Files and responsibilities
 
