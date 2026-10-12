@@ -67,6 +67,25 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm run build
 
+      # firebase-tools merges the gitignored functions/.env into the deployed runtime environment.
+      - name: Write Claude API runtime environment
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_WORKSPACE_ID: ${{ secrets.ANTHROPIC_WORKSPACE_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "::warning::ANTHROPIC_API_KEY repository secret is not set; Quiz Battle AI generation will be unavailable."
+            exit 0
+          fi
+          umask 077
+          {
+            printf 'ANTHROPIC_API_KEY=%s\n' "$ANTHROPIC_API_KEY"
+            if [ -n "$ANTHROPIC_WORKSPACE_ID" ]; then
+              printf 'ANTHROPIC_WORKSPACE_ID=%s\n' "$ANTHROPIC_WORKSPACE_ID"
+            fi
+          } > .env
+
       - name: Deploy Functions
         env:
           FIREBASE_SERVICE_ACCOUNT_JSON: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_JSON }}

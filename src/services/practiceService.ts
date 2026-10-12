@@ -1,7 +1,7 @@
 import { apiFetch } from './apiService';
 import { RetryFetchOptions } from './apiUtils';
 
-// Longer timeout for AI generation (DeepSeek can take 30-60s)
+// Longer timeout because AI generation can take 30-60s
 const AI_GENERATE_OPTS: RetryFetchOptions = {
   maxRetries: 2,
   timeoutMs: 90_000,

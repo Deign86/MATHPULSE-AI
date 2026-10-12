@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Enforce global/default Hugging Face Space model environment variables.
 
-This script keeps backend routing pinned to DeepSeek API by
-setting INFERENCE_MODEL_ID, INFERENCE_CHAT_MODEL_ID, INFERENCE_PROVIDER, and
-chat strict-mode routing flags.
+This script keeps backend routing pinned to the Claude models by
+setting INFERENCE_MODEL_ID, INFERENCE_CHAT_MODEL_ID and chat strict-mode routing flags.
 """
 
 from __future__ import annotations
@@ -15,13 +14,12 @@ import sys
 from huggingface_hub import HfApi
 
 DEFAULT_SPACE_ID = "Deign86/mathpulse-api-v3test"
-DEFAULT_CHAT_MODEL = "deepseek-flash"
-DEFAULT_GLOBAL_MODEL = "deepseek-flash"
-DEFAULT_PROVIDER = "deepseek"
+DEFAULT_CHAT_MODEL = "claude-haiku-5-5"
+DEFAULT_GLOBAL_MODEL = "claude-haiku-5-5"
 DEFAULT_CHAT_STRICT_MODEL_ONLY = "true"
 DEFAULT_CHAT_HARD_TRIGGER_ENABLED = "false"
 DEFAULT_ENFORCE_LOCK_MODEL = "false"
-DEFAULT_LOCK_MODEL_ID = "deepseek-flash"
+DEFAULT_LOCK_MODEL_ID = "claude-haiku-5-5"
 GLOBAL_MODEL_KEY = "INFERENCE_MODEL_ID"
 TEMP_CHAT_MODEL_KEY = "INFERENCE_CHAT_MODEL_TEMP_OVERRIDE"
 
@@ -32,7 +30,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--hf-token", default=os.getenv("HF_TOKEN", ""), help="HF token with write access")
     parser.add_argument("--chat-model", default=DEFAULT_CHAT_MODEL, help="Model id for INFERENCE_CHAT_MODEL_ID")
     parser.add_argument("--global-model", default=DEFAULT_GLOBAL_MODEL, help="Model id for INFERENCE_MODEL_ID")
-    parser.add_argument("--provider", default=DEFAULT_PROVIDER, help="Provider id for INFERENCE_PROVIDER")
     parser.add_argument(
         "--chat-strict-model-only",
         default=DEFAULT_CHAT_STRICT_MODEL_ONLY,
@@ -113,7 +110,6 @@ def main() -> int:
 
     try:
         _set_variable(api, repo_id=space_id, key="INFERENCE_CHAT_MODEL_ID", value=args.chat_model.strip())
-        _set_variable(api, repo_id=space_id, key="INFERENCE_PROVIDER", value=args.provider.strip().lower())
         _set_variable(
             api,
             repo_id=space_id,

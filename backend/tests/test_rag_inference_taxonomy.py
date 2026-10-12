@@ -4,9 +4,9 @@ TASK: Prove that POST /api/rag/lesson currently maps all inference failures
 to blanket 502 {"error": "inference_failed"}.
 
 Test cases:
-(a) Mock DeepSeek client to raise 401-style APIError (openai.APIError with status_code 401)
+(a) Mock Claude to raise anthropic.AuthenticationError (HTTP 401)
     -> assert response body error == "inference_auth_failed" (FAILS in RED state: currently "inference_failed")
-(b) Mock openai.APIConnectionError
+(b) Mock anthropic.APIConnectionError
     -> assert response body error == "inference_connection_failed" (FAILS in RED state: currently "inference_failed")
 (c) Mock generic Exception
     -> assert response body error == "inference_failed" (PASSES in RED state: pins fallback)
@@ -17,15 +17,15 @@ Status codes remain 502 for all three cases.
 from __future__ import annotations
 
 import os
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
-import httpx
-import openai
+import anthropic
+import httpx2
 import pytest
 from fastapi.testclient import TestClient
 
 # Ensure test env vars are configured before importing application modules
-os.environ["DEEPSEEK_API_KEY"] = "mock-key-for-testing"
+os.environ["ANTHROPIC_API_KEY"] = "mock-key-for-testing"
 os.environ["INFERENCE_MAX_RETRIES"] = "1"
 os.environ["INFERENCE_BACKGROUND_MAX_RETRIES"] = "1"
 os.environ["INFERENCE_INTERACTIVE_MAX_RETRIES"] = "1"
@@ -86,18 +86,11 @@ def _setup_rag_mocks():
         rag_routes._retrieval_memory.clear()
 
 
-def _deepseek_failing_with(error: Exception) -> MagicMock:
-    """One mock for both the streamed reasoner call (rag_routes seam) and the chat fallback (inference client)."""
-    mock_ds = MagicMock()
-    mock_ds.with_options.return_value = mock_ds
-    mock_ds.chat.completions.create.side_effect = error
-    return mock_ds
-
-
-def _post_both(mock_ds: MagicMock) -> tuple:
-    """POST /api/rag/lesson and /api/rag/lesson/stream; return (plain response, terminal SSE event)."""
-    with patch("services.inference_client.get_deepseek_client", return_value=mock_ds), \
-         patch("routes.rag_routes.get_deepseek_client", return_value=mock_ds):
+def _post_both(error: Exception) -> tuple:
+    """POST /api/rag/lesson and /api/rag/lesson/stream with Claude raising `error` on both the streamed reasoner
+    call (rag_routes seam) and the chat fallback (inference client seam); return (plain response, terminal SSE event)."""
+    with patch("routes.rag_routes.open_stream", side_effect=error), \
+         patch("services.inference_client.create_message", side_effect=error):
         response = client.post("/api/rag/lesson", json=LESSON_PAYLOAD)
         streamed = client.post("/api/rag/lesson/stream", json=LESSON_PAYLOAD)
     blocks = [b for b in streamed.text.replace("\r\n", "\n").split("\n\n") if b.startswith("event:")]
@@ -117,16 +110,15 @@ class TestRagInferenceTaxonomy:
     """Taxonomy mapping tests for POST /api/rag/lesson inference failures."""
 
     def test_rag_lesson_inference_auth_failed_maps_to_taxonomy(self):
-        """(a) 401 APIError should map to 502 with error='inference_auth_failed'."""
-        req = httpx.Request("POST", "https://api.deepseek.com")
-        api_error_401 = openai.APIError(
-            "Authentication failed",
-            request=req,
-            body={"error": {"message": "Invalid API key"}},
+        """(a) 401 AuthenticationError should map to 502 with error='inference_auth_failed'."""
+        req = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+        auth_error_401 = anthropic.AuthenticationError(
+            "invalid x-api-key",
+            response=httpx2.Response(401, request=req),
+            body=None,
         )
-        api_error_401.status_code = 401
 
-        response, (event, data) = _post_both(_deepseek_failing_with(api_error_401))
+        response, (event, data) = _post_both(auth_error_401)
 
         assert response.status_code == 502
         body = response.json()
@@ -136,10 +128,10 @@ class TestRagInferenceTaxonomy:
 
     def test_rag_lesson_inference_connection_failed_maps_to_taxonomy(self):
         """(b) APIConnectionError should map to 502 with error='inference_connection_failed'."""
-        req = httpx.Request("POST", "https://api.deepseek.com")
-        conn_error = openai.APIConnectionError(request=req)
+        req = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
+        conn_error = anthropic.APIConnectionError(request=req)
 
-        response, (event, data) = _post_both(_deepseek_failing_with(conn_error))
+        response, (event, data) = _post_both(conn_error)
 
         assert response.status_code == 502
         body = response.json()
@@ -151,7 +143,7 @@ class TestRagInferenceTaxonomy:
         """(c) Generic Exception should map to 502 with error='inference_failed'."""
         generic_error = RuntimeError("Unexpected model engine crash")
 
-        response, (event, data) = _post_both(_deepseek_failing_with(generic_error))
+        response, (event, data) = _post_both(generic_error)
 
         assert response.status_code == 502
         body = response.json()

@@ -51,12 +51,20 @@ async def verify_jev(request: JevVerifyRequest) -> JevVerifyResponse:
             status_code=502,
             detail="JEV verification service unavailable",
         ) from exc
-    # This endpoint checks factuality only; claimType does not trigger leak detection.
-    # The probability values are conservative fail-open defaults when TypeSafe omits them.
+    # This endpoint checks factuality only; claimType does not trigger leak detection, so pLeak stays 0.
     verified = bool(verification.get("verified", True))
+    if "action" in verification:
+        # The judgment did not run (a fail-open fallback), so report its conservative values as they are.
+        p_correct = float(verification.get("pCorrect", 1.0))
+        action = str(verification["action"])
+    else:
+        # A real verdict carries verified and confidence; rebuild the supported probability they came from.
+        half_confidence = float(verification.get("confidence", 0.0)) / 2
+        p_correct = 0.5 + half_confidence if verified else 0.5 - half_confidence
+        action = "judged"
     return JevVerifyResponse(
         verified=verified,
-        pCorrect=float(verification.get("pCorrect", 1.0)),
+        pCorrect=p_correct,
         pLeak=float(verification.get("pLeak", 0.0)),
-        action=str(verification.get("action", "fallback_disabled")),
+        action=action,
     )

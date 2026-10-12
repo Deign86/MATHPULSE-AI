@@ -5,6 +5,7 @@ Adapts Firestore events, schedules, and HTTPS callables into automation and Quiz
 
 ## Design
 Small collection triggers validate event payloads and delegate. `quizBattleApi.ts` contains authenticated transactional queue, room, match, submission, timer, AI question-generation, and finalization handlers; `manualTriggers.ts` guards operator-driven reruns.
+Quiz Battle question generation tries the FastAPI question bank first, then calls Claude (`claude-haiku-5-5` by default) through `@anthropic-ai/sdk` structured outputs (`output_config.format`, no sampling parameters). `generateAiQuestionSet` owns retry/backoff (SDK `maxRetries: 0`): 408/409/429/5xx, timeouts and malformed replies retry; other 4xx fail fast. Tests inject the `invokeRequest` seam with Claude-shaped replies.
 `onQuizSubmitted` is a Firestore 2nd-gen trigger (`onDocumentCreatedWithAuthContext` from `firebase-functions/v2/firestore`): it deploys through EventArc, so the project needs the EventArc API plus pubsub/run/eventarc IAM service-agent bindings (project-owner action; deploy fails without them).
 
 ## Flow

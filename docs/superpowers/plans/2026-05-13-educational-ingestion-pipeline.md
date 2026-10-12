@@ -2,11 +2,11 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Build a production-ready educational content ingestion pipeline for PDF/DOCX files using FastAPI, featuring layout-aware parsing and DeepSeek-driven semantic segmentation.
+**Goal:** Build a production-ready educational content ingestion pipeline for PDF/DOCX files using FastAPI, featuring layout-aware parsing and LLM-driven semantic segmentation.
 
 **Architecture:** A three-stage pipeline (Deduplication -> Structural Parsing -> Semantic Segmentation) that processes uploaded files, extracts pedagogical structure, and indexes deduplicated chunks into Firestore/Vectorstore.
 
-**Tech Stack:** FastAPI, pdfplumber, python-docx, DeepSeek API (Sole AI Provider), Firestore.
+**Tech Stack:** FastAPI, pdfplumber, python-docx, LLM API (Sole AI Provider), Firestore.
 
 ---
 
@@ -132,14 +132,14 @@ git commit -m "feat(ingestion): implement layout-aware PDF parser"
 **Files:**
 - Create: `backend/services/segmentation_service.py`
 
-- [ ] **Step 1: Implement DeepSeek segmenter**
+- [ ] **Step 1: Implement LLM segmenter**
 
 ```python
 from backend.services.inference_client import call_hf_chat_async
 
 async def segment_content(text: str):
     prompt = f"Segment the following Filipino SHS STEM educational text into pedagogical chunks (Objectives, Lesson, Practice). Text: {text}"
-    # This must use the DeepSeek-only routing logic
+    # This must use the LLM-only routing logic
     return await call_hf_chat_async(prompt)
 ```
 
@@ -147,7 +147,7 @@ async def segment_content(text: str):
 
 ```bash
 git add backend/services/segmentation_service.py
-git commit -m "feat(ingestion): add DeepSeek semantic segmentation service"
+git commit -m "feat(ingestion): add LLM semantic segmentation service"
 ```
 
 ### Task 5: FastAPI Ingestion Endpoint

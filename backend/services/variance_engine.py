@@ -1,17 +1,17 @@
 """
 Variance Engine for Quiz Battle Questions.
 
-Applies per-session variance techniques via DeepSeek,
+Applies per-session variance techniques via Claude,
 with pure-Python fallback for choice shuffling.
 """
 
+import asyncio
 import json
 import logging
 import random
-import re
 from typing import List, Dict
 
-from services.ai_client import get_deepseek_client, CHAT_MODEL
+from services.ai_client import complete_text, CHAT_MODEL
 
 logger = logging.getLogger("mathpulse.variance_engine")
 from services.question_bank_service import get_cached_session, cache_session_questions
@@ -39,9 +39,9 @@ async def apply_variance(questions: List[Dict], session_id: str) -> List[Dict]:
     Apply per-session variance to a list of questions.
 
     1. Check 24h Firestore cache first
-    2. Call DeepSeek with variance prompt
+    2. Call Claude with variance prompt
     3. Parse JSON response
-    4. Fall back to pure-Python shuffle if DeepSeek fails
+    4. Fall back to pure-Python shuffle if Claude fails
     5. Cache result for 24 hours
     """
     # 1. Check cache
@@ -52,8 +52,7 @@ async def apply_variance(questions: List[Dict], session_id: str) -> List[Dict]:
     # 2. Generate deterministic seed from session_id
     seed = hash(session_id) % (2**32)
 
-    # 3. Call DeepSeek
-    client = get_deepseek_client()
+    # 3. Call Claude
     system_prompt = (
         "You are a math quiz variance engine for MathPulse AI, an educational platform for "
         "Filipino high school students following the DepEd K-12 curriculum. "
@@ -81,23 +80,21 @@ Add a "variance_applied": ["paraphrase", "distractor_refresh", ...] field per qu
 Do NOT change "topic", "difficulty", "grade_level", or "source_chunk_id"."""
 
     try:
-        response = client.chat.completions.create(
-            model=CHAT_MODEL,
-            messages=[
+        content = await asyncio.to_thread(
+            complete_text,
+            [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            temperature=0.5,
+            model=CHAT_MODEL,
             max_tokens=4000,
+            json_output=True,
+            timeout=120.0,
         )
-        content = response.choices[0].message.content.strip()
-        # Strip markdown code fences
-        content = re.sub(r"^```json\s*", "", content)
-        content = re.sub(r"\s*```$", "", content)
         varied_questions = json.loads(content)
 
         if not isinstance(varied_questions, list) or len(varied_questions) != len(questions):
-            raise ValueError("Invalid response format from DeepSeek")
+            raise ValueError("Invalid response format from Claude")
 
         # Validate required fields
         for q in varied_questions:
@@ -105,7 +102,7 @@ Do NOT change "topic", "difficulty", "grade_level", or "source_chunk_id"."""
                 raise ValueError("Missing required fields in varied question")
 
     except Exception as e:
-        logger.warning(f"DeepSeek variance failed, falling back to shuffle: {e}")
+        logger.warning(f"Claude variance failed, falling back to shuffle: {e}")
         varied_questions = _fallback_shuffle(questions, seed)
 
     # 4. Cache for 24 hours

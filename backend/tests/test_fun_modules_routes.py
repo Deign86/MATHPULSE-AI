@@ -129,7 +129,18 @@ def test_mastery_record_handles_incorrect_answer():
     assert response.json()["xpAwarded"] == 0
 
 
-def test_jev_verify_returns_canonical_contract():
+@pytest.fixture
+def as_teacher():
+    """/api/jev/verify spends a Claude call per request, so it is open to teachers and admins only."""
+    with patch.object(
+        main_module.firebase_auth,
+        "verify_id_token",
+        return_value={"uid": "teacher-1", "role": "teacher"},
+    ):
+        yield
+
+
+def test_jev_verify_returns_canonical_contract(as_teacher):
     with patch(
         "routes.jev_routes.verify_lesson_factuality",
         new=AsyncMock(
@@ -155,9 +166,9 @@ def test_jev_verify_returns_canonical_contract():
     assert response.json()["verified"] is True
 
 
-def test_jev_verify_fails_open_without_secret():
+def test_jev_verify_fails_open_without_secret(as_teacher):
     with patch.dict(os.environ, {}, clear=False):
-        os.environ.pop("TYPESAFE_API_KEY", None)
+        os.environ.pop("ANTHROPIC_API_KEY", None)
         response = client.post(
             "/api/jev/verify",
             json={"referenceText": "x", "generatedText": "y", "claimType": "claim"},
@@ -172,7 +183,7 @@ def test_jev_verify_fails_open_without_secret():
     }
 
 
-def test_jev_verify_is_factuality_only_for_claim_types():
+def test_jev_verify_is_factuality_only_for_claim_types(as_teacher):
     with patch(
         "routes.jev_routes.verify_lesson_factuality",
         new=AsyncMock(return_value={"action": "fallback_disabled", "verified": True}),
@@ -192,8 +203,8 @@ def test_jev_verify_is_factuality_only_for_claim_types():
 
 
 def test_errors_use_identical_keys_and_never_return_secret():
-    secret = "typesafe-test-secret"
-    with patch.dict(os.environ, {"TYPESAFE_API_KEY": secret}), patch(
+    secret = "anthropic-test-secret"
+    with patch.dict(os.environ, {"ANTHROPIC_API_KEY": secret}), patch(
         "routes.fun_modules_routes.retrieve_lesson_pdf_context",
         side_effect=RuntimeError(secret),
     ):

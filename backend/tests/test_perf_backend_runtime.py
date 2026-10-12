@@ -6,62 +6,90 @@ import json
 import os
 import threading
 import time
-from pathlib import Path
 from types import SimpleNamespace
+from typing import Callable
 from unittest.mock import MagicMock, patch
 
-import httpx
+import anthropic
+import httpx2
 import pytest
-import yaml
 
-os.environ.setdefault("DEEPSEEK_API_KEY", "mock-key-for-testing")
+os.environ.setdefault("ANTHROPIC_API_KEY", "mock-key-for-testing")
 
 import main as main_module
+from routes import rag_routes
 from services import ai_client
 from services import inference_client as inference_module
-from services.inference_client import InferenceClient, InferenceRequest
+from services.inference_client import (
+    InferenceAuthError,
+    InferenceClient,
+    InferenceConnectionError,
+    InferenceRequest,
+)
 
-MODELS_YAML = Path(__file__).resolve().parents[1] / "config" / "models.yaml"
+API_REQUEST = httpx2.Request("POST", "https://api.anthropic.com/v1/messages")
 
 
-class _AlwaysFailingCompletions:
-    def __init__(self) -> None:
+def _status_error(error_class: type[anthropic.APIStatusError], status: int) -> anthropic.APIStatusError:
+    return error_class("request failed", response=httpx2.Response(status, request=API_REQUEST), body=None)
+
+
+def _timeout_error() -> Exception:
+    return ai_client.APITimeoutError(request=API_REQUEST)
+
+
+class _AlwaysFailing:
+    """Stands in for create_message: every call raises the error `make_error` builds, and calls are counted."""
+
+    def __init__(self, make_error: Callable[[], Exception]) -> None:
+        self.make_error = make_error
         self.calls = 0
 
-    def create(self, **_kwargs: object) -> object:
+    def __call__(self, *_args: object, **_kwargs: object) -> object:
         self.calls += 1
-        raise ai_client.APITimeoutError(request=httpx.Request("POST", "https://api.deepseek.com"))
+        raise self.make_error()
 
 
-def _failing_client() -> tuple[SimpleNamespace, _AlwaysFailingCompletions]:
-    completions = _AlwaysFailingCompletions()
-    return SimpleNamespace(chat=SimpleNamespace(completions=completions)), completions
+def _chat_request(max_retries: int | None = None, task_type: str = "chat") -> InferenceRequest:
+    return InferenceRequest(
+        messages=[{"role": "user", "content": "hi"}],
+        model=ai_client.CHAT_MODEL,
+        task_type=task_type,
+        max_retries=max_retries,
+    )
+
+
+def _run_failing_call(make_error: Callable[[], Exception], max_retries: int | None) -> tuple[int, Exception]:
+    """Run one call whose every attempt fails; return how many attempts were made and the error it raised."""
+    failing = _AlwaysFailing(make_error)
+    with patch.object(inference_module, "create_message", failing), patch.object(
+        inference_module.time, "sleep", lambda _s: None
+    ):
+        with pytest.raises(Exception) as raised:
+            InferenceClient()._call_claude(_chat_request(max_retries), 0)
+    return failing.calls, raised.value
 
 
 def _call_with_max_retries(max_retries: int | None) -> int:
-    client, completions = _failing_client()
-    inference = InferenceClient()
-    inference.ds_api_key = "mock-key-for-testing"
-    request = InferenceRequest(
-        messages=[{"role": "user", "content": "hi"}],
-        model="deepseek-flash",
-        task_type="chat",
-        max_retries=max_retries,
+    attempts, _error = _run_failing_call(_timeout_error, max_retries)
+    return attempts
+
+
+def _reply(text: str) -> SimpleNamespace:
+    """The parts of a Claude message that InferenceClient reads."""
+    return SimpleNamespace(
+        stop_reason="end_turn",
+        content=[SimpleNamespace(type="text", text=text)],
+        usage=SimpleNamespace(input_tokens=12, output_tokens=34),
     )
-    with patch.object(inference_module, "get_deepseek_client", return_value=client), patch.object(
-        inference_module.time, "sleep", lambda _s: None
-    ):
-        with pytest.raises(Exception):
-            inference._call_deepseek(request, 0)
-    return completions.calls
 
 
 def test_retries_shared_client_disables_sdk_retries():
-    ai_client.get_deepseek_client.cache_clear()
+    ai_client.get_anthropic_client.cache_clear()
     try:
-        assert ai_client.get_deepseek_client().max_retries == 0
+        assert ai_client.get_anthropic_client().max_retries == 0
     finally:
-        ai_client.get_deepseek_client.cache_clear()
+        ai_client.get_anthropic_client.cache_clear()
 
 
 def test_retries_request_override_limits_attempts():
@@ -78,30 +106,188 @@ def test_retries_profile_used_when_request_has_no_override():
 def test_retries_override_survives_fallback_copy():
     seen: list[int | None] = []
     inference = InferenceClient()
-    inference.ds_api_key = "mock-key-for-testing"
 
     def _capture(request: InferenceRequest, _depth: int) -> str:
         seen.append(request.max_retries)
         return "ok"
 
-    with patch.object(inference, "_call_deepseek", _capture):
+    with patch.object(inference, "_call_claude", _capture):
         inference.generate_from_messages(
             InferenceRequest(messages=[{"role": "user", "content": "x"}], task_type="chat", max_retries=1)
         )
     assert seen == [1]
 
 
-def _routing_table() -> dict:
-    return yaml.safe_load(MODELS_YAML.read_text(encoding="utf-8"))
+@pytest.mark.parametrize(
+    "make_error",
+    [
+        _timeout_error,
+        lambda: _status_error(ai_client.RateLimitError, 429),
+        lambda: _status_error(anthropic.InternalServerError, 500),
+    ],
+    ids=["timeout", "rate_limit", "server_error"],
+)
+def test_retries_transient_errors_use_every_attempt_then_raise_runtime_error(make_error):
+    attempts, error = _run_failing_call(make_error, 3)
+    assert attempts == 3
+    assert type(error) is RuntimeError
 
 
-def test_routing_chat_verification_uses_chat_model_and_lessons_keep_reasoner():
-    config = _routing_table()
-    task_models = config["routing"]["task_model_map"]
-    assert task_models["verify_solution"] == "deepseek-flash"
-    assert task_models["rag_lesson"] == "deepseek-v4-pro"
-    assert task_models["risk_narrative"] == "deepseek-v4-pro"
-    assert "verify_solution" not in config["models"]["rag_primary"]["enable_thinking_tasks"]
+@pytest.mark.parametrize(
+    ("make_error", "expected_error", "expected_status"),
+    [
+        (lambda: _status_error(anthropic.AuthenticationError, 401), InferenceAuthError, 401),
+        (lambda: _status_error(anthropic.PermissionDeniedError, 403), InferenceAuthError, 403),
+        (lambda: anthropic.APIConnectionError(request=API_REQUEST), InferenceConnectionError, None),
+    ],
+    ids=["unauthorized", "forbidden", "connection"],
+)
+def test_retries_auth_and_connection_failures_fail_fast(make_error, expected_error, expected_status):
+    attempts, error = _run_failing_call(make_error, 3)
+    assert attempts == 1
+    assert isinstance(error, expected_error)
+    assert error.status_code == expected_status
+
+
+def test_retries_refusal_fails_without_retry():
+    refusal = SimpleNamespace(
+        stop_reason="refusal",
+        stop_details=SimpleNamespace(category="cyber"),
+        content=[],
+        usage=SimpleNamespace(input_tokens=5, output_tokens=0),
+    )
+    attempts: list[int] = []
+
+    def _refuse(*_args: object, **_kwargs: object) -> SimpleNamespace:
+        attempts.append(1)
+        return refusal
+
+    with patch.object(inference_module, "create_message", _refuse), patch.object(
+        inference_module.time, "sleep", lambda _s: None
+    ):
+        with pytest.raises(ai_client.AIRefusalError):
+            InferenceClient()._call_claude(_chat_request(max_retries=3), 0)
+    assert len(attempts) == 1
+
+
+def test_call_claude_logs_real_token_usage():
+    with patch.object(inference_module, "create_message", lambda *_a, **_k: _reply("done")), patch.object(
+        inference_module, "log_model_call"
+    ) as log_call:
+        text = InferenceClient()._call_claude(_chat_request(), 0)
+    assert text == "done"
+    logged = log_call.call_args.kwargs
+    assert (logged["status"], logged["input_tokens"], logged["output_tokens"]) == ("ok", 12, 34)
+    assert logged["provider"] == "anthropic"
+
+
+@pytest.mark.parametrize(
+    ("task_type", "json_output"),
+    [("chat", False), ("quiz_generation", True)],
+)
+def test_call_claude_asks_for_json_only_for_quiz_generation(task_type, json_output):
+    seen: dict[str, object] = {}
+
+    def _create(messages: object, **options: object) -> SimpleNamespace:
+        seen.update(options)
+        return _reply('```json\n{"questions": []}\n```')
+
+    with patch.object(inference_module, "create_message", _create):
+        text = InferenceClient()._call_claude(_chat_request(task_type=task_type), 0)
+
+    assert seen["json_output"] is json_output
+    assert seen["model"] == ai_client.CHAT_MODEL
+    assert text == ('{"questions": []}' if json_output else '```json\n{"questions": []}\n```')
+
+
+def test_rag_completion_returns_reply_text_and_logs_token_usage():
+    sent: dict[str, object] = {}
+
+    def _create(messages: object, **options: object) -> SimpleNamespace:
+        sent.update(messages=messages, options=options)
+        return _reply("grounded answer")
+
+    with patch.object(inference_module, "create_message", _create), patch.object(inference_module, "LOGGER") as log:
+        text = inference_module.rag_grounded_completion(
+            ai_client.REASONER_MODEL, "Be precise.", "What is 2 + 2?", timeout_sec=12.0, max_tokens=999
+        )
+
+    assert text == "grounded answer"
+    assert sent["messages"] == [
+        {"role": "system", "content": "Be precise."},
+        {"role": "user", "content": "What is 2 + 2?"},
+    ]
+    assert sent["options"] == {"model": ai_client.REASONER_MODEL, "max_tokens": 999, "timeout": 12.0}
+    assert log.info.call_args.args[2:] == (12, 34, 46)
+
+
+def test_rag_completion_skips_the_call_when_ai_is_disabled():
+    with patch.object(inference_module, "AI_ENABLED", False), patch.object(
+        inference_module, "create_message"
+    ) as create:
+        assert inference_module.rag_grounded_completion(ai_client.CHAT_MODEL, "system", "user") is None
+    create.assert_not_called()
+
+
+def test_rag_completion_retries_a_rate_limit_then_returns_text():
+    outcomes = iter([_status_error(ai_client.RateLimitError, 429), _reply("recovered")])
+
+    def _create(*_args: object, **_options: object) -> SimpleNamespace:
+        outcome = next(outcomes)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return outcome
+
+    with patch.object(inference_module, "create_message", _create), patch.object(
+        inference_module.time, "sleep", lambda _s: None
+    ):
+        assert inference_module.rag_grounded_completion(ai_client.CHAT_MODEL, "system", "user") == "recovered"
+
+
+def test_rag_completion_gives_up_after_repeated_rate_limits():
+    failing = _AlwaysFailing(lambda: _status_error(ai_client.RateLimitError, 429))
+    with patch.object(inference_module, "create_message", failing), patch.object(
+        inference_module.time, "sleep", lambda _s: None
+    ):
+        assert inference_module.rag_grounded_completion(ai_client.CHAT_MODEL, "system", "user") is None
+    assert failing.calls == inference_module._MAX_RETRIES
+
+
+@pytest.mark.parametrize(
+    "make_error",
+    [
+        _timeout_error,
+        lambda: _status_error(anthropic.AuthenticationError, 401),
+        lambda: ai_client.AIRefusalError("declined"),
+    ],
+    ids=["timeout", "unauthorized", "refusal"],
+)
+def test_rag_completion_returns_none_on_other_failures_without_retry(make_error):
+    failing = _AlwaysFailing(make_error)
+    with patch.object(inference_module, "create_message", failing), patch.object(
+        inference_module.time, "sleep", lambda _s: None
+    ):
+        assert inference_module.rag_grounded_completion(ai_client.CHAT_MODEL, "system", "user") is None
+    assert failing.calls == 1
+
+
+def test_prod_profile_keeps_verification_on_the_chat_model_and_lessons_on_the_reasoner(monkeypatch):
+    """The HF Space runs MODEL_PROFILE=prod: that profile, not models.yaml, decides what these tasks run on."""
+    monkeypatch.delenv("INFERENCE_ENFORCE_LOCK_MODEL", raising=False)
+    monkeypatch.setattr(inference_module, "_RUNTIME_OVERRIDES", {})
+    monkeypatch.setattr(inference_module, "_RUNTIME_PROFILE", "")
+    monkeypatch.setattr(rag_routes, "_inference_client", None)
+    for key in inference_module._MODEL_PROFILES["prod"]:
+        monkeypatch.setenv(key, "")
+    monkeypatch.setenv("MODEL_PROFILE", "prod")
+    inference_module._apply_model_profile()
+
+    verification_model, _source = InferenceClient()._resolve_primary_model(
+        InferenceRequest(messages=[], task_type="verify_solution")
+    )
+
+    assert verification_model == ai_client.CHAT_MODEL
+    assert rag_routes._lesson_primary_model() == ai_client.REASONER_MODEL
 
 
 def test_verification_samples_run_concurrently_with_same_voting():
@@ -164,7 +350,7 @@ def test_executor_lifespan_installs_large_default_pool():
         loop.set_default_executor = _spy  # type: ignore[method-assign]
         with patch.object(main_module, "_init_firebase_admin", lambda: None), patch.object(
             main_module, "_mark_interrupted_async_jobs", lambda: 0
-        ), patch.object(main_module, "validate_deepseek_auth", lambda *_a, **_k: {"status": "ok", "key_suffix": "x"}), patch.object(
+        ), patch.object(main_module, "validate_anthropic_auth", lambda *_a, **_k: {"status": "ok", "key_suffix": "x"}), patch.object(
             main_module, "get_inference_client", lambda: None
         ), patch(
             "rag.vectorstore_loader.get_vectorstore_health", lambda: {"chunkCount": 1, "subjects": {}}

@@ -441,8 +441,7 @@ Return ONLY valid JSON array."""
                 {"role": "user", "content": prompt},
             ],
             task_type="quiz_generation",
-            max_new_tokens=2000,
-            temperature=0.8,
+            max_new_tokens=4096,
             timeout_sec=60,
             max_retries=1,
         )

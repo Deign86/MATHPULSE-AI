@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import sys
@@ -12,11 +13,13 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 # We import the app via main to get router registered
 import main as main_module
 from main import app
+from routes import practice as practice_routes
 
 client = TestClient(app)
 
@@ -55,7 +58,7 @@ def _auth_header(uid: str):
 class TestPracticeGenerate:
     """POST /api/practice/generate"""
 
-    @patch("routes.practice._call_deepseek")
+    @patch("routes.practice._call_claude")
     def test_generate_returns_session_and_questions(self, mock_call, monkeypatch):
         """Should return session_id, questions list, and generated_at."""
         mock_call.return_value = json.dumps({
@@ -124,11 +127,38 @@ class TestPracticeGenerate:
         assert response.status_code in (401, 403)
 
 
+class TestPracticeClaudeCall:
+    """_call_claude: JSON-output request shape and failure mapping."""
+
+    def test_requests_json_output_with_system_and_user_turns(self):
+        with patch("routes.practice.complete_text", return_value='{"questions": []}') as mock_complete:
+            reply = asyncio.run(practice_routes._call_claude("system prompt", "user message"))
+
+        assert reply == '{"questions": []}'
+        assert mock_complete.call_args.args[0] == [
+            {"role": "system", "content": "system prompt"},
+            {"role": "user", "content": "user message"},
+        ]
+        assert mock_complete.call_args.kwargs == {
+            "max_tokens": 8192,
+            "json_output": True,
+            "timeout": 90.0,
+            "max_retries": 1,
+        }
+
+    def test_maps_upstream_failure_to_http_500(self):
+        with patch("routes.practice.complete_text", side_effect=RuntimeError("upstream down")):
+            with pytest.raises(HTTPException) as raised:
+                asyncio.run(practice_routes._call_claude("system prompt", "user message"))
+
+        assert raised.value.status_code == 500
+
+
 class TestPracticeSubmit:
     """POST /api/practice/submit"""
 
     @patch("routes.practice._get_firestore")
-    @patch("routes.practice._call_deepseek")
+    @patch("routes.practice._call_claude")
     def test_submit_scores_correctly(self, mock_call, mock_get_db, monkeypatch):
         """XP = correct*10 + 50 bonus if score>=80%."""
         mock_call.return_value = json.dumps({

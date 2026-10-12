@@ -12,7 +12,7 @@ export interface StudyTipsResult {
   confidence_score: number;
 }
 
-// Both `/api/deepseek/*` calls route through the authed `apiFetch` client so
+// Both `/api/ai/*` calls route through the authed `apiFetch` client so
 // the Firebase bearer token is attached (with 401-refresh retry). Failure
 // fallbacks are preserved: callers render the no-AI state when generation
 // is unavailable or the session is unauthenticated (server responds 401).
@@ -23,7 +23,7 @@ export async function fetchModulePreview(
   quarter: number,
 ): Promise<ModulePreviewResult> {
   try {
-    return await apiFetch<ModulePreviewResult>('/api/deepseek/module-preview', {
+    return await apiFetch<ModulePreviewResult>('/api/ai/module-preview', {
       method: 'POST',
       body: JSON.stringify({ module_id: moduleId, module_title: moduleTitle, subject, quarter }),
     });
@@ -40,7 +40,7 @@ export async function fetchStudyTips(
   confidenceScore: number,
 ): Promise<StudyTipsResult> {
   try {
-    return await apiFetch<StudyTipsResult>('/api/deepseek/study-tips', {
+    return await apiFetch<StudyTipsResult>('/api/ai/study-tips', {
       method: 'POST',
       body: JSON.stringify({
         student_id: studentId,

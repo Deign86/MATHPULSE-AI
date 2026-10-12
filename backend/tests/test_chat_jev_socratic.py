@@ -25,7 +25,7 @@ async def test_direct_answer_request_returns_socratic_response_without_llm(
         return {"choice": "direct_answer_request", "confidence": 0.93}
 
     async def unexpected_llm_call(*_args: object, **_kwargs: object) -> str:
-        raise AssertionError("DeepSeek must not run for a high-confidence direct request")
+        raise AssertionError("AI generation must not run for a high-confidence direct request")
 
     monkeypatch.setattr(main, "route_student_intent", route_intent)
     monkeypatch.setattr(main, "call_hf_chat_async", unexpected_llm_call)

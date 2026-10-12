@@ -1,17 +1,23 @@
 import assert from "node:assert/strict";
+import { createServer, type IncomingHttpHeaders } from "node:http";
+import type { AddressInfo } from "node:net";
 import test from "node:test";
+
+import Anthropic, { APIConnectionError, APIConnectionTimeoutError, APIError } from "@anthropic-ai/sdk";
 
 import { __quizBattleTestUtils } from "./quizBattleApi";
 
 const {
   resolveQuizBattleAiModel,
-  resolveQuizBattleAiModelName,
   shouldBlockStartDueToNonAiSource,
   computeRetryDelayMs,
   shuffleChoicesPreservingCorrect,
   buildStaticFallbackPool,
   expandStaticFallbackCandidates,
   generateAiQuestionSet,
+  classifyGenerationError,
+  resetQuizBattleAiClient,
+  QUIZ_BATTLE_QUESTIONS_SCHEMA,
 } = __quizBattleTestUtils;
 
 const BASE_SETUP = {
@@ -31,21 +37,11 @@ interface EnvSnapshot { [key: string]: string | undefined; }
 
 interface JsonRecord { [key: string]: string | number | boolean | JsonRecord | JsonRecord[] | null; }
 
-const isRecordValue = <T>(value: T): value is T & JsonRecord =>
-  typeof value === "object" && value !== null;
-
-const isNumberValue = <T>(value: T): value is T & number => typeof value === "number";
-
-const hasErrorReason = <T>(error: T, reason: string): boolean =>
-  isRecordValue(error) && error.reason === reason;
-
 const snapshotEnv = (): EnvSnapshot => ({
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
+  ANTHROPIC_WORKSPACE_ID: process.env.ANTHROPIC_WORKSPACE_ID,
+  ANTHROPIC_BASE_URL: process.env.ANTHROPIC_BASE_URL,
   QUIZ_BATTLE_AI_MODEL: process.env.QUIZ_BATTLE_AI_MODEL,
-  QUIZ_BATTLE_AI_TOKEN: process.env.QUIZ_BATTLE_AI_TOKEN,
-  QUIZ_BATTLE_AI_MAX_TOKENS: process.env.QUIZ_BATTLE_AI_MAX_TOKENS,
-  HF_TOKEN: process.env.HF_TOKEN,
-  HUGGING_FACE_API_TOKEN: process.env.HUGGING_FACE_API_TOKEN,
-  HUGGINGFACE_API_TOKEN: process.env.HUGGINGFACE_API_TOKEN,
 });
 
 const restoreEnv = (snapshot: EnvSnapshot): void => {
@@ -58,43 +54,47 @@ const restoreEnv = (snapshot: EnvSnapshot): void => {
   });
 };
 
-interface AiQuestionSetPayload { choices: Array<{ message: { content: string } }>; }
+type ClaudeReply = Pick<Anthropic.Message, "content" | "stop_reason">;
 
-const buildValidPayload = (questionCount: number): AiQuestionSetPayload => {
-  const questions = [...Array(questionCount)].map((_, index) => ({
+const claudeTextReply = (text: string, stopReason: ClaudeReply["stop_reason"] = "end_turn"): ClaudeReply => ({
+  content: [{ type: "text", text, citations: null }],
+  stop_reason: stopReason,
+});
+
+const buildValidQuestions = (questionCount: number) =>
+  [...Array(questionCount)].map((_, index) => ({
     questionId: `ai-q-${index + 1}`,
     prompt: `Question ${index + 1}: Solve for x in ${index + 2}x = ${2 * (index + 2)}.`,
     choices: ["1", "2", "3", "4"],
     correctOptionIndex: 1,
   }));
 
-  return {
-    choices: [
-      {
-        message: {
-          content: JSON.stringify({ questions }),
-        },
-      },
-    ],
-  };
-};
+const buildValidReply = (questionCount: number): ClaudeReply =>
+  claudeTextReply(JSON.stringify({ questions: buildValidQuestions(questionCount) }));
 
-test("enforces Qwen-only model overrides", () => {
+const apiError = (status: number): APIError =>
+  APIError.generate(
+    status,
+    { error: { type: "api_error", message: `Synthetic ${status} from Claude` } },
+    undefined,
+    new Headers(),
+  );
+
+test("defaults to Claude Haiku and rejects non-Claude model overrides", () => {
   const envSnapshot = snapshotEnv();
 
   try {
+    delete process.env.QUIZ_BATTLE_AI_MODEL;
+    assert.equal(resolveQuizBattleAiModel(), "claude-haiku-5-5");
+
     process.env.QUIZ_BATTLE_AI_MODEL = "meta-llama/Meta-Llama-3-70B-Instruct";
     assert.throws(
       () => resolveQuizBattleAiModel(),
-      /Qwen-family model/,
+      { reason: "invalid_model_override", retriable: false, message: /Claude model id/ },
     );
 
-    process.env.QUIZ_BATTLE_AI_MODEL = "Qwen/Qwen3-32B";
-    assert.equal(resolveQuizBattleAiModel(), "Qwen/Qwen3-32B");
-    assert.equal(resolveQuizBattleAiModelName(), "Qwen/Qwen3-32B:fastest");
-
-    process.env.QUIZ_BATTLE_AI_MODEL = "Qwen/Qwen2.5-72B-Instruct:fastest";
-    assert.equal(resolveQuizBattleAiModelName(), "Qwen/Qwen2.5-72B-Instruct:fastest");
+    process.env.QUIZ_BATTLE_AI_MODEL = "claude-haiku-4-5";
+    assert.equal(resolveQuizBattleAiModel(), "claude-haiku-4-5");
   } finally {
     restoreEnv(envSnapshot);
   }
@@ -241,8 +241,8 @@ test("does not fall back to bank when AI generation fails", async () => {
   const envSnapshot = snapshotEnv();
 
   try {
-    process.env.QUIZ_BATTLE_AI_MODEL = "Qwen/Qwen3-32B";
-    process.env.QUIZ_BATTLE_AI_TOKEN = "test-token";
+    delete process.env.QUIZ_BATTLE_AI_MODEL;
+    process.env.ANTHROPIC_API_KEY = "test-key";
 
     await assert.rejects(
       () => generateAiQuestionSet(BASE_SETUP, {
@@ -254,8 +254,100 @@ test("does not fall back to bank when AI generation fails", async () => {
         },
         randomInt: () => 0,
       }),
-      (error) => hasErrorReason(error, "ai_unknown_error"),
+      { reason: "ai_unknown_error" },
     );
+  } finally {
+    restoreEnv(envSnapshot);
+  }
+});
+
+test("fails fast without ANTHROPIC_API_KEY and never calls Claude", async () => {
+  const envSnapshot = snapshotEnv();
+
+  try {
+    delete process.env.ANTHROPIC_API_KEY;
+
+    let invokeCount = 0;
+
+    await assert.rejects(
+      () => generateAiQuestionSet(BASE_SETUP, {
+        invokeRequest: async () => {
+          invokeCount += 1;
+          return buildValidReply(4);
+        },
+      }),
+      { reason: "missing_ai_token", retriable: false, message: /ANTHROPIC_API_KEY/ },
+    );
+    assert.equal(invokeCount, 0);
+  } finally {
+    restoreEnv(envSnapshot);
+  }
+});
+
+test("sends Claude a structured-output request without sampling parameters", async () => {
+  const envSnapshot = snapshotEnv();
+
+  try {
+    delete process.env.QUIZ_BATTLE_AI_MODEL;
+    process.env.ANTHROPIC_API_KEY = "test-key";
+
+    const requests: Anthropic.MessageCreateParamsNonStreaming[] = [];
+
+    await generateAiQuestionSet(BASE_SETUP, {
+      invokeRequest: async (request) => {
+        requests.push(request);
+        return buildValidReply(4);
+      },
+      sleepMs: async () => {
+        // no-op
+      },
+      randomInt: () => 0,
+    });
+
+    assert.equal(requests.length, 1);
+    const [request] = requests;
+    assert.equal(request.model, "claude-haiku-5-5");
+    assert.deepEqual(request.thinking, { type: "disabled" });
+    assert.deepEqual(request.output_config, {
+      format: { type: "json_schema", schema: QUIZ_BATTLE_QUESTIONS_SCHEMA },
+    });
+    assert.ok(request.max_tokens >= 256 && request.max_tokens <= 4096);
+    assert.equal(request.messages[request.messages.length - 1]?.role, "user");
+    ["temperature", "top_p", "top_k", "response_format", "stream"].forEach((parameter) => {
+      assert.equal(parameter in request, false, `${parameter} must not be sent to Claude`);
+    });
+
+    // Structured outputs need every object closed and fully required.
+    const questionSchema = QUIZ_BATTLE_QUESTIONS_SCHEMA.properties.questions.items;
+    assert.equal(QUIZ_BATTLE_QUESTIONS_SCHEMA.additionalProperties, false);
+    assert.deepEqual(QUIZ_BATTLE_QUESTIONS_SCHEMA.required, ["questions"]);
+    assert.equal(questionSchema.additionalProperties, false);
+    assert.deepEqual([...questionSchema.required].sort(), Object.keys(questionSchema.properties).sort());
+  } finally {
+    restoreEnv(envSnapshot);
+  }
+});
+
+test("leaves thinking at the model default for a non-Haiku override", async () => {
+  const envSnapshot = snapshotEnv();
+
+  try {
+    process.env.QUIZ_BATTLE_AI_MODEL = "claude-sonnet-5-5";
+    process.env.ANTHROPIC_API_KEY = "test-key";
+
+    const requests: Anthropic.MessageCreateParamsNonStreaming[] = [];
+
+    await generateAiQuestionSet(BASE_SETUP, {
+      invokeRequest: async (request) => {
+        requests.push(request);
+        return buildValidReply(4);
+      },
+    });
+
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].model, "claude-sonnet-5-5");
+    // Opus 5.5 and Sonnet 5.5 answer 400 to thinking: disabled.
+    assert.equal("thinking" in requests[0], false);
   } finally {
     restoreEnv(envSnapshot);
   }
@@ -265,8 +357,8 @@ test("executes bounded retries with exponential backoff path", async () => {
   const envSnapshot = snapshotEnv();
 
   try {
-    process.env.QUIZ_BATTLE_AI_MODEL = "Qwen/Qwen3-32B";
-    process.env.QUIZ_BATTLE_AI_TOKEN = "test-token";
+    delete process.env.QUIZ_BATTLE_AI_MODEL;
+    process.env.ANTHROPIC_API_KEY = "test-key";
 
     let invokeCount = 0;
     const recordedSleeps: number[] = [];
@@ -275,9 +367,9 @@ test("executes bounded retries with exponential backoff path", async () => {
       invokeRequest: async () => {
         invokeCount += 1;
         if (invokeCount < 2) {
-          throw new Error(`Transient failure ${invokeCount}`);
+          throw apiError(429);
         }
-        return buildValidPayload(4);
+        return buildValidReply(4);
       },
       sleepMs: async (durationMs) => {
         recordedSleeps.push(durationMs);
@@ -295,122 +387,285 @@ test("executes bounded retries with exponential backoff path", async () => {
     assert.equal(invokeCount, 2);
     assert.deepEqual(recordedSleeps, [300]);
     assert.equal(generated.attempts, 2);
+    assert.equal(generated.model, "claude-haiku-5-5");
     assert.equal(generated.questions.length, BASE_SETUP.rounds);
   } finally {
     restoreEnv(envSnapshot);
   }
 });
 
-test("retries with relaxed JSON mode after 400 rejection", async () => {
+test("fails fast on a non-retriable Claude rejection", async () => {
   const envSnapshot = snapshotEnv();
 
   try {
-    process.env.QUIZ_BATTLE_AI_MODEL = "Qwen/Qwen3-32B";
-    process.env.QUIZ_BATTLE_AI_TOKEN = "test-token";
+    delete process.env.QUIZ_BATTLE_AI_MODEL;
+    process.env.ANTHROPIC_API_KEY = "test-key";
 
     let invokeCount = 0;
     const recordedSleeps: number[] = [];
-    const payloads: JsonRecord[] = [];
+
+    await assert.rejects(
+      () => generateAiQuestionSet(BASE_SETUP, {
+        invokeRequest: async () => {
+          invokeCount += 1;
+          throw apiError(400);
+        },
+        sleepMs: async (durationMs) => {
+          recordedSleeps.push(durationMs);
+        },
+        randomInt: () => 0,
+      }),
+      { reason: "ai_upstream_error", retriable: false, message: /rejected \(400\)/ },
+    );
+
+    assert.equal(invokeCount, 1);
+    assert.deepEqual(recordedSleeps, []);
+  } finally {
+    restoreEnv(envSnapshot);
+  }
+});
+
+test("retries malformed replies, then fails with ai_payload_invalid", async () => {
+  const envSnapshot = snapshotEnv();
+
+  try {
+    delete process.env.QUIZ_BATTLE_AI_MODEL;
+    process.env.ANTHROPIC_API_KEY = "test-key";
+
+    const malformedReplies: Array<{ name: string; reply: ClaudeReply; message: RegExp }> = [
+      {
+        name: "refusal prose",
+        reply: claudeTextReply("I cannot write those questions.", "refusal"),
+        message: /valid questions array \(stop_reason: refusal\)/,
+      },
+      {
+        name: "output cut off at max_tokens",
+        reply: claudeTextReply("{\"questions\":[{\"prompt\":\"Question 1: Solve for", "max_tokens"),
+        message: /valid questions array \(stop_reason: max_tokens\)/,
+      },
+      {
+        name: "JSON without a questions array",
+        reply: claudeTextReply(JSON.stringify({ result: "done" })),
+        message: /valid questions array \(stop_reason: end_turn\)/,
+      },
+      {
+        name: "questions with fewer than four choices",
+        reply: claudeTextReply(JSON.stringify({
+          questions: buildValidQuestions(4).map((question) => ({ ...question, choices: ["1", "2", "3"] })),
+        })),
+        message: /insufficient valid questions \(0\/3\)/,
+      },
+    ];
+
+    for (const { name, reply, message } of malformedReplies) {
+      let invokeCount = 0;
+      const recordedSleeps: number[] = [];
+
+      await assert.rejects(
+        () => generateAiQuestionSet(BASE_SETUP, {
+          invokeRequest: async () => {
+            invokeCount += 1;
+            return reply;
+          },
+          sleepMs: async (durationMs) => {
+            recordedSleeps.push(durationMs);
+          },
+          randomInt: () => 0,
+        }),
+        { reason: "ai_payload_invalid", retriable: true, message },
+        name,
+      );
+
+      assert.equal(invokeCount, 2, `${name}: one retry`);
+      assert.deepEqual(recordedSleeps, [300], `${name}: backoff before the retry`);
+    }
+  } finally {
+    restoreEnv(envSnapshot);
+  }
+});
+
+test("reads question JSON from text blocks after a thinking block and through a code fence", async () => {
+  const envSnapshot = snapshotEnv();
+
+  try {
+    delete process.env.QUIZ_BATTLE_AI_MODEL;
+    process.env.ANTHROPIC_API_KEY = "test-key";
+
+    const fencedJson = `\`\`\`json\n${JSON.stringify({ questions: buildValidQuestions(4) })}\n\`\`\``;
 
     const generated = await generateAiQuestionSet(BASE_SETUP, {
-      invokeRequest: async (requestPayload) => {
-        invokeCount += 1;
-        payloads.push(requestPayload);
-
-        if (invokeCount === 1) {
-          const axiosStyleError = Object.assign(new Error("Request failed with status code 400"), {
-            isAxiosError: true,
-            response: {
-              status: 400,
-              data: {
-                error: {
-                  message: "response_format is not supported for this model",
-                },
-              },
-            },
-          });
-          throw axiosStyleError;
-        }
-
-        return buildValidPayload(4);
-      },
-      sleepMs: async (durationMs) => {
-        recordedSleeps.push(durationMs);
+      invokeRequest: async () => ({
+        content: [
+          { type: "thinking", thinking: "", signature: "test-signature" },
+          { type: "text", text: fencedJson, citations: null },
+        ],
+        stop_reason: "end_turn",
+      }),
+      sleepMs: async () => {
+        // no-op
       },
       randomInt: () => 0,
-      now: (() => {
-        let cursor = 2000;
-        return () => {
-          cursor += 10;
-          return cursor;
-        };
-      })(),
     });
 
-    assert.equal(invokeCount, 2);
-    assert.equal(recordedSleeps.length, 1);
-    assert.equal(recordedSleeps[0], 300);
-    assert.ok(payloads[0]?.response_format);
-    assert.equal(payloads[1]?.response_format, undefined);
-    const firstMaxTokens = payloads[0]?.max_tokens;
-    if (!isNumberValue(firstMaxTokens)) {
-      assert.fail("max_tokens must be a number");
-    }
-    assert.ok(firstMaxTokens < 1000);
-    assert.equal(generated.attempts, 2);
+    assert.equal(generated.attempts, 1);
     assert.equal(generated.questions.length, BASE_SETUP.rounds);
   } finally {
     restoreEnv(envSnapshot);
   }
+});
+
+test("classifies Claude API failures into retriable and fail-fast reasons", async () => {
+  for (const status of [408, 409, 429, 500, 529]) {
+    const classified = await classifyGenerationError(apiError(status));
+    assert.equal(classified.reason, "ai_upstream_error", `status ${status}`);
+    assert.equal(classified.retriable, true, `status ${status}`);
+  }
+
+  for (const status of [400, 401, 403, 404]) {
+    const classified = await classifyGenerationError(apiError(status));
+    assert.equal(classified.reason, "ai_upstream_error", `status ${status}`);
+    assert.equal(classified.retriable, false, `status ${status}`);
+  }
+
+  const timedOut = await classifyGenerationError(new APIConnectionTimeoutError());
+  assert.equal(timedOut.reason, "ai_timeout");
+  assert.equal(timedOut.retriable, true);
+
+  const dropped = await classifyGenerationError(new APIConnectionError({ message: "socket hang up" }));
+  assert.equal(dropped.reason, "ai_upstream_error");
+  assert.equal(dropped.retriable, true);
+
+  const unexpected = await classifyGenerationError(new Error("boom"));
+  assert.equal(unexpected.reason, "ai_unknown_error");
+  assert.equal(unexpected.retriable, true);
 });
 
 test("fails when dedupe cannot satisfy required rounds", async () => {
   const envSnapshot = snapshotEnv();
 
   try {
-    process.env.QUIZ_BATTLE_AI_MODEL = "Qwen/Qwen3-32B";
-    process.env.QUIZ_BATTLE_AI_TOKEN = "test-token";
+    delete process.env.QUIZ_BATTLE_AI_MODEL;
+    process.env.ANTHROPIC_API_KEY = "test-key";
 
     await assert.rejects(
       () => generateAiQuestionSet(BASE_SETUP, {
-        invokeRequest: async () => ({
-          choices: [
+        invokeRequest: async () => claudeTextReply(JSON.stringify({
+          questions: [
             {
-              message: {
-                content: JSON.stringify({
-                  questions: [
-                    {
-                      questionId: "dup-id",
-                      prompt: "What is 2 + 2?",
-                      choices: ["1", "2", "3", "4"],
-                      correctOptionIndex: 3,
-                    },
-                    {
-                      questionId: "dup-id",
-                      prompt: "What is 2 + 2?",
-                      choices: ["1", "2", "3", "4"],
-                      correctOptionIndex: 3,
-                    },
-                    {
-                      questionId: "dup-id-2",
-                      prompt: "What is 2 + 2?",
-                      choices: ["1", "2", "3", "4"],
-                      correctOptionIndex: 3,
-                    },
-                  ],
-                }),
-              },
+              questionId: "dup-id",
+              prompt: "What is 2 + 2?",
+              choices: ["1", "2", "3", "4"],
+              correctOptionIndex: 3,
+            },
+            {
+              questionId: "dup-id",
+              prompt: "What is 2 + 2?",
+              choices: ["1", "2", "3", "4"],
+              correctOptionIndex: 3,
+            },
+            {
+              questionId: "dup-id-2",
+              prompt: "What is 2 + 2?",
+              choices: ["1", "2", "3", "4"],
+              correctOptionIndex: 3,
             },
           ],
-        }),
+        })),
         sleepMs: async () => {
           // no-op
         },
         randomInt: () => 0,
       }),
-      (error) => hasErrorReason(error, "ai_insufficient_unique_questions"),
+      { reason: "ai_insufficient_unique_questions" },
     );
   } finally {
+    restoreEnv(envSnapshot);
+  }
+});
+
+test("default client makes one HTTP request per attempt and sends key, workspace and request body", async () => {
+  const envSnapshot = snapshotEnv();
+
+  interface ReceivedRequest {
+    url: string | undefined;
+    headers: IncomingHttpHeaders;
+    body: string;
+  }
+  const received: ReceivedRequest[] = [];
+  let respondWithOutage = true;
+
+  const server = createServer((request, response) => {
+    const chunks: Buffer[] = [];
+    request.on("data", (chunk: Buffer) => chunks.push(chunk));
+    request.on("end", () => {
+      received.push({
+        url: request.url,
+        headers: request.headers,
+        body: Buffer.concat(chunks).toString("utf8"),
+      });
+      response.setHeader("content-type", "application/json");
+      if (respondWithOutage) {
+        response.statusCode = 500;
+        response.end(JSON.stringify({ type: "error", error: { type: "api_error", message: "Synthetic outage" } }));
+        return;
+      }
+      response.end(JSON.stringify({
+        id: "msg_test",
+        type: "message",
+        role: "assistant",
+        model: "claude-haiku-5-5",
+        content: [{ type: "text", text: JSON.stringify({ questions: buildValidQuestions(4) }) }],
+        stop_reason: "end_turn",
+        stop_sequence: null,
+        usage: { input_tokens: 12, output_tokens: 34 },
+      }));
+    });
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+
+  try {
+    // SAFETY: a TCP server listening on a port reports an AddressInfo; the string form is for pipes only.
+    const { port } = server.address() as AddressInfo;
+    process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${port}`;
+    process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.ANTHROPIC_WORKSPACE_ID = "wrkspc_test";
+    delete process.env.QUIZ_BATTLE_AI_MODEL;
+    // The SDK client is cached after first use and reads these variables when built, so drop any earlier one.
+    resetQuizBattleAiClient();
+
+    const options = {
+      sleepMs: async () => {
+        // no-op
+      },
+      randomInt: () => 0,
+    };
+
+    await assert.rejects(
+      () => generateAiQuestionSet(BASE_SETUP, options),
+      { reason: "ai_upstream_error", retriable: true, message: /500/ },
+    );
+    // Two attempts, one request each: SDK-level retries would show up as extra requests.
+    assert.equal(received.length, 2);
+
+    respondWithOutage = false;
+    received.length = 0;
+    const generated = await generateAiQuestionSet(BASE_SETUP, options);
+    assert.equal(generated.questions.length, BASE_SETUP.rounds);
+    assert.equal(received.length, 1);
+
+    const [wireRequest] = received;
+    assert.equal(wireRequest.url, "/v1/messages");
+    assert.equal(wireRequest.headers["x-api-key"], "test-key");
+    assert.equal(wireRequest.headers["anthropic-workspace-id"], "wrkspc_test");
+    const wireBody: JsonRecord = JSON.parse(wireRequest.body);
+    assert.equal(wireBody.model, "claude-haiku-5-5");
+    assert.deepEqual(wireBody.thinking, { type: "disabled" });
+    assert.equal(wireBody.temperature, undefined);
+    assert.equal(wireBody.top_p, undefined);
+  } finally {
+    server.closeAllConnections();
+    server.close();
+    resetQuizBattleAiClient();
     restoreEnv(envSnapshot);
   }
 });

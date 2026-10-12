@@ -13,7 +13,7 @@ const lessonPayload: RagLessonResponse = {
   retrievalBand: 'high',
   needsReview: false,
   sources: [],
-  activeModel: 'deepseek-flash',
+  activeModel: 'claude-haiku-5-5',
 };
 
 describe('useLessonContent', () => {

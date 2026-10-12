@@ -3,8 +3,7 @@ import os
 sys.path.insert(0, 'backend')
 
 # Set required env vars
-os.environ['DEEPSEEK_API_KEY'] = os.getenv('DEEPSEEK_API_KEY', '')
-os.environ['DEEPSEEK_BASE_URL'] = os.getenv('DEEPSEEK_BASE_URL', 'https://api.deepseek.com')
+os.environ['ANTHROPIC_API_KEY'] = os.getenv('ANTHROPIC_API_KEY', '')
 
 from rag.curriculum_rag import retrieve_lesson_pdf_context, build_lesson_prompt
 from services.inference_client import InferenceClient, InferenceRequest
@@ -62,9 +61,6 @@ try:
         ],
         task_type="lesson_generation",
         max_new_tokens=100,  # Small for testing
-        temperature=0.2,
-        top_p=0.9,
-        enable_thinking=True,
     )
     result = client.generate_from_messages(req)
     print(f"Inference result: {result[:200]}...")

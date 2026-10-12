@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 async def segment_educational_content(text: str):
     """
-    Use DeepSeek to segment raw educational text into pedagogical chunks.
+    Use Claude to segment raw educational text into pedagogical chunks.
     Maintains Filipino/English (Taglish) nuances.
     """
     prompt = f"""
@@ -26,7 +26,6 @@ async def segment_educational_content(text: str):
     """
     
     try:
-        # call_hf_chat_async is configured to route to DeepSeek solely per project rules
         response = await call_hf_chat_async(prompt)
         
         # Basic JSON extraction in case of LLM verbosity

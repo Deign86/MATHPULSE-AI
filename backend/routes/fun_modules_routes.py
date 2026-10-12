@@ -93,7 +93,7 @@ async def generate_module(payload: GenerateModuleRequest) -> dict[str, Any]:
         f"quarter {payload.quarter}, Bloom level {payload.bloomLevel}. Return JSON with title and sections."
     )
     try:
-        raw_text = await _generate_text(prompt, task_type="rag_lesson", max_new_tokens=4096, enable_thinking=True)
+        raw_text = await _generate_text(prompt, task_type="rag_lesson", max_new_tokens=4096)
     except InferenceAuthError:
         raise _api_error(502, "inference_auth_failed", "InferenceAuthError")
     except InferenceConnectionError:

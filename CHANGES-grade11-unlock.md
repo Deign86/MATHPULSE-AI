@@ -25,7 +25,7 @@ New Grade 11 modules render 1:1 with existing UI/UX, all locks removed, all subj
 - `functions/.../backfillCurriculumVersion.ts`, `diagnosticProcessor.ts` (gate always open), `diagnosticPolicies.ts`, `learningPathEngine.ts`, `runtimeChecks.ts`, `constants.ts`, `quizBattleApi.ts`
 
 ### P1 remainder sweep (worker `ecd1f633`, interrupted after landing)
-- `src/config/subjects.ts`, `AdminPriorityModules`, `MasteryHeatmap`, `TopicMasteryView`, `QuizExperience`, `SupplementalBanner`, `lessonQuizService`, `useSubjectAvailability` (comment), `platformConfigService` (defaults = 4×`available:true`), `LayoutDiagram.md` (counts), `youtube_service` (Grade 11 default), `constants.ts`, `iarAssessmentScoring.ts`, quiz/rag/deepseek route defaults
+- `src/config/subjects.ts`, `AdminPriorityModules`, `MasteryHeatmap`, `TopicMasteryView`, `QuizExperience`, `SupplementalBanner`, `lessonQuizService`, `useSubjectAvailability` (comment), `platformConfigService` (defaults = 4×`available:true`), `LayoutDiagram.md` (counts), `youtube_service` (Grade 11 default), `constants.ts`, `iarAssessmentScoring.ts`, quiz/rag/ai_insight route defaults
 
 ## Verification evidence
 - `npx tsc --noEmit` clean; `npx vitest run` 27 files/179 tests pass; `npx oxlint --quiet` exit 0; `gate-check.mjs GATES.md` 37 met; final reviewer verdict OK (P2s only)

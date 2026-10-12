@@ -1,9 +1,7 @@
 """
 MathPulse AI - FastAPI Backend
-AI-powered math tutoring backend using Hugging Face models.
-- meta-llama/Llama-3.1-8B-Instruct for chat, learning paths, insights, and quiz generation
-    (via Hugging Face Inference API)
-- facebook/bart-large-mnli for student risk classification
+AI-powered math tutoring backend built on Claude (Anthropic Messages API).
+- Claude for chat, learning paths, insights, quiz generation, and student risk classification
 - Multi-method verification system for math accuracy
 - AI-powered Quiz Maker with Bloom's Taxonomy integration
 - Symbolic math calculator via SymPy
@@ -28,7 +26,7 @@ import secrets
 import string
 import asyncio
 from contextlib import asynccontextmanager
-from typing import List, Optional, Dict, Any, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
+from typing import List, Optional, Dict, Any, Literal, Set, Tuple, Iterator, AsyncIterator, Sequence, cast
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 from threading import Lock
@@ -69,7 +67,7 @@ except Exception:
 
 # STARTUP VALIDATION - Run before anything else to prevent restart loops
 try:
-    from startup_validation import run_all_validations, validate_deepseek_auth
+    from startup_validation import run_all_validations, validate_anthropic_auth
     run_all_validations()  # Exits with error if any critical check fails
 except ImportError as e:
     # If startup_validation module is not found, log warning but continue
@@ -98,12 +96,12 @@ from datetime import datetime, timezone, timedelta
 import tempfile
 import subprocess
 import requests as http_requests
-import httpx
 import uvicorn
 from services.inference_client import (
     InferenceRequest, create_default_client,
     get_model_for_task,
 )
+from services.ai_client import CHAT_MODEL, complete_json, get_anthropic_client, stream_text
 from services.deterministic_cache import DeterministicResponseCache
 from services.logging_utils import log_model_call
 from services.llm_json import (
@@ -136,7 +134,7 @@ from routes.try_it_yourself import router as try_it_yourself_router
 from routes.class_analytics_routes import router as class_analytics_router
 from routes.intervention_routes import router as intervention_router
 from routes.pipeline_routes import router as pipeline_router
-from routes.deepseek_rag_routes import router as deepseek_rag_router
+from routes.ai_insight_routes import router as ai_insight_router
 from routes.at_risk_resolution import router as at_risk_resolution_router
 from routes.fun_modules_routes import router as fun_modules_router
 from routes.jev_routes import router as jev_router
@@ -293,17 +291,14 @@ def get_inference_client():
 HF_TOKEN = os.environ.get(
     "HF_TOKEN",
     os.environ.get("HUGGING_FACE_API_TOKEN", os.environ.get("HUGGINGFACE_API_TOKEN", "")),
-)  # Kept for HF Space deployment / dataset push only; AI inference uses DEEPSEEK_API_KEY
+)  # Kept for HF Space deployment / dataset push only; AI inference uses ANTHROPIC_API_KEY
 
 # Grade 11 tutoring default model. Can be overridden via INFERENCE_MODEL_ID or INFERENCE_CHAT_MODEL_ID.
-HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", "deepseek-flash")
-
-# Alias kept so automation_engine.py (which imports CHAT_MODEL) keeps working.
-CHAT_MODEL = HF_MATH_MODEL_ID
+HF_MATH_MODEL_ID = os.getenv("INFERENCE_CHAT_MODEL_ID") or os.getenv("INFERENCE_MODEL_ID") or os.getenv("HF_MATH_MODEL_ID", CHAT_MODEL)
 
 # Dedicated quiz model override. When empty, routing.task_model_map decides quiz model.
 HF_QUIZ_MODEL_ID = (os.getenv("HF_QUIZ_MODEL_ID", "").strip() or None)
-HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", "deepseek-flash")
+HF_QUIZ_JSON_REPAIR_MODEL_ID = os.getenv("HF_QUIZ_JSON_REPAIR_MODEL_ID", CHAT_MODEL)
 
 RISK_MODEL = CHAT_MODEL
 VERIFICATION_SAMPLES = 3  # Number of samples for self-consistency checking
@@ -413,7 +408,6 @@ PUBLIC_API_PATHS: Set[str] = {
     "/api/quiz/topics",
     "/api/rag/health",
     "/api/templates/class-records",
-    "/api/jev/verify",
 }
 
 ROLE_POLICIES: Dict[str, Set[str]] = {
@@ -505,6 +499,7 @@ ROLE_POLICIES: Dict[str, Set[str]] = {
     "/api/quiz-battle/ingest-pdf": TEACHER_OR_ADMIN,
     "/api/quiz-battle/bank-status": TEACHER_OR_ADMIN,
     "/api/class-records/upload": TEACHER_OR_ADMIN,
+    "/api/jev/verify": TEACHER_OR_ADMIN,
 }
 
 _COMPILED_ROLE_PATTERNS: List[Tuple[re.Pattern, Set[str]]] = []
@@ -523,10 +518,10 @@ def resolve_required_roles(path: str) -> Optional[Set[str]]:
             return roles
     return None
 
-if not os.getenv("DEEPSEEK_API_KEY"):
+if not os.getenv("ANTHROPIC_API_KEY"):
     logger.warning(
-        "DEEPSEEK_API_KEY is not set. AI features will fail. "
-        "Set the DEEPSEEK_API_KEY environment variable."
+        "ANTHROPIC_API_KEY is not set. AI features will fail. "
+        "Set the ANTHROPIC_API_KEY environment variable."
     )
 
 deterministic_response_cache = DeterministicResponseCache(
@@ -576,7 +571,7 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
             logger.warning(f"⚠️ Failed to pre-initialize InferenceClient: {e}")
 
     async def _warmup_vectorstore() -> None:
-        active_model = os.getenv("HF_MODEL_ID", "deepseek-flash")
+        active_model = os.getenv("HF_MODEL_ID", CHAT_MODEL)
         try:
             from rag.vectorstore_loader import get_vectorstore_health
             health = await asyncio.to_thread(get_vectorstore_health)
@@ -598,17 +593,17 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         except Exception as exc:
             logger.error("RAG vectorstore warm-up failed: %s", exc)
 
-    async def _warmup_deepseek_auth() -> None:
-        auth_state = await asyncio.to_thread(validate_deepseek_auth, 5.0)
+    async def _warmup_anthropic_auth() -> None:
+        auth_state = await asyncio.to_thread(validate_anthropic_auth, 5.0)
         logger.warning(
-            "DeepSeek startup auth state: status=%s key=%s",
+            "Anthropic startup auth state: status=%s key=%s",
             auth_state["status"],
             auth_state["key_suffix"],
         )
 
     _warmup_inference_task = asyncio.create_task(_warmup_inference_client())
     _warmup_vectorstore_task = asyncio.create_task(_warmup_vectorstore())
-    _warmup_deepseek_auth_task = asyncio.create_task(_warmup_deepseek_auth())
+    _warmup_anthropic_auth_task = asyncio.create_task(_warmup_anthropic_auth())
     _interrupted_jobs_task = asyncio.create_task(asyncio.to_thread(_mark_interrupted_async_jobs))
 
     # FIX(502): Set a readiness flag so /health reports the true state without
@@ -616,7 +611,6 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
     global _backend_ready
     _backend_ready = True
 
-    logger.info(f"   - INFERENCE_PROVIDER: {os.getenv('INFERENCE_PROVIDER', 'deepseek')}")
     logger.info(f"   - INFERENCE_MODEL_ID: {os.getenv('INFERENCE_MODEL_ID', HF_MATH_MODEL_ID)}")
     logger.info(f"   - INFERENCE_CHAT_MODEL_ID: {os.getenv('INFERENCE_CHAT_MODEL_ID', HF_MATH_MODEL_ID)}")
     logger.info(
@@ -627,12 +621,11 @@ async def app_lifespan(_app: FastAPI) -> AsyncIterator[None]:
         f"   - INFERENCE_ENFORCE_LOCK_MODEL: "
         f"{os.getenv('INFERENCE_ENFORCE_LOCK_MODEL', 'true')}"
     )
-    logger.info(f"   - DEEPSEEK_API_KEY set: {'yes' if os.getenv('DEEPSEEK_API_KEY') else 'no'}")
+    logger.info(f"   - ANTHROPIC_API_KEY set: {'yes' if os.getenv('ANTHROPIC_API_KEY') else 'no'}")
 
     try:
         yield
     finally:
-        await _close_hf_async_http_client()
         blocking_executor.shutdown(wait=False)
 
 
@@ -1348,7 +1341,7 @@ app.include_router(try_it_yourself_router)
 app.include_router(class_analytics_router)
 app.include_router(intervention_router)
 app.include_router(pipeline_router)
-app.include_router(deepseek_rag_router)
+app.include_router(ai_insight_router)
 app.include_router(at_risk_resolution_router)
 app.include_router(fun_modules_router)
 app.include_router(jev_router)
@@ -1399,32 +1392,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ─── DeepSeek AI Clients ──────────────────────────────────────
+# ─── Claude AI Client ─────────────────────────────────────────
 
-# Zero-shot classification replaced with DeepSeek chat-based classification.
-# BART risk model replaced with deepseek-flash structured output.
-
-from services.ai_client import get_deepseek_client, CHAT_MODEL, REASONER_MODEL, APIError, RateLimitError, APITimeoutError
+# Student risk classification is a Claude chat call that returns structured JSON.
 
 _zsc_client_initialized = False
 
 
-def _ensure_deepseek_available() -> None:
-    """Verify DeepSeek API key is configured."""
+def _ensure_ai_available() -> None:
+    """Verify the Anthropic API key is configured."""
     global _zsc_client_initialized
     if not _zsc_client_initialized:
         try:
-            get_deepseek_client()
-            logger.info("DeepSeek client initialized (for all AI tasks)")
+            get_anthropic_client()
+            logger.info("Claude client initialized (for all AI tasks)")
             _zsc_client_initialized = True
         except ValueError:
             raise HTTPException(
                 status_code=500,
-                detail="DEEPSEEK_API_KEY not configured. Set the DEEPSEEK_API_KEY environment variable.",
+                detail="ANTHROPIC_API_KEY not configured. Set the ANTHROPIC_API_KEY environment variable.",
             )
 
 
-# ─── HF Serverless Chat Helper (requests-based) ───────────────
+# ─── Chat Helpers (Claude via InferenceClient) ────────────────
 
 
 def _strip_repetition(text: str, min_chunk: int = 40) -> str:
@@ -1454,37 +1444,10 @@ def _strip_repetition(text: str, min_chunk: int = 40) -> str:
     return "\n".join(result_lines).strip()
 
 
-def _build_hf_inference_url(model_id: str) -> str:
-    return f"https://api.deepseek.com"
-
-
-def _messages_to_inference_prompt(messages: List[Dict[str, str]]) -> str:
-    parts: List[str] = []
-    for msg in messages:
-        role = (msg.get("role") or "user").strip().lower()
-        content = (msg.get("content") or "").strip()
-        if not content:
-            continue
-        if role in {"tool", "function"}:
-            continue
-        if role == "system":
-            parts.append(f"SYSTEM:\n{content}")
-        elif role == "assistant":
-            parts.append(f"ASSISTANT:\n{content}")
-        else:
-            parts.append(f"USER:\n{content}")
-
-    parts.append("ASSISTANT:")
-    return "\n\n".join(parts)
-
-
 def call_hf_chat(
     messages: List[Dict[str, str]],
     *,
     max_tokens: int = 2048,
-    temperature: float = 0.2,
-    top_p: float = 0.9,
-    repetition_penalty: float = 1.15,
     model: Optional[str] = None,
     task_type: str = "default",
     timeout: Optional[int] = None,
@@ -1494,9 +1457,6 @@ def call_hf_chat(
         model=model,
         task_type=task_type,
         max_new_tokens=max_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        repetition_penalty=repetition_penalty,
         timeout_sec=timeout,
     )
     text = get_inference_client().generate_from_messages(req)
@@ -1507,13 +1467,11 @@ def call_hf_chat_stream(
     messages: List[Dict[str, str]],
     *,
     max_tokens: int = 512,
-    temperature: float = 0.3,
-    top_p: float = 0.85,
     model: Optional[str] = None,
     task_type: str = "chat",
     timeout: Optional[int] = None,
 ) -> Iterator[str]:
-    """Stream chat deltas from DeepSeek API as text chunks."""
+    """Stream chat deltas from Claude as text chunks."""
     client = get_inference_client()
     effective_task = (task_type or "chat").strip().lower()
 
@@ -1522,8 +1480,6 @@ def call_hf_chat_stream(
         model=model,
         task_type=task_type,
         max_new_tokens=max_tokens,
-        temperature=temperature,
-        top_p=top_p,
         timeout_sec=timeout,
     )
     selected_model, _ = client._resolve_primary_model(selection_req)
@@ -1532,33 +1488,25 @@ def call_hf_chat_stream(
     timeout_sec = timeout or client.interactive_timeout_sec
     last_error: Optional[Exception] = None
 
-    ds_client = get_deepseek_client().with_options(max_retries=1)
-
     for fallback_depth, model_name in enumerate(model_chain):
         start = time.perf_counter()
         try:
-            stream = ds_client.chat.completions.create(
-                model=model_name,
-                messages=messages,  # type: ignore[arg-type]
-                stream=True,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                top_p=top_p,
-                timeout=timeout_sec,
-            )
-
             emitted_any = False
-            for chunk in stream:
-                for choice in chunk.choices:  # type: ignore[union-attr]
-                    delta = getattr(choice, 'delta', None)
-                    if delta and delta.content:
-                        emitted_any = True
-                        yield delta.content
+            for delta in stream_text(
+                messages,
+                model=model_name,
+                max_tokens=max_tokens,
+                timeout=timeout_sec,
+                max_retries=1,
+            ):
+                if delta:
+                    emitted_any = True
+                    yield delta
 
             if emitted_any:
                 latency_ms = (time.perf_counter() - start) * 1000
                 logger.info(
-                    "✅ DeepSeek stream success: task=%s model=%s latency=%sms",
+                    "✅ Claude stream success: task=%s model=%s latency=%sms",
                     effective_task,
                     model_name,
                     round(latency_ms, 0),
@@ -1582,51 +1530,6 @@ def call_hf_chat_stream(
 HF_BLOCKING_CALL_CONCURRENCY = max(1, int(os.getenv("HF_BLOCKING_CALL_CONCURRENCY", "16")))
 _hf_call_semaphore: Optional[asyncio.Semaphore] = None
 _hf_call_semaphore_loop: Optional[asyncio.AbstractEventLoop] = None
-HF_ASYNC_MAX_CONNECTIONS = max(4, int(os.getenv("HF_ASYNC_MAX_CONNECTIONS", "64")))
-HF_ASYNC_MAX_KEEPALIVE_CONNECTIONS = max(
-    2,
-    int(os.getenv("HF_ASYNC_MAX_KEEPALIVE_CONNECTIONS", "32")),
-)
-HF_ASYNC_CONNECT_TIMEOUT_SEC = float(os.getenv("HF_ASYNC_CONNECT_TIMEOUT_SEC", "10.0"))
-HF_ASYNC_WRITE_TIMEOUT_SEC = float(os.getenv("HF_ASYNC_WRITE_TIMEOUT_SEC", "30.0"))
-HF_ASYNC_POOL_TIMEOUT_SEC = float(os.getenv("HF_ASYNC_POOL_TIMEOUT_SEC", "10.0"))
-_hf_async_http_client: Optional[httpx.AsyncClient] = None
-_hf_async_http_client_lock: Optional[asyncio.Lock] = None
-_hf_async_http_client_loop: Optional[asyncio.AbstractEventLoop] = None
-
-
-def _get_hf_async_http_client_lock() -> asyncio.Lock:
-    global _hf_async_http_client, _hf_async_http_client_lock, _hf_async_http_client_loop
-    loop = asyncio.get_running_loop()
-    if _hf_async_http_client_lock is None or _hf_async_http_client_loop is not loop:
-        # Test environments can spin up multiple event loops; reset pooled client per loop.
-        _hf_async_http_client = None
-        _hf_async_http_client_lock = asyncio.Lock()
-        _hf_async_http_client_loop = loop
-    return _hf_async_http_client_lock
-
-
-async def _get_hf_async_http_client() -> httpx.AsyncClient:
-    global _hf_async_http_client
-    lock = _get_hf_async_http_client_lock()
-    async with lock:
-        if _hf_async_http_client is None or _hf_async_http_client.is_closed:
-            limits = httpx.Limits(
-                max_connections=HF_ASYNC_MAX_CONNECTIONS,
-                max_keepalive_connections=HF_ASYNC_MAX_KEEPALIVE_CONNECTIONS,
-            )
-            _hf_async_http_client = httpx.AsyncClient(http2=True, limits=limits)
-    assert _hf_async_http_client is not None
-    return _hf_async_http_client
-
-
-async def _close_hf_async_http_client() -> None:
-    global _hf_async_http_client
-    lock = _get_hf_async_http_client_lock()
-    async with lock:
-        if _hf_async_http_client is not None:
-            await _hf_async_http_client.aclose()
-            _hf_async_http_client = None
 
 
 def _get_hf_call_semaphore() -> asyncio.Semaphore:
@@ -1644,39 +1547,19 @@ async def _run_hf_blocking(func, /, *args, **kwargs):
         return await asyncio.to_thread(func, *args, **kwargs)
 
 
-def _hf_retry_sleep_seconds(backoff_sec: float, attempt: int) -> float:
-    jitter_factor = random.uniform(0.9, 1.2)
-    return backoff_sec * attempt * jitter_factor
-
-
-def _resolve_async_hf_timeout(timeout_sec: int) -> httpx.Timeout:
-    return httpx.Timeout(
-        connect=HF_ASYNC_CONNECT_TIMEOUT_SEC,
-        read=float(timeout_sec),
-        write=HF_ASYNC_WRITE_TIMEOUT_SEC,
-        pool=HF_ASYNC_POOL_TIMEOUT_SEC,
-    )
-
-
 async def call_hf_chat_async(
     messages: List[Dict[str, str]],
     *,
     max_tokens: int = 2048,
-    temperature: float = 0.2,
-    top_p: float = 0.9,
-    repetition_penalty: float = 1.15,
     model: Optional[str] = None,
     task_type: str = "default",
     timeout: Optional[int] = None,
 ) -> str:
-    """Async wrapper for DeepSeek chat completions."""
+    """Async wrapper for Claude chat completions."""
     return await _run_hf_blocking(
         call_hf_chat,
         messages,
         max_tokens=max_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        repetition_penalty=repetition_penalty,
         model=model,
         task_type=task_type,
         timeout=timeout,
@@ -1687,18 +1570,14 @@ async def call_hf_chat_stream_async(
     messages: List[Dict[str, str]],
     *,
     max_tokens: int = 512,
-    temperature: float = 0.3,
-    top_p: float = 0.85,
     model: Optional[str] = None,
     task_type: str = "chat",
     timeout: Optional[int] = None,
 ) -> AsyncIterator[str]:
-    """Async streaming wrapper for DeepSeek chat completions."""
+    """Async streaming wrapper for Claude chat completions."""
     stream_iter = call_hf_chat_stream(
         messages,
         max_tokens=max_tokens,
-        temperature=temperature,
-        top_p=top_p,
         model=model,
         task_type=task_type,
         timeout=timeout,
@@ -1714,13 +1593,6 @@ async def call_hf_chat_stream_async(
             return
         if chunk:
             yield str(chunk)
-
-
-def load_local_math_model(model_name: str = "deepseek-flash"):
-    """Optional local loader — deprecated in favor of DeepSeek API."""
-    raise NotImplementedError(
-        "Local model loading is deprecated. Use DeepSeek API via DEEPSEEK_API_KEY env var."
-    )
 
 
 # ─── Math Tutor Prompt & Wrapper ──────────────────────────────
@@ -2310,17 +2182,18 @@ Student question:
 
 
 def call_math_tutor_llm(question: str) -> str:
-    """Convenience wrapper: call the HF serverless model with the MathPulse tutor prompt via chat completions."""
+    """Convenience wrapper: ask Claude a question using the MathPulse tutor prompt."""
     prompt = build_math_tutor_prompt(question)
     messages = [{"role": "user", "content": prompt}]
-    return call_hf_chat(messages, max_tokens=CHAT_MAX_NEW_TOKENS, temperature=0.2, top_p=0.9, task_type="chat")
+    return call_hf_chat(messages, max_tokens=CHAT_MAX_NEW_TOKENS, task_type="chat")
 
 
 # ─── Request/Response Models ──────────────────────────────────
 
 
 class ChatMessage(BaseModel):
-    role: str = Field(..., description="'user' or 'assistant'")
+    # Only the two conversation roles: a client-supplied "system" turn would be promoted to the model's system prompt.
+    role: Literal["user", "assistant"]
     content: str
 
 
@@ -2553,13 +2426,13 @@ class TestingResetResponse(BaseModel):
 # to decide whether to route traffic; a slow response or crash here causes 502.
 @app.get("/health")
 async def health_check():
-    # Cached DeepSeek auth state is read dynamically (never imported by name):
+    # Cached Anthropic auth state is read dynamically (never imported by name):
     # the startup probe rebinds the holder, and this handler must see the
     # current object. Missing module or holder degrades to "unchecked".
     try:
         import startup_validation as _startup_validation_module
         cached_auth = (
-            getattr(_startup_validation_module, "cached_deepseek_auth_state", None) or {}
+            getattr(_startup_validation_module, "cached_anthropic_auth_state", None) or {}
         )
     except Exception:
         cached_auth = {}
@@ -2569,7 +2442,7 @@ async def health_check():
         "firebase": _firebase_ready,
         "chat_model": CHAT_MODEL,
         "risk_model": RISK_MODEL,
-        "deepseek": {
+        "anthropic": {
             "status": cached_auth.get("status", "unchecked"),
             "key_suffix": cached_auth.get("key_suffix", "****"),
             "checked_at": cached_auth.get("checked_at"),
@@ -2933,7 +2806,7 @@ async def chat_tutor_endpoint(request: Request, chat_request: ChatRequest):
 
 
 async def chat_tutor(request: ChatRequest, http_request: Request = None):
-    """AI Math Tutor powered by Hugging Face Inference routing."""
+    """AI Math Tutor powered by Claude."""
     _start_ms = int(time.monotonic() * 1000)
     try:
         _enforce_chat_rate_limit(http_request)
@@ -3015,14 +2888,12 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
         messages.extend(_budgeted_chat_history(request.history))
         messages.append({"role": "user", "content": request.message})
 
-        # Call HF serverless with retry (handled inside call_hf_chat)
+        # Call Claude with retry (handled inside call_hf_chat)
         _t1 = int(time.monotonic() * 1000)
         try:
             answer = await call_hf_chat_async(
                 messages,
                 max_tokens=CHAT_MAX_NEW_TOKENS,
-                temperature=0.3,
-                top_p=0.85,
                 task_type="chat",
             )
         except Exception as hf_err:
@@ -3172,8 +3043,6 @@ async def chat_tutor_stream(request: ChatRequest, http_request: Request = None):
                     stream_iterator = call_hf_chat_stream_async(
                         attempt_messages,
                         max_tokens=CHAT_MAX_NEW_TOKENS,
-                        temperature=0.3,
-                        top_p=0.85,
                         task_type="chat",
                     )
 
@@ -3350,8 +3219,6 @@ async def verify_math_response(
             text = await call_hf_chat_async(
                 base_messages,
                 max_tokens=2048,
-                temperature=0.7,
-                top_p=0.9,
                 task_type="verify_solution",
             )
             answer = _extract_final_answer(text)
@@ -3445,7 +3312,6 @@ Respond with ONLY the Python code, no markdown fences, no explanation."""
                 {"role": "user", "content": prompt},
             ],
             max_tokens=800,
-            temperature=0.1,
         )
         # Strip markdown code fences if present
         code = re.sub(r"^```(?:python)?\s*\n?", "", raw_code.strip())
@@ -3613,8 +3479,8 @@ print(json.dumps(payload))
 
 async def llm_judge_verification(problem: str, solution: str) -> Dict[str, Any]:
     """
-    Use a second LLM call with low temperature to judge whether a math
-    solution is correct. Checks formula usage, calculations, and logic.
+    Use a second LLM call to judge whether a math solution is correct.
+    Checks formula usage, calculations, and logic.
     Returns dict with 'correct' (bool), 'issues' (list), 'confidence' (float).
     """
 
@@ -3649,7 +3515,6 @@ Respond with ONLY a JSON object (no markdown, no explanation outside the JSON):
             ],
             task_type="verify_solution",
             max_tokens=500,
-            temperature=0.1,
         )
         # Extract JSON from response
         json_start = raw.find("{")
@@ -3798,7 +3663,7 @@ async def verify_solution(request: VerifySolutionRequest, response: Response):
         raise HTTPException(status_code=500, detail=f"Verification error: {str(e)}")
 
 
-# ─── Student Risk Classification (DeepSeek) ───
+# ─── Student Risk Classification (Claude) ───
 
 
 RISK_LABELS = [
@@ -3811,6 +3676,17 @@ RISK_MAPPING = {
     "high risk of failing": "High",
     "medium academic risk": "Medium",
     "low risk academically stable": "Low",
+}
+
+# Structured outputs pin risk_label to the labels RISK_MAPPING knows. They cannot bound a number, so confidence is clamped.
+RISK_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "risk_label": {"type": "string", "enum": list(RISK_MAPPING)},
+        "confidence": {"type": "number"},
+    },
+    "required": ["risk_label", "confidence"],
+    "additionalProperties": False,
 }
 
 
@@ -3889,8 +3765,6 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
             {"role": "user", "content": prompt},
         ],
         max_tokens=260,
-        temperature=0.2,
-        top_p=0.9,
         task_type="risk_narrative",
         timeout=120,
     )
@@ -3899,16 +3773,14 @@ async def _generate_risk_recommendations_llm(data: EnhancedRiskRequest, result: 
 
 @app.post("/api/predict-risk", response_model=RiskPrediction)
 async def predict_risk(student_data: StudentRiskData, response: Response):
-    """Student risk prediction using DeepSeek AI classification"""
+    """Student risk prediction using Claude AI classification"""
     try:
         cache_key = deterministic_response_cache.build_cache_key(
             "predict_risk",
             student_data.model_dump(),
         )
         _set_cache_response_header(response, hit=False)
-        _ensure_deepseek_available()
-
-        client = get_deepseek_client()
+        _ensure_ai_available()
 
         risk_prompt = (
             f"Student academic performance summary: "
@@ -3916,50 +3788,42 @@ async def predict_risk(student_data: StudentRiskData, response: Response):
             f"Average quiz score is {student_data.avgQuizScore:.0f}%. "
             f"Assignment completion rate is {student_data.assignmentCompletion:.0f}%.\n\n"
             f"Classify this student into exactly one of these risk levels: {', '.join(RISK_LABELS)}. "
-            f"Respond with a JSON object containing: risk_label, confidence (0-1 float), reasoning (short sentence)."
+            f"Also give your confidence in that label as a number from 0 to 1."
         )
 
-        # Retry DeepSeek inference with backoff
+        # Retry Claude inference with backoff
         last_err: Optional[Exception] = None
         for attempt in range(3):
             try:
-                api_response = await _run_hf_blocking(
-                    lambda model=CHAT_MODEL, prompt=risk_prompt: client.chat.completions.create(  # type: ignore[arg-type]
-                        model=model,
-                        messages=[
-                            {"role": "system", "content": "You are a student risk analyst. Respond with valid JSON only."},
-                            {"role": "user", "content": prompt},
-                        ],
-                        response_format={"type": "json_object"},
-                        max_tokens=256,
-                        temperature=0.0,
-                    )
+                reply = await _run_hf_blocking(
+                    complete_json,
+                    [
+                        {"role": "system", "content": "You are a student risk analyst."},
+                        {"role": "user", "content": risk_prompt},
+                    ],
+                    schema=RISK_SCHEMA,
+                    model=CHAT_MODEL,
+                    max_tokens=256,
+                    timeout=30.0,
                 )
+                risk_label = reply["risk_label"]
+                risk_level = RISK_MAPPING[risk_label]
+                confidence = min(1.0, max(0.0, float(reply["confidence"])))
                 last_err = None
                 break
-            except (APIError, RateLimitError, APITimeoutError, Exception) as api_err:
+            except Exception as api_err:
                 last_err = api_err
-                logger.warning(f"DeepSeek risk prediction attempt {attempt + 1} failed: {api_err}")
+                logger.warning(f"Claude risk prediction attempt {attempt + 1} failed: {api_err}")
                 if attempt < 2:
                     await asyncio.sleep(2 ** attempt)
 
         if last_err is not None:
-            logger.error(f"DeepSeek risk prediction failed after 3 attempts: {last_err}")
+            logger.error(f"Claude risk prediction failed after 3 attempts: {last_err}")
             raise HTTPException(
                 status_code=502,
                 detail="Risk prediction model is temporarily unavailable.",
             )
 
-        content = api_response.choices[0].message.content or "{}"
-        try:
-            parsed = json.loads(content)
-        except json.JSONDecodeError:
-            parsed = {"risk_label": "medium academic risk", "confidence": 0.5}
-
-        risk_label = str(parsed.get("risk_label", "medium academic risk"))
-        confidence = float(parsed.get("confidence", 0.5))  # type: ignore[arg-type]
-
-        risk_level = RISK_MAPPING.get(risk_label, "Medium")
         strict_risk_level = _to_strict_risk_level(risk_level)
         top_factors = _basic_risk_top_factors(student_data)
 
@@ -4075,7 +3939,6 @@ Format as a numbered list. Be specific to the math topics mentioned."""
             content = await call_hf_chat_async(
                 messages,
                 max_tokens=1500,
-                temperature=0.7,
                 task_type="learning_path",
             )
         except Exception as hf_err:
@@ -4164,7 +4027,6 @@ Keep the response under 200 words. Be specific and practical."""
             content = await call_hf_chat_async(
                 messages,
                 max_tokens=800,
-                temperature=0.7,
                 task_type="daily_insight",
             )
         except Exception as hf_err:
@@ -8428,7 +8290,6 @@ If a column doesn't match any field, skip it. Respond ONLY with a JSON object ma
                     mapping_text = await call_hf_chat_async(
                         messages=[{"role": "user", "content": prompt}],
                         max_tokens=300,
-                        temperature=0.1,
                     )
                     json_start = mapping_text.find("{")
                     json_end = mapping_text.rfind("}") + 1
@@ -9262,7 +9123,6 @@ TEXT:
                     topic_text = await call_hf_chat_async(
                         messages=[{"role": "user", "content": topic_prompt}],
                         max_tokens=700,
-                        temperature=0.1,
                     )
                     json_start = topic_text.find("{")
                     json_end = topic_text.rfind("}") + 1
@@ -10382,8 +10242,6 @@ async def _ai_validate_lesson_plan(
             ],
             task_type="lesson_generation",
             max_tokens=420,
-            temperature=0.1,
-            top_p=0.9,
             timeout=90,
         )
         parsed = _parse_lesson_plan_json(raw)
@@ -10884,7 +10742,6 @@ async def generate_lesson_plan(http_request: Request, request: LessonGenerationR
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=1200,
-                temperature=0.25,
                 task_type="lesson_generation",
             )
             lesson_payload = _parse_lesson_plan_json(raw)
@@ -11665,7 +11522,7 @@ Respond ONLY with a valid JSON array of question objects. No markdown, no explan
 
 Points by difficulty: easy=1, medium=3, hard=5.
 For non-multiple-choice questions, omit the "options" field or set to null.
-Do NOT output chain-of-thought, planning notes, "Thinking Process", or any preamble.
+Return only the JSON array, with no markdown, notes or preamble.
 If you cannot comply with constraints, still return the closest valid JSON array only.
 """
 
@@ -11754,7 +11611,7 @@ async def _repair_quiz_json_with_llm(
             "role": "system",
             "content": (
                 "You are a strict JSON formatter. Convert the user's draft into ONLY a valid JSON array "
-                "of quiz question objects. Do not include markdown, commentary, or chain-of-thought. "
+                "of quiz question objects, with no markdown, notes or preamble. "
                 f"Return exactly {num_questions} objects when possible."
             ),
         },
@@ -11770,8 +11627,6 @@ async def _repair_quiz_json_with_llm(
     repaired_text = await call_hf_chat_async(
         repair_messages,
         max_tokens=min(4096, max(2048, num_questions * 260)),
-        temperature=0.0,
-        top_p=0.1,
         timeout=timeout,
         task_type="default",
         model=model_id,
@@ -11793,7 +11648,7 @@ async def _regenerate_quiz_json_strict(
             "content": (
                 "You generate quizzes as strict JSON only. "
                 "Output must begin with '[' and end with ']'. "
-                "Do not output markdown, notes, or chain-of-thought."
+                "Do not output markdown, notes or a preamble."
             ),
         },
         {
@@ -11809,8 +11664,6 @@ async def _regenerate_quiz_json_strict(
     strict_text = await call_hf_chat_async(
         strict_messages,
         max_tokens=min(4096, max(2048, num_questions * 260)),
-        temperature=0.0,
-        top_p=0.1,
         timeout=timeout,
         task_type="default",
         model=model_id,
@@ -11921,7 +11774,7 @@ def _validate_quiz_questions(
 @app.post("/api/quiz/generate", response_model=QuizResponse)
 async def generate_quiz(http_request: Request, request: QuizGenerationRequest):
     """
-    Generate an AI-powered quiz via HF Serverless Inference.
+    Generate an AI-powered quiz with Claude.
     Supports Bloom's Taxonomy integration, multiple question types,
     and graph-based identification questions.
     """
@@ -12049,7 +11902,7 @@ Remember:
 
         for attempt in range(max_attempts):
             raw_content = await call_hf_chat_async(
-                messages, max_tokens=max_tokens, temperature=0.1, top_p=0.9,
+                messages, max_tokens=max_tokens,
                 timeout=http_timeout,
                 task_type="quiz_generation",
                 model=HF_QUIZ_MODEL_ID,
@@ -12571,7 +12424,6 @@ Focus on actionable recommendations. Be encouraging yet honest."""
                         {"role": "user", "content": ai_prompt},
                     ],
                     max_tokens=200,
-                    temperature=0.3,
                 )
                 if overall_perspective:
                     # Add to recommended as a note
@@ -14025,7 +13877,7 @@ Return ONLY this exact JSON (no other text):
             {"role": "system", "content": "You are a DepEd curriculum lesson designer. Return ONLY valid JSON."},
             {"role": "user", "content": prompt},
         ]
-        response = await call_hf_chat_async(messages, max_tokens=4096, temperature=0.3, task_type="lesson")
+        response = await call_hf_chat_async(messages, max_tokens=4096, task_type="lesson")
         
         import re
         json_match = re.search(r'\{.*\}', response, re.DOTALL)
@@ -14438,7 +14290,7 @@ Return ONLY this strict JSON array:
                 {"role": "system", "content": "You are a quiz generator. Return ONLY valid JSON."},
                 {"role": "user", "content": quiz_prompt},
             ]
-            response = await call_hf_chat_async(messages, max_tokens=4096, temperature=0.3, task_type="quiz")
+            response = await call_hf_chat_async(messages, max_tokens=4096, task_type="quiz")
             items_json = response
         except Exception as llm_err:
             logger.error(f"Adaptive quiz LLM error: {llm_err}")
@@ -14643,9 +14495,6 @@ Return as JSON with fields: topic, sections (array of title/content), suggested_
             ],
             task_type="rag_lesson",
             max_new_tokens=1800,
-            temperature=0.2,
-            top_p=0.9,
-            enable_thinking=True,
             timeout_sec=100,
             max_retries=1,
         )

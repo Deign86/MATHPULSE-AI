@@ -186,7 +186,7 @@ function lessonFor(title: string): RagLessonResponse {
     retrievalBand: 'high',
     needsReview: false,
     sources: [],
-    activeModel: 'deepseek-v4-pro',
+    activeModel: 'claude-opus-5-5',
   };
 }
 
@@ -363,13 +363,13 @@ describe('refire guards', () => {
   });
 
   it('ModuleFolderCard runs one AI preview per module across remounts with equal module objects', async () => {
-    const fetchStub = routedFetch([[/\/api\/deepseek\/module-preview$/, () => ({
+    const fetchStub = routedFetch([[/\/api\/ai\/module-preview$/, () => ({
       ai_overview: 'Preview from DepEd modules',
       rag_confidence: 'high',
       generated: true,
     })]]);
     vi.stubGlobal('fetch', fetchStub);
-    const previewCalls = () => requestedUrls(fetchStub).filter((url) => url.endsWith('/api/deepseek/module-preview'));
+    const previewCalls = () => requestedUrls(fetchStub).filter((url) => url.endsWith('/api/ai/module-preview'));
     const comingSoonModule = () => ({
       id: 'refire-module-1',
       title: 'Rational Functions',
@@ -391,13 +391,13 @@ describe('refire guards', () => {
   });
 
   it('ModuleFolderCard retries a preview that was not generated on the next mount', async () => {
-    const fetchStub = routedFetch([[/\/api\/deepseek\/module-preview$/, () => ({
+    const fetchStub = routedFetch([[/\/api\/ai\/module-preview$/, () => ({
       ai_overview: '',
       rag_confidence: 'low',
       generated: false,
     })]]);
     vi.stubGlobal('fetch', fetchStub);
-    const previewCalls = () => requestedUrls(fetchStub).filter((url) => url.endsWith('/api/deepseek/module-preview'));
+    const previewCalls = () => requestedUrls(fetchStub).filter((url) => url.endsWith('/api/ai/module-preview'));
     const comingSoonModule = { id: 'refire-module-2', title: 'Logic', subject: 'General Mathematics', quarter: 'Q3', isAvailable: false, moduleStatus: 'coming_soon' };
 
     const first = render(<ModuleFolderCard module={comingSoonModule} index={0} onClick={() => {}} precomputedAvailable={false} />);

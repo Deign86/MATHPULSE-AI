@@ -2193,7 +2193,7 @@ const LessonViewer: React.FC<LessonViewerProps> = ({
                   <div className="bg-slate-50 border border-slate-200/80 rounded-xl p-3">
                     <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Active Model</p>
                     <p className="text-sm font-black text-slate-800 truncate mt-0.5 font-mono">
-                      {activeModel ? activeModel.split('/').pop() : 'deepseek'}
+                      {activeModel ? activeModel.split('/').pop() : 'claude'}
                     </p>
                   </div>
                 </div>

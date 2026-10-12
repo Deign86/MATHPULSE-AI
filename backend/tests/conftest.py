@@ -4,6 +4,7 @@ This conftest:
 1. Ensures backend/ is at sys.path[0] so `services.*` resolves to backend/services/.
 2. Mocks Firebase Admin auth so test tokens (Bearer mock_token_<uid>)
    work without real Firebase credentials.
+3. Keeps tests off the live Claude API.
 """
 
 import sys
@@ -11,6 +12,31 @@ import os
 from types import SimpleNamespace
 
 import pytest
+
+# services.ai_client loads .env.local without overriding variables that are already set. A variable pinned here, even
+# to "", therefore beats a developer's .env.local; one that is merely unset would be refilled from it.
+# A test that forgets to mock a Claude call must fail instead of spending real credits. This base URL has no HTTP
+# scheme, so the SDK raises APIConnectionError at once; a refused localhost connect also fails, but takes ~2 s on
+# Windows.
+os.environ["ANTHROPIC_API_KEY"] = "test-anthropic-key"
+os.environ["ANTHROPIC_BASE_URL"] = "unmocked-claude-call://blocked"
+os.environ["ANTHROPIC_WORKSPACE_ID"] = ""
+os.environ["CLAUDE_CHAT_MODEL"] = ""
+os.environ["CLAUDE_REASONER_MODEL"] = ""
+os.environ["MODEL_PROFILE"] = ""
+os.environ["AI_ENABLED"] = "true"
+# A non-default id in any of these would redirect or flatten the tasks the routing tests resolve.
+for _routing_variable in (
+    "INFERENCE_MODEL_ID",
+    "INFERENCE_CHAT_MODEL_ID",
+    "INFERENCE_CHAT_MODEL_TEMP_OVERRIDE",
+    "INFERENCE_LOCK_MODEL_ID",
+    "INFERENCE_ENFORCE_LOCK_MODEL",
+    "INFERENCE_FALLBACK_MODELS",
+    "HF_QUIZ_MODEL_ID",
+    "HF_RAG_MODEL_ID",
+):
+    os.environ[_routing_variable] = ""
 
 # ─── Firebase Auth Mock ────────────────────────────────────────────────────────
 # Intercept firebase_admin.auth.verify_id_token so that test tokens like

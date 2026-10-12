@@ -26,7 +26,6 @@ export interface AdminSystemConfig {
   auditLogVisible: boolean;
   aiConfig: {
     modelName: string;
-    temperature: number;
     endpoint: string;
   };
 }
@@ -53,8 +52,7 @@ export const DEFAULT_ADMIN_SYSTEM_CONFIG: AdminSystemConfig = {
   maxClassSize: 50,
   auditLogVisible: true,
   aiConfig: {
-    modelName: 'deepseek-flash',
-    temperature: 0.7,
-    endpoint: 'https://api.deepseek.com',
+    modelName: 'claude-haiku-5-5',
+    endpoint: 'https://api.anthropic.com',
   },
 };

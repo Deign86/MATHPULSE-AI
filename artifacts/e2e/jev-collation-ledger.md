@@ -11,7 +11,7 @@ _Live TypeSafe run 2026-09-20 16:26 UTC; model `jev-1.13.0`; 51 Jev calls, 19.3s
 | 154 | [P0] Quiz Battle answers never score: stale roundNumber race (400/504) | battle (1.0) | 3.65 | 1.84 | 1.69 | 0.827 | P0 | 0.97 | 1 | match |
 | 155 | [P0] Battle stats/history crash: this.toMillis is not a function (zod-cloned Timestamp) | ux-frontend (0.48) | 1.99 | 1.89 | 1.9 | 0.643 | P1 | 0.79 | 3 | DIFF->curator |
 | 156 | [Security] Hardcoded demo creds + client-side role gating + cross-role notification leak | auth-security (1.0) | 4.0 | 0.99 | 2.96 | 0.87 | P0 | 0.96 | 2 | match |
-| 157 | [P1] Prod bundle hits test HF backend unauthenticated (RAG/DeepSeek endpoints) | auth-security (0.7) | 3.42 | 1.02 | 2.78 | 0.787 | P0 | 0.92 | 2 | match |
+| 157 | [P1] Prod bundle hits test HF backend unauthenticated (RAG/LLM endpoints) | auth-security (0.7) | 3.42 | 1.02 | 2.78 | 0.787 | P0 | 0.92 | 2 | match |
 | 158 | [P1] Notifications + dashboard data disagree (badge 12 vs 100+, XP 486 vs 586, order, dupes) | ux-frontend (1.0) | 2.19 | 1.03 | 2.15 | 0.582 | P1 | 0.12 | 3 | match |
 | 159 | [P2] Overkill hygiene bundle: latency, overlay trap, boundaries, swallowed rejections, meta, auth nits | ux-frontend (1.0) | 2.11 | 1.02 | 2.7 | 0.616 | P1 | 0.44 | 3 | DIFF->curator |
 | 160 | [P1] rag: POST /api/rag/lesson returns 503 retrieval_failed (Chroma Error finding id) | backend-data (1.0) | 3.0 | 2.0 | 2.02 | 0.793 | P0 | 0.32 | 2 | match |
@@ -34,7 +34,7 @@ Prefilter (deterministic token Jaccard>=0.15): 6 pairs scored with 3-level pairw
 1. Wave 1 — #154 [P0] Quiz Battle answers never score: stale roundNumber race (400/504) [P0/battle, comp=0.827, noul=0.97]
 2. Wave 2 — #156 [Security] Hardcoded demo creds + client-side role gating + cross-role notification leak [P0/auth-security, comp=0.87, noul=0.96]
 3. Wave 2 — #160 [P1] rag: POST /api/rag/lesson returns 503 retrieval_failed (Chroma Error finding id) [P0/backend-data, comp=0.793, noul=0.32]
-4. Wave 2 — #157 [P1] Prod bundle hits test HF backend unauthenticated (RAG/DeepSeek endpoints) [P0/auth-security, comp=0.787, noul=0.92]
+4. Wave 2 — #157 [P1] Prod bundle hits test HF backend unauthenticated (RAG/LLM endpoints) [P0/auth-security, comp=0.787, noul=0.92]
 5. Wave 2 — #161 [P1] memory: GET /api/memory/health returns 500 NameError (undefined name server-side) [P0/backend-data, comp=0.701, noul=0.19]
 6. Wave 2 — #163 [P2] activity-feed: subscribeToActivities Firestore permissions denial on Teacher Dashboard [P1/auth-security, comp=0.64, noul=0.22]
 7. Wave 2 — #164 [Security / UX] Obfuscate internal RAG telemetry and model metadata in Curriculum Grounding Evidence modal for student users [P1/auth-security, comp=0.594, noul=0.36]

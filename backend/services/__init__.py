@@ -15,7 +15,7 @@ from .inference_client import (
 )
 
 from .ai_client import (
-    get_deepseek_client,
+    get_anthropic_client,
     CHAT_MODEL,
     REASONER_MODEL,
     APIError,
@@ -35,7 +35,7 @@ __all__ = [
     "reset_runtime_overrides",
     "model_supports_thinking",
     "_MODEL_PROFILES",
-    "get_deepseek_client",
+    "get_anthropic_client",
     "CHAT_MODEL",
     "REASONER_MODEL",
     "APIError",

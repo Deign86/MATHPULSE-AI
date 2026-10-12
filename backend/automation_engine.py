@@ -14,6 +14,7 @@ Each event is routed to a dedicated handler that orchestrates
 classification, quiz generation, notifications and dashboard updates.
 """
 
+import asyncio
 import math
 import logging
 from typing import List, Optional, Dict, Any
@@ -125,7 +126,7 @@ class MathPulseAutomationEngine:
 
     Each ``handle_*`` method is an independent, self-contained handler that
     receives a validated Pydantic payload and returns an ``AutomationResult``.
-    Firebase / Hugging Face calls are only attempted when available.
+    Firebase / Claude calls are only attempted when available.
     """
 
     # ────────────────────────────────────────────────────────────
@@ -567,7 +568,7 @@ class MathPulseAutomationEngine:
             })
         return quizzes
 
-    # --- AI helpers (Hugging Face) ---
+    # --- AI helpers (Claude) ---
 
     async def _generate_learning_path(
         self,
@@ -575,7 +576,7 @@ class MathPulseAutomationEngine:
         weak_topics: List[Dict[str, Any]],
         grade_level: str,
     ) -> Optional[str]:
-        """Generate a personalised learning path via HF Serverless Inference."""
+        """Generate a personalised learning path via Claude."""
         try:
             from main import call_hf_chat
 
@@ -597,7 +598,8 @@ class MathPulseAutomationEngine:
                 "Format as a numbered list. Be specific."
             )
 
-            return call_hf_chat(
+            return await asyncio.to_thread(
+                call_hf_chat,
                 messages=[
                     {
                         "role": "system",
@@ -609,7 +611,6 @@ class MathPulseAutomationEngine:
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=1500,
-                temperature=0.7,
             )
         except Exception as e:
             logger.warning(f"Learning-path AI call failed: {e}")
@@ -620,7 +621,7 @@ class MathPulseAutomationEngine:
         risk_classifications: Dict[str, Dict[str, Any]],
         weak_topics: List[Dict[str, Any]],
     ) -> Optional[str]:
-        """Generate teacher intervention recommendations via HF Serverless Inference."""
+        """Generate teacher intervention recommendations via Claude."""
         try:
             from main import call_hf_chat
 
@@ -647,7 +648,8 @@ class MathPulseAutomationEngine:
                 "Keep response under 300 words, structured with clear sections."
             )
 
-            return call_hf_chat(
+            return await asyncio.to_thread(
+                call_hf_chat,
                 messages=[
                     {
                         "role": "system",
@@ -659,7 +661,6 @@ class MathPulseAutomationEngine:
                     {"role": "user", "content": prompt},
                 ],
                 max_tokens=1000,
-                temperature=0.5,
             )
         except Exception as e:
             logger.warning(f"Teacher-intervention AI call failed: {e}")

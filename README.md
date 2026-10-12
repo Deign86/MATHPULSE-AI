@@ -47,8 +47,8 @@
   <a href="https://tailwindcss.com">
     <img src="https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=flat&logo=tailwindcss&logoColor=white" alt="Tailwind CSS" />
   </a>
-  <a href="https://deepseek.com">
-    <img src="https://img.shields.io/badge/DeepSeek-API-7B3FE4?style=flat" alt="DeepSeek" />
+  <a href="https://www.anthropic.com">
+    <img src="https://img.shields.io/badge/Anthropic-API-D97757?style=flat" alt="Anthropic" />
   </a>
 </p>
 
@@ -98,7 +98,7 @@
 MathPulse AI is an **installable, gamified learning platform** for SHS math — a free, repository-owned alternative to generic tutoring apps, purpose-built around the **DepEd Strengthened SHS curriculum**. Students get diagnostic assessments, AI-generated study plans, RAG-grounded lessons, and a 24/7 AI tutor. Teachers get at-risk detection and class analytics. Admins get platform-wide oversight and AI cost monitoring.
 
 - **Curriculum-first** — modules load directly from DepEd SHS guides (General Math, Business Math, Statistics & Probability); RAG lesson generation cites real teaching-module sources
-- **L.O.L.I. AI tutor** — Logical Operations & Learning Intelligence, powered by DeepSeek with streaming, continuation repair, and KaTeX math rendering
+- **L.O.L.I. AI tutor** — Logical Operations & Learning Intelligence, powered by Claude with streaming, continuation repair, and KaTeX math rendering
 - **Gamified to the core** — XP, exponential leveling, 7-day reward cycles, streaks, 12+ achievements, Quiz Battle PvP, leaderboards
 - **Three role studios** — student, teacher, and admin dashboards, each with its own sidebar, metrics, and tools
 - **Runs anywhere** — installable PWA (offline-capable), native Android APK via Capacitor, Docker self-host
@@ -146,7 +146,7 @@ Gamified home base: hero greeting with Continue Learning, Start Learning module 
 - **Diagnostic Assessments** — skill-level evaluation on first login; at-risk subjects shape the whole journey
 - **Personalized Learning Paths** — AI-generated study plans built from weaknesses and priority topics
 - **Curriculum Modules** — DepEd-aligned lessons and quizzes with source citations, search, and subject/quarter/competency filters
-- **L.O.L.I. AI Chat Tutor** — DeepSeek-powered help with smart streaming, continuation detection, completion repair, think-tag stripping, and offline fallback answers
+- **L.O.L.I. AI Chat Tutor** — Claude-powered help with smart streaming, continuation detection, completion repair, think-tag stripping, and offline fallback answers
 - **Quiz Battle** — real-time PvP matchmaking over Firebase Realtime Database
 - **Daily Rewards** — 7-day claim cycle (XP boosts, streak shields, hint tokens) with Firestore streak tracking
 - **Gamification** — XP, exponential levels, streaks, 12+ achievements, animated XP toasts, global + section leaderboards
@@ -162,7 +162,7 @@ Gamified home base: hero greeting with Continue Learning, Start Learning module 
 Mission control for a class: headcount, class average, engagement, and at-risk counts up top; AI insight banner calling out students falling behind; class cards with risk badges; calendar + live activity stream on the rail.
 
 - **Teacher Dashboard** — 12-student overview with AI-generated daily insight and review-student shortcut
-- **Risk Classification** — dual pipeline: DeepSeek structured-output labels + supervised XGBoost/RandomForest scoring with SHAP explanations
+- **Risk Classification** — dual pipeline: Claude JSON-output labels + supervised XGBoost/RandomForest scoring with SHAP explanations
 - **Class Analytics & Topic Mastery** — per-student and class-wide metrics, topic performance views, competency tracking
 - **AI Quiz Maker & Question Bank** — import-grounded generation from uploaded class materials
 - **Smart Data Import** — CSV/Excel/PDF class records with AI column detection
@@ -185,10 +185,10 @@ Platform-wide command deck: active students/teachers/classes, XP event volume, a
 
 | Model | Primary use |
 | ----- | ----------- |
-| **deepseek-flash** | Global default: chat, verification, lesson/quiz generation, learning paths, daily insights, risk classification |
-| **deepseek-v4-pro** | Extended reasoning for complex RAG and curriculum search tasks |
+| **claude-haiku-5-5** | Global default (every task except RAG lessons under `prod`): chat, verification, lesson/quiz/practice generation, diagnostics, weakness detection, learning paths, daily insights, risk classification and narratives |
+| **claude-opus-5-5** | Extended reasoning for RAG lessons (`/api/rag/lesson*`) under the `prod` profile |
 
-Runtime routing (`backend/services/inference_client.py`) dispatches with fallback chains; profiles switchable live from the admin panel. Risk also has a supervised ML path (XGBoost/RandomForest, `models/risk_classifier.joblib`, trained via `/api/predict-risk/train-model`).
+Runtime routing (`backend/services/inference_client.py`) dispatches with fallback chains; profiles switchable live from the admin panel. `MODEL_PROFILE=prod` exports `INFERENCE_MODEL_ID=claude-haiku-5-5`, which overrides every task in the routing map except RAG lessons (`HF_RAG_MODEL_ID`, Opus); `dev` and `budget` run Haiku everywhere; with no profile, `config/models.yaml` applies (`rag_lesson` and `risk_narrative` on Opus). Risk also has a supervised ML path (XGBoost/RandomForest, `models/risk_classifier.joblib`, trained via `/api/predict-risk/train-model`).
 
 ---
 
@@ -214,7 +214,7 @@ Runtime routing (`backend/services/inference_client.py`) dispatches with fallbac
 | Technology | Purpose |
 | ---------- | ------- |
 | **FastAPI + Uvicorn** | 64-route Python API with OpenAPI docs, CORS, rate limiting |
-| **DeepSeek API** | Inference via OpenAI-compatible client (`prod` profile: reasoner for RAG, chat elsewhere) |
+| **Anthropic API** | Inference via the official `anthropic` Python SDK (`prod` profile: `claude-opus-5-5` for RAG lessons, `claude-haiku-5-5` elsewhere) |
 | **Chroma + `BAAI/bge-small-en-v1.5`** | Curriculum vector store (`datasets/vectorstore/`, `curriculum_chunks` collection) |
 | **LiteParse** | Local PDF/document parsing for ingestion and uploads |
 | **XGBoost / scikit-learn** | Supervised risk classification with SHAP explanations |
@@ -238,7 +238,7 @@ Runtime routing (`backend/services/inference_client.py`) dispatches with fallbac
 
 - **Node.js** ≥ 18 · **npm** ≥ 9 · **Python** ≥ 3.10
 - A **Firebase** project ([console](https://console.firebase.google.com/))
-- A **DeepSeek API key** ([platform.deepseek.com](https://platform.deepseek.com))
+- An **Anthropic API key** ([platform.claude.com](https://platform.claude.com))
 
 ### Installation
 
@@ -263,9 +263,9 @@ Runtime routing (`backend/services/inference_client.py`) dispatches with fallbac
    VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
    VITE_FIREBASE_APP_ID=your_app_id
 
-   # DeepSeek API (required for AI features)
-   DEEPSEEK_API_KEY=your_deepseek_api_key
-   DEEPSEEK_BASE_URL=https://api.deepseek.com
+   # Anthropic API (required for AI features)
+   ANTHROPIC_API_KEY=your_anthropic_api_key
+   # ANTHROPIC_WORKSPACE_ID=your_workspace_id (only if the key is not scoped to a workspace)
 
    # Backend API (optional — defaults to same-origin /api)
    VITE_API_URL=/api
@@ -288,7 +288,7 @@ Runtime routing (`backend/services/inference_client.py`) dispatches with fallbac
    ```bash
    cd backend
    pip install -r requirements.txt
-   export DEEPSEEK_API_KEY=your_deepseek_api_key
+   export ANTHROPIC_API_KEY=your_anthropic_api_key
    uvicorn main:app --reload --host 0.0.0.0 --port 7860
    ```
    > Set `VITE_API_URL=http://127.0.0.1:8000` when running FastAPI separately, or keep `/api` behind the Docker/Nginx proxy.
@@ -344,7 +344,7 @@ The FastAPI backend exposes **61 routes** across 15+ modules (interactive docs a
 | `pipeline_routes.py` | 5 | Student intelligence pipeline, nudges, recompute |
 | `admin_routes.py` | 4 | Admin PDF upload/reingest, school analytics |
 | `intervention_routes.py` | 3 | Intervention plans, stepped guides, PDF export |
-| `deepseek_rag_routes.py` | 3 | Weakness detection, module previews, study tips |
+| `ai_insight_routes.py` | 3 | Weakness detection, module previews, study tips |
 | `quiz_battle.py` | 3 | Quiz battle ingestion, bank status, results |
 | `practice.py` | 3 | Practice generation, submission, stats, history |
 | `diagnostic.py` | 1 | Full diagnostic + RAG analysis |
@@ -356,7 +356,7 @@ The FastAPI backend exposes **61 routes** across 15+ modules (interactive docs a
 | `GET` | `/health` | Health check with model status |
 | `POST` | `/api/chat` / `/api/chat/stream` | AI tutor conversation (SSE streaming) |
 | `POST` | `/api/verify-solution` | Multi-method math solution verification |
-| `POST` | `/api/predict-risk` | Risk classification (DeepSeek structured output) |
+| `POST` | `/api/predict-risk` | Risk classification (Claude JSON output) |
 | `POST` | `/api/predict-risk/enhanced` | ML risk scoring + LLM interventions |
 | `POST` | `/api/learning-path` | Personalized path from weaknesses |
 | `POST` | `/api/analytics/daily-insight` | Daily teacher-dashboard insights |
@@ -369,7 +369,7 @@ The FastAPI backend exposes **61 routes** across 15+ modules (interactive docs a
 | `GET` | `/api/admin/model-config` | Model config + profiles |
 | `POST` | `/api/admin/model-config/profile` | Switch profile (`dev`/`budget`/`prod`) |
 
-**Math verification pipeline** — self-consistency (3 samples, agreement-scored), sandboxed Python code verification, and a low-temperature LLM judge.
+**Math verification pipeline** — self-consistency (3 samples, agreement-scored), sandboxed Python code verification, and an LLM judge.
 
 ---
 

@@ -13,3 +13,6 @@
 *.sqlite3 binary
 *.db binary
 *.joblib binary
+
+# SSE fixtures stay LF everywhere: the stream tests split frames on blank lines
+*.sse text eol=lf

@@ -20,7 +20,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from services.ai_client import CHAT_MODEL, get_deepseek_client
+from services.ai_client import complete_text
 from services.llm_json import LLMJsonError, extract_json_value, extract_dict_list
 from rag.curriculum_rag import retrieve_curriculum_context
 import firebase_admin
@@ -358,22 +358,22 @@ OUTPUT FORMAT (strict JSON array, no extra text, no markdown):
 """
 
 
-async def _call_deepseek(system_prompt: str, user_message: str, temperature: float = 0.7) -> str:
+async def _call_claude(system_prompt: str, user_message: str) -> str:
     try:
-        client = get_deepseek_client().with_options(timeout=90.0, max_retries=1)
-        response = await asyncio.to_thread(
-            client.chat.completions.create,
-            model=CHAT_MODEL,
-            messages=[
+        return await asyncio.to_thread(
+            complete_text,
+            [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-            temperature=temperature,
-            response_format={"type": "json_object"},
+            # 15 questions with options and hints can outgrow the 4096-token default.
+            max_tokens=8192,
+            json_output=True,
+            timeout=90.0,
+            max_retries=1,
         )
-        return response.choices[0].message.content or ""
     except Exception as e:
-        logger.error(f"DeepSeek API error: {e}")
+        logger.error(f"Claude API error: {e}")
         raise HTTPException(status_code=500, detail="AI model unavailable. Please try again later.")
 
 
@@ -458,22 +458,21 @@ async def _generate_questions(
     user_message = f"Generate 15 diagnostic questions for a Grade 11 {strand} student."
 
     for attempt in range(2):
-        temperature = 0.7 if attempt == 0 else 0.3
         try:
-            raw_response = await _call_deepseek(system_prompt, user_message, temperature)
+            raw_response = await _call_claude(system_prompt, user_message)
             questions = _parse_questions_response(raw_response)
             valid_questions = [
                 question for question in questions
                 if _validate_diagnostic_question(question)
             ][:15]
             if len(valid_questions) < 15 and attempt == 0:
-                logger.warning("Fewer than 15 valid diagnostic questions, retrying with temperature=0.3")
+                logger.warning("Fewer than 15 valid diagnostic questions, retrying")
                 continue
             if valid_questions:
                 return test_id, valid_questions
         except ValueError:
             if attempt == 0:
-                logger.warning("Malformed JSON from DeepSeek, retrying with temperature=0.3")
+                logger.warning("Malformed JSON from Claude, retrying")
                 continue
             raise
 
@@ -1001,7 +1000,6 @@ Return ONLY valid JSON, no markdown fences."""
             [{"role": "user", "content": prompt}],
             # The analysis JSON alone runs ~1.7k tokens; 1500 cut it mid-string and forced the fallback.
             max_tokens=4096,
-            temperature=0.3,
             task_type="analytics",
         )
 

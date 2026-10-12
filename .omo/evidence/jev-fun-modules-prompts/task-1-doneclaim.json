@@ -14,7 +14,7 @@
   "manual_qa": [
     "Verified .omo/plans/jev-fun-modules-prompts.md lines 139-223.",
     "Verified rag_lesson retrieves curriculum context, invokes rag_lesson generation, and applies _ensure_7_sections.",
-    "Verified weakness detection retains the deterministic 60% rule seam before optional DeepSeek analysis.",
+    "Verified weakness detection retains the deterministic 60% rule seam before optional LLM analysis.",
     "Verified inference_client.py preserves runtime model mapping and scripts/jev_collate.py is precedent-only."
   ],
   "cleanup": [
@@ -23,7 +23,7 @@
     "No secrets or API keys were accessed or written."
   ],
   "risks": [
-    "The exact requested case-insensitive boundary probe returns FAIL because the plan intentionally contains both the self-test string and the explicit 'DO NOT remove DeepSeek' constraint. This is recorded verbatim; the corrected semantic check passes."
+    "The exact requested case-insensitive boundary probe returns FAIL because the plan intentionally contains both the self-test string and the explicit 'DO NOT remove the LLM provider' constraint. This is recorded verbatim; the corrected semantic check passes."
   ],
   "adversarial_results": {
     "stale_state": "PASS: plan was re-read and SHA-256 remained unchanged.",

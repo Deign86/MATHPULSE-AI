@@ -1,5 +1,5 @@
 """
-Tutor Check-in Engine — DeepSeek-powered contextual student engagement.
+Tutor Check-in Engine — AI-powered contextual student engagement.
 
 POST /api/tutor-checkin -> Generate a personalized check-in message for a student
 based on their recent activity, weak topics, and current risk status.
@@ -12,6 +12,7 @@ from typing import Dict, Optional
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from services.ai_client import CHAT_MODEL, complete_text
 from services.wri_service import ESCALATION_RISK_STATUSES, RiskLevel, normalize_risk_band
 from services.llm_text import to_plain_text
 
@@ -36,7 +37,7 @@ class TutorCheckinResponse(BaseModel):
 
 
 def _build_checkin_prompt(req: TutorCheckinRequest) -> str:
-    """Build a contextual prompt for DeepSeek to generate a tutor check-in."""
+    """Build a contextual prompt for Claude to generate a tutor check-in."""
     name = req.student_name or "Student"
     status: RiskLevel = normalize_risk_band(req.risk_status)
     wri = req.wri
@@ -77,21 +78,17 @@ Return ONLY the message text. No JSON, no markdown, no prefixes."""
 @router.post("", response_model=TutorCheckinResponse)
 def generate_tutor_checkin(req: TutorCheckinRequest):
     """
-    Generate a DeepSeek-powered tutor check-in message for a student.
+    Generate an AI-powered tutor check-in message for a student.
     """
     try:
-        # Lazy import to avoid startup dependency issues
-        from services.inference_client import InferenceClient
-
-        client = InferenceClient()
         prompt = _build_checkin_prompt(req)
 
-        # Call DeepSeek with a short, fast completion
-        response = client.generate(
-            messages=[{"role": "user", "content": prompt}],
-            model="deepseek-flash",
-            temperature=0.7,
+        # A short, fast completion; the template fallback below covers a slow or failed call.
+        response = complete_text(
+            [{"role": "user", "content": prompt}],
+            model=CHAT_MODEL,
             max_tokens=150,
+            timeout=30.0,
         )
 
         message = to_plain_text(response, strip_bullets=False) if response else ""
@@ -123,7 +120,7 @@ def generate_tutor_checkin(req: TutorCheckinRequest):
 
 
 def _fallback_message(risk_status: Optional[str]) -> str:
-    """Template-based fallback when DeepSeek is unavailable."""
+    """Template-based fallback when the AI is unavailable."""
     fallbacks: Dict[RiskLevel, str] = {
         "safe": "Great work! You're on track. Keep up the momentum with today's practice.",
         "watch": "I noticed you've been working hard. Let's take a moment to review any tricky concepts together.",

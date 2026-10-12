@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { AlertTriangle, ChevronRight, Lock, Clock, X, Sparkles } from 'lucide-react';
 import { TOPIC_LABELS } from '../lib/topicTaxonomy';
 import { CURRICULUM_MODULE_BLUEPRINTS, type ModuleStatus } from '../data/curriculumModules';
-import { fetchStudyTips } from '../services/deepseekRagService';
+import { fetchStudyTips } from '../services/aiInsightsService';
 import AtRiskStudyBrief, { type ResolutionState, type FallbackContentData } from './AtRiskStudyBrief';
 
 export type AtRiskResolutionState = 'accessible' | 'coming_soon' | 'progression_locked' | 'no_module';

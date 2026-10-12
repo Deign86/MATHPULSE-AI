@@ -703,7 +703,7 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
                     MathPulse AI Platform Environment
                   </p>
                   <p>Deployment: Progressive Web Application (PWA) • Node 22 Cloud Functions</p>
-                  <p>RAG Knowledge Base: BAAI/bge-small-en-v1.5 Embeddings • DeepSeek Reasoner</p>
+                  <p>RAG Knowledge Base: BAAI/bge-small-en-v1.5 Embeddings • Claude Opus 5.5</p>
                 </div>
               </div>
             )}

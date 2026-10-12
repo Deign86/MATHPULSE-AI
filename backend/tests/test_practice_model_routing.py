@@ -26,7 +26,6 @@ class TestPracticeRouting:
         """practice_generation and quiz_generation are distinct task types."""
         practice_model = get_model_for_task("practice_generation")
         quiz_model = get_model_for_task("quiz_generation")
-        # Both route to deepseek-flash but via separate config keys
-        # The important thing is they map through different env vars
-        assert "deepseek" in practice_model.lower()
-        assert "deepseek" in quiz_model.lower()
+        # Both default to the chat model; each task type must resolve to a Claude model.
+        assert practice_model.startswith("claude-")
+        assert quiz_model.startswith("claude-")

@@ -1046,7 +1046,7 @@ export interface WeaknessDetectionResponse {
   flagged_topics: string[];
   confidence: Record<string, number>;
   reasoning_summary: string;
-  source: 'deepseek' | 'rule_based';
+  source: 'ai' | 'rule_based';
 }
 
 // ─── RAG API Functions ──────────────────────────────────────
@@ -1573,10 +1573,12 @@ export const apiService = {
   deleteClassSection,
 
   async detectWeakness(payload: WeaknessDetectionRequest): Promise<WeaknessDetectionResponse> {
-    return apiFetch<WeaknessDetectionResponse>('/api/deepseek/weakness-detection', {
-      method: 'POST',
-      body: JSON.stringify(payload),
-    });
+    // One attempt: every retry re-runs the whole server-side analysis, and the abandoned run is not cancelled.
+    return apiFetch<WeaknessDetectionResponse>(
+      '/api/ai/weakness-detection',
+      { method: 'POST', body: JSON.stringify(payload) },
+      { ...AI_RETRY_OPTS, maxRetries: 0 },
+    );
   },
 
   getImportGroundedRolloutFlags(): ImportGroundedRolloutFlags {
@@ -2381,7 +2383,7 @@ export const apiService = {
 
   /**
    * Upload a course material (PDF/DOCX/TXT) and generate a teacher-uploaded
-   * student-facing curriculum module via DeepSeek + RAG.
+   * student-facing curriculum module via Claude + RAG.
    */
   async uploadTeacherMaterial(
     file: File,

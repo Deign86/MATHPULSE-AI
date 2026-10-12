@@ -6,9 +6,10 @@ Central event processor that:
 - Recomputes P (systemPerformanceAvg) from all accumulated scores
 - Calls existing compute_wri() with updated D, G, P
 - Writes denormalized student_profiles and class summaries
-- Triggers DeepSeek AI context generation when meaningful
+- Triggers Claude AI context generation when meaningful
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -467,9 +468,9 @@ class StudentIntelligencePipeline:
         return event.event_type in ("quiz", "battle") and result.new_risk_status in ESCALATION_RISK_STATUSES
 
     async def _generate_ai_context(self, profile: Dict, event: StudentActivityEvent) -> Optional[Dict]:
-        """Call DeepSeek for AI context generation."""
+        """Call Claude for AI context generation."""
         try:
-            from services.ai_client import get_deepseek_client, CHAT_MODEL
+            from services.ai_client import complete_text, CHAT_MODEL
 
             weak_topics = profile.get("quiz_performance", {}).get("lowest_accuracy_topics", [])[:3]
             diag = profile.get("diagnostic", {})
@@ -500,24 +501,23 @@ Generate JSON:
 "notable_change": "what changed most since last update",
 "rag_topics_used": []}}"""
 
-            client = get_deepseek_client()
-            response = client.chat.completions.create(
-                model=CHAT_MODEL,
-                messages=[
+            content = await asyncio.to_thread(
+                complete_text,
+                [
                     {"role": "system", "content": "You are MathPulse AI analyzing Filipino K-12 math student data. Respond only with valid JSON."},
                     {"role": "user", "content": prompt},
                 ],
-                temperature=0.3,
+                model=CHAT_MODEL,
                 max_tokens=400,
-                response_format={"type": "json_object"},
+                json_output=True,
+                timeout=60.0,
             )
-            content = response.choices[0].message.content or "{}"
-            parsed = json.loads(content)
+            parsed = json.loads(content or "{}")
             parsed["generated_at"] = _now_iso()
             parsed["based_on_wri_status"] = profile.get("risk_status", "pending_assessment")
             return parsed
         except Exception as e:
-            logger.warning(f"DeepSeek AI context generation failed: {e}")
+            logger.warning(f"Claude AI context generation failed: {e}")
             return None
 
     # ─── Denormalized summary ──────────────────────────────────────────────

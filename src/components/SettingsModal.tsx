@@ -1031,18 +1031,10 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                   <h4 className="text-sm font-bold text-[#0a1628] font-body pt-4">AI Configuration</h4>
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
+                    <div className="col-span-2">
                       <label className="text-xs text-[#5a6578] block mb-1">Model Name</label>
                       <Input
                         value={localAdminConfig.aiConfig.modelName}
-                        disabled
-                      />
-                    </div>
-                    <div>
-                      <label className="text-xs text-[#5a6578] block mb-1">Temperature</label>
-                      <Input
-                        type="number"
-                        value={localAdminConfig.aiConfig.temperature}
                         disabled
                       />
                     </div>

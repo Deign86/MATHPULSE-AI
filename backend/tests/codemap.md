@@ -17,5 +17,5 @@ Python regression and contract tests for backend routes, services, RAG retrieval
 - Service tests validate deterministic logic such as WRI, email configuration, model profiles, caching, and memory health.
 
 ## Integration
-- Tests mirror `/api/...` route → handler → service → Firestore/DeepSeek/RAG Chroma boundaries while mocking external dependencies as appropriate.
+- Tests mirror `/api/...` route → handler → service → Firestore/Claude/RAG Chroma boundaries while mocking external dependencies as appropriate.
 - Test modules are consumers of `backend/main.py`, `backend/routes/`, `backend/services/`, and `backend/rag/`; they do not define production APIs.

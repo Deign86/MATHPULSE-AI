@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -13,13 +12,13 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import main
-from routes import deepseek_rag_routes, jev_routes, rag_routes
+from routes import ai_insight_routes, jev_routes, rag_routes
 from services import jev_client
 
 
 @pytest.mark.asyncio
 async def test_jev_client_missing_key(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("TYPESAFE_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
 
     assert await jev_client.route_student_intent("I am stuck") == {
         "action": "fallback_disabled",
@@ -38,35 +37,32 @@ async def test_jev_client_missing_key(monkeypatch: pytest.MonkeyPatch) -> None:
 
 @pytest.mark.asyncio
 async def test_jev_client_primitives(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("TYPESAFE_API_KEY", "test-key")
-
-    response_by_question = {
-        "intent": SimpleNamespace(
-            choice="direct_answer_request",
-            confidence=0.93,
-            probabilities={"direct_answer_request": 0.93},
-        ),
-        "factual_alignment": SimpleNamespace(noul=0.2),
-        "bloom_mastery_score": SimpleNamespace(score=2, confidence=0.8),
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    intent_reply = {
+        "direct_answer_request": 0.93,
+        "conceptual_confusion": 0.07,
+        "calculation_error": 0.0,
+        "off_topic_or_frustrated": 0.0,
     }
 
-    async def fake_system_one(state: dict[str, object], questions: dict[str, object]) -> object:
-        assert state
-        assert len(questions) == 1
-        question_name = next(iter(questions))
-        return SimpleNamespace(answers={question_name: response_by_question[question_name]})
+    def fake_complete_json(messages: list[dict[str, str]], *, schema: dict[str, object], **_options: object) -> dict[str, object]:
+        assert messages[-1]["role"] == "user"
+        properties = schema["properties"]
+        assert isinstance(properties, dict)
+        if "supported_probability" in properties:
+            return {"supported_probability": 0.2}
+        if "level" in properties:
+            return {"level": 2, "confidence": 0.8}
+        return intent_reply
 
-    monkeypatch.setattr(jev_client, "_system_one", fake_system_one)
+    monkeypatch.setattr(jev_client, "complete_json", fake_complete_json)
 
-    assert await jev_client.route_student_intent("Give me the answer") == {
-        "choice": "direct_answer_request",
-        "confidence": 0.93,
-        "probabilities": {"direct_answer_request": 0.93},
-    }
-    assert await jev_client.verify_lesson_factuality("reference", "lesson") == {
-        "verified": False,
-        "confidence": 0.6,
-    }
+    intent = await jev_client.route_student_intent("Give me the answer")
+    assert intent["choice"] == "direct_answer_request"
+    assert intent["confidence"] == pytest.approx(0.93)
+    factuality = await jev_client.verify_lesson_factuality("reference", "lesson")
+    assert factuality["verified"] is False
+    assert factuality["confidence"] == pytest.approx(0.6)
     assert await jev_client.score_student_mastery([], "algebra") == {
         "level": 2,
         "pCorrect": 0.8,
@@ -199,18 +195,18 @@ def test_rag_lesson_with_jev_verification(
 
 @pytest.mark.asyncio
 async def test_weakness_detection_with_jev_score(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(deepseek_rag_routes, "is_enabled", lambda: False)
+    monkeypatch.setattr(ai_insight_routes, "is_enabled", lambda: False)
 
-    request = deepseek_rag_routes.WeaknessDetectionRequest(
+    request = ai_insight_routes.WeaknessDetectionRequest(
         student_id="student-1",
         questions=[
-            deepseek_rag_routes.QuestionResult(
+            ai_insight_routes.QuestionResult(
                 question_id="question-1",
                 topic_id="algebra",
                 quarter=1,
                 is_correct=False,
             ),
-            deepseek_rag_routes.QuestionResult(
+            ai_insight_routes.QuestionResult(
                 question_id="question-2",
                 topic_id="algebra",
                 quarter=1,
@@ -224,14 +220,14 @@ async def test_weakness_detection_with_jev_score(monkeypatch: pytest.MonkeyPatch
         assert student_answers[0]["topic_id"] == "algebra"
         return {"level": 2}
 
-    monkeypatch.setattr(deepseek_rag_routes, "score_student_mastery", score)
+    monkeypatch.setattr(ai_insight_routes, "score_student_mastery", score)
 
-    response = await deepseek_rag_routes.detect_weaknesses(request)
+    response = await ai_insight_routes.detect_weaknesses(request)
 
     assert response.flagged_topics == ["algebra"]
     assert response.confidence == {"algebra": 0.5}
     assert response.source == "rule_based"
-    assert "algebra [Bloom Mastery: 2]" in response.reasoning_summary
+    assert "algebra [Bloom Mastery: apply]" in response.reasoning_summary
 
 
 @pytest.mark.asyncio
@@ -246,7 +242,7 @@ async def test_chat_direct_answer_socratic_short_circuit(
         return {"choice": "direct_answer_request", "confidence": 0.93}
 
     async def unexpected_llm_call(*_args: object, **_kwargs: object) -> str:
-        raise AssertionError("DeepSeek must not run for a direct answer request")
+        raise AssertionError("Claude must not run for a direct answer request")
 
     monkeypatch.setattr(main, "route_student_intent", route_intent)
     monkeypatch.setattr(main, "call_hf_chat_async", unexpected_llm_call)

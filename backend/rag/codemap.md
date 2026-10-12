@@ -11,7 +11,7 @@ Curriculum document parsing, ingestion, vector-store access, and retrieval of so
 - `teacher_module_generator.generate_teacher_module` builds structured teacher modules from retrieved material.
 
 ## Flow
-- `/api/rag/...` (`rag_routes` / `deepseek_rag_routes`) → `retrieve_curriculum_context` or lesson retrieval helpers → `get_vectorstore_components` → Chroma `curriculum_chunks` → formatted context → inference/DeepSeek response.
+- `/api/rag/...` (`rag_routes`) → `retrieve_curriculum_context` or lesson retrieval helpers → `get_vectorstore_components` → Chroma `curriculum_chunks` → formatted context → inference/Claude response.
 - `/api/curriculum/generate-module` → `fun_modules_routes.generate_module` → curriculum retrieval + `generate_teacher_module` → structured module response.
 - Admin PDF reingestion → `admin_routes` ingestion orchestration → Firebase Storage/document parsing → `pdf_ingestion.ingest_pdf` → chunk/question and vector persistence.
 - Exact lesson retrieval uses `retrieve_lesson_pdf_context` / `build_exact_lesson_query`; generic retrieval uses `retrieve_curriculum_context` and metadata filters.

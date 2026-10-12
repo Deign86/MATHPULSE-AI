@@ -12,7 +12,9 @@ from fastapi.testclient import TestClient
 
 import main as main_module
 from main import app
-from services.inference_client import reset_runtime_overrides
+from routes.admin_model_routes import ALLOWED_OVERRIDE_KEYS
+from services.ai_client import CHAT_MODEL, REASONER_MODEL, SUPPORTED_MODELS
+from services.inference_client import _MODEL_PROFILES, reset_runtime_overrides
 
 main_module._firebase_ready = True
 main_module._init_firebase_admin = lambda: None
@@ -104,6 +106,19 @@ class TestGetModelConfig:
         for p in _KNOWN_PROFILES:
             assert p in descriptions
 
+    def test_profile_descriptions_match_the_models_each_profile_applies(self):
+        descriptions = admin_client.get("/api/admin/model-config").json()["profileDescriptions"]
+
+        for profile in ("dev", "budget"):
+            assert set(_MODEL_PROFILES[profile].values()) == {CHAT_MODEL}
+            assert "claude-haiku-5-5" in descriptions[profile]
+            assert "claude-opus-5-5" not in descriptions[profile]
+
+        opus_keys = {key for key, model in _MODEL_PROFILES["prod"].items() if model == REASONER_MODEL}
+        assert opus_keys == {"HF_RAG_MODEL_ID"}
+        assert "claude-opus-5-5 for RAG lessons only" in descriptions["prod"]
+        assert "claude-haiku-5-5 for everything else" in descriptions["prod"]
+
     def test_resolved_models_are_non_empty_strings(self):
         admin_client.post("/api/admin/model-config/profile", json={"profile": "dev"})
         response = admin_client.get("/api/admin/model-config")
@@ -153,7 +168,7 @@ class TestPostOverride:
     def test_set_valid_override_key_succeeds(self):
         response = admin_client.post(
             "/api/admin/model-config/override",
-            json={"key": "INFERENCE_MODEL_ID", "value": "test/override-model"},
+            json={"key": "INFERENCE_MODEL_ID", "value": "claude-sonnet-5-5"},
         )
         assert response.status_code == 200
         assert response.json()["success"] is True
@@ -161,20 +176,52 @@ class TestPostOverride:
     def test_set_invalid_override_key_returns_400(self):
         response = admin_client.post(
             "/api/admin/model-config/override",
-            json={"key": "EMBEDDING_MODEL", "value": "test/emb"},
+            json={"key": "EMBEDDING_MODEL", "value": "claude-haiku-5-5"},
         )
         assert response.status_code == 400
 
     def test_override_is_visible_in_subsequent_get(self):
         admin_client.post(
             "/api/admin/model-config/override",
-            json={"key": "INFERENCE_MODEL_ID", "value": "custom/model-v2"},
+            json={"key": "INFERENCE_MODEL_ID", "value": "claude-sonnet-5-5"},
         )
         response = admin_client.get("/api/admin/model-config")
         data = response.json()
         overrides = data.get("overrides", {})
         assert "INFERENCE_MODEL_ID" in overrides
-        assert overrides["INFERENCE_MODEL_ID"] == "custom/model-v2"
+        assert overrides["INFERENCE_MODEL_ID"] == "claude-sonnet-5-5"
+
+    @pytest.mark.parametrize("model", sorted(SUPPORTED_MODELS))
+    def test_every_supported_model_can_be_applied_to_every_override_key(self, model):
+        for key in sorted(ALLOWED_OVERRIDE_KEYS):
+            response = admin_client.post(
+                "/api/admin/model-config/override",
+                json={"key": key, "value": model},
+            )
+            assert response.status_code == 200, f"{key}={model}"
+
+    @pytest.mark.parametrize(
+        "model",
+        [
+            "claude-opus-5.5",
+            "claude-opus-5-5 ",
+            "claude-haiku-4",
+            "gpt-4o",
+            "test/override-model",
+            "",
+        ],
+    )
+    def test_unsupported_model_id_is_rejected_and_not_applied(self, model):
+        response = admin_client.post(
+            "/api/admin/model-config/override",
+            json={"key": "HF_RAG_MODEL_ID", "value": model},
+        )
+
+        assert response.status_code == 400
+        assert f"Model '{model}' is not supported" in response.json()["detail"]
+        for supported in SUPPORTED_MODELS:
+            assert supported in response.json()["detail"]
+        assert admin_client.get("/api/admin/model-config").json()["overrides"] == {}
 
 
 # ─── DELETE Reset ───────────────────────────────────────────
@@ -189,7 +236,7 @@ class TestDeleteReset:
     def test_reset_clears_override(self):
         admin_client.post(
             "/api/admin/model-config/override",
-            json={"key": "INFERENCE_MODEL_ID", "value": "temp/model"},
+            json={"key": "INFERENCE_MODEL_ID", "value": "claude-sonnet-5-5"},
         )
         response = admin_client.delete("/api/admin/model-config/reset")
         assert response.status_code == 200

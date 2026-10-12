@@ -6,7 +6,7 @@ from unittest.mock import patch
 import pytest
 from fastapi.testclient import TestClient
 
-os.environ["DEEPSEEK_API_KEY"] = "mock-key-for-testing"
+os.environ["ANTHROPIC_API_KEY"] = "mock-key-for-testing"
 
 import main as main_module
 from main import app

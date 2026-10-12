@@ -14,7 +14,7 @@ sys.modules["firebase_admin.credentials"] = MagicMock()
 sys.modules["firebase_admin.firestore"] = MagicMock()
 
 os.environ["HF_TOKEN"] = "test-token-for-testing"
-os.environ["DEEPSEEK_API_KEY"] = "test-ds-key-for-testing"
+os.environ["ANTHROPIC_API_KEY"] = "test-key-for-testing"
 
 from fastapi.testclient import TestClient
 import main as main_module

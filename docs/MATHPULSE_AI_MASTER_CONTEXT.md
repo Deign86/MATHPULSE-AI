@@ -13,7 +13,7 @@
 
 ### Core Value Propositions:
 1. **Curriculum-First Grounding:** Built directly around the **DepEd Strengthened SHS Mathematics Curriculum** (General Mathematics, Business Mathematics, Statistics & Probability, and Pre-Calculus). Lessons and tutor responses cite real DepEd modules.
-2. **L.O.L.I. AI Math Tutor:** Logical Operations & Learning Intelligence powered by DeepSeek (`deepseek-flash` and `deepseek-v4-pro`), featuring streaming math expressions rendered in KaTeX, step-by-step problem solving, and contextual curriculum retrieval (RAG).
+2. **L.O.L.I. AI Math Tutor:** Logical Operations & Learning Intelligence powered by Claude (`claude-haiku-5-5` and `claude-opus-5-5`), featuring streaming math expressions rendered in KaTeX, step-by-step problem solving, and contextual curriculum retrieval (RAG).
 3. **Predictive At-Risk Intervention (WRI Engine):** Calculates a **Weighted Risk Index ($WRI = 0.30D + 0.40G + 0.30P$)** to detect struggling students early and automate remedial interventions.
 4. **Gamified Learning Ecosystem:** Deeply engaging mechanics including exponential level scaling, 7-day reward cycles, streak shields, lives, a layered composite avatar customizer, and 1v1 real-time multiplayer Quiz Battles.
 5. **Three Role Studios:** Purpose-built dashboards with role-based access control (RBAC) for **Students**, **Teachers**, and **Administrators**.
@@ -30,7 +30,7 @@
 │                  KaTeX (Math rendering), Framer Motion, TanStack Query                 │
 │  Mobile Native:  Capacitor 7.1 (Android APK release build)                             │
 │  Backend API:    FastAPI (Python 3.11), Uvicorn, LiteParse (PDF parser)                │
-│  AI / LLM:       DeepSeek API (deepseek-flash for tutoring, deepseek-v4-pro for RAG)  │
+│  AI / LLM:       Claude API (claude-haiku-5-5 for tutoring, claude-opus-5-5 for RAG)  │
 │  Vector DB:      ChromaDB (Embeddings: BAAI/bge-small-en-v1.5)                         │
 │  Cloud / DB:     Firebase Hosting, Firebase Authentication, Cloud Firestore (NoSQL),   │
 │                  Firebase Realtime Database (Live Match Sync), Cloud Functions Node 22 │
@@ -67,7 +67,7 @@
 * **User & Role Governance:** User provisioning, account activation/deactivation, role assignments, and password enforcement.
 * **Curriculum & Policy Manager:** Management of curriculum version sets (Legacy K-12, Strengthened SHS Pilot 2025/2026) and diagnostic passing thresholds.
 * **RAG Knowledge Base Manager:** Uploading, chunking, and indexing official DepEd curriculum PDFs into the ChromaDB vector store.
-* **AI Token & Cost Monitoring:** Real-time tracking of DeepSeek API token consumption, feature-by-feature cost attribution, and rate-limiting controls.
+* **AI Token & Cost Monitoring:** Real-time tracking of Claude API token consumption, feature-by-feature cost attribution, and rate-limiting controls.
 * **Security Audit Logs:** Comprehensive immutable event logs capturing user actions, IP addresses, and administrative events.
 
 ---
@@ -122,7 +122,7 @@ $$WRI = (0.30 \times D) + (0.40 \times G) + (0.30 \times P)$$
 1. **Document Parsing:** LiteParse extracts markdown and clean mathematical formulas from DepEd SSHS learning modules.
 2. **Embedding & Vector Storage:** Text chunks embedded via `BAAI/bge-small-en-v1.5` and stored in ChromaDB.
 3. **Retrieval & Reranking:** Similarity search retrieves top-$k$ relevant curriculum passages.
-4. **Generation:** DeepSeek Reasoner/Chat synthesizes the tutor response, strictly citing curriculum sources.
+4. **Generation:** Claude (`claude-opus-5-5` for RAG lessons, `claude-haiku-5-5` for chat) synthesizes the tutor response, strictly citing curriculum sources.
 
 ---
 

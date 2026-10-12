@@ -1,7 +1,7 @@
 """
 backend/tests/test_teacher_materials.py
 
-Tests for /api/teacher-materials/upload endpoint.
+Tests for the /api/teacher-materials upload and generate-quiz endpoints.
 
 Covers:
   - Rejects unauthenticated requests
@@ -9,17 +9,21 @@ Covers:
   - Validates file type (PDF, DOCX, TXT only)
   - Handles empty/missing metadata gracefully
   - Handles Firestore unavailability gracefully
-  - Handles DeepSeek generation failure gracefully
+  - Handles Claude generation failure gracefully
   - Returns proper TeacherMaterialUploadResponse shape
+  - Generates and stores a quiz for an existing module
 
 Run with: pytest backend/tests/test_teacher_materials.py -v
 Or safe runner: python -m pytest backend/tests/test_teacher_materials.py -v
 """
 
+import asyncio
 import io
+import json
 
 import os
 import sys
+from datetime import datetime
 from typing import Any, Dict
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -31,6 +35,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 # Import the app after path is set
 from main import AuthenticatedUser, app
+from routes.teacher_materials import _generate_module_via_claude
+from services.ai_client import CHAT_MODEL
 
 # ─── Test client (shared across all tests) ───────────────────────────────────
 # Uses teacher role header — matches ROLE_POLICIES teacher role
@@ -72,8 +78,8 @@ def mock_firestore_unavailable():
 
 
 @pytest.fixture
-def mock_deepseek_success():
-    """DeepSeek returns a well-formed TeacherModule JSON."""
+def mock_claude_success():
+    """Claude returns a well-formed TeacherModule JSON."""
     module_json = {
         "moduleId": "quadratic-equations-test-teacher-2026-05-13",
         "title": "Quadratic Equations",
@@ -116,23 +122,22 @@ def mock_deepseek_success():
         ],
         "aiSafety": {
             "requiresGrounding": True,
-            "allowedModels": ["deepseek-flash"],
+            "allowedModels": [CHAT_MODEL],
             "groundingSources": ["teacher_file", "deped_rag"],
         },
     }
 
-    import json
     json_string = json.dumps(module_json)
     with patch("services.inference_client.call_hf_chat_async", new_callable=AsyncMock, return_value=json_string):
         yield
 
 
 @pytest.fixture
-def mock_deepseek_failure():
-    """DeepSeek raises an exception."""
+def mock_claude_failure():
+    """Claude raises an exception."""
     with patch(
         "services.inference_client.call_hf_chat_async",
-        side_effect=Exception("DeepSeek unavailable"),
+        side_effect=Exception("Claude unavailable"),
     ):
         yield
 
@@ -279,13 +284,13 @@ class TestTeacherMaterialsRequestShape:
         assert response.status_code in (200, 500)
 
 
-# ─── DeepSeek generation tests ────────────────────────────────────────────────
+# ─── Claude generation tests ──────────────────────────────────────────────────
 
 class TestTeacherMaterialsGeneration:
-    """DeepSeek module generation failure modes."""
+    """Claude module generation failure modes."""
 
-    def test_returns_500_when_deepseek_fails(self, mock_firestore_unavailable, mock_deepseek_failure):
-        """When DeepSeek is unavailable, response has success=False."""
+    def test_returns_500_when_claude_fails(self, mock_firestore_unavailable, mock_claude_failure):
+        """When Claude is unavailable, response has success=False."""
         files = {"file": ("lesson.pdf", _make_pdf(), "application/pdf")}
         data = {"gradeLevel": "Grade 11", "subject": "Mathematics", "quarter": "Q1"}
         with (
@@ -302,9 +307,9 @@ class TestTeacherMaterialsGeneration:
         assert "error" in payload or "message" in payload
 
     def test_returns_success_payload_when_module_generated(
-        self, mock_firestore_unavailable, mock_deepseek_success
+        self, mock_firestore_unavailable, mock_claude_success
     ):
-        """Happy path: DeepSeek returns module JSON, Firestore is mocked.
+        """Happy path: Claude returns module JSON, Firestore is mocked.
 
         We mock Firestore so the document is not actually written.
         """
@@ -333,13 +338,163 @@ class TestTeacherMaterialsGeneration:
         assert payload.get("moduleId") is not None
         assert payload.get("title") == "Quadratic Equations"
 
+    def test_module_prompt_names_chat_model_and_sends_no_sampling_params(self):
+        """The module schema carries the configured chat model id; no sampling parameters are sent."""
+        with patch(
+            "services.inference_client.call_hf_chat_async",
+            new_callable=AsyncMock,
+            return_value='{"moduleId": "m1", "title": "Quadratics"}',
+        ) as mock_chat:
+            module = asyncio.run(_generate_module_via_claude("lesson text", "", {}))
+
+        assert module["moduleId"] == "m1"
+        sent = mock_chat.call_args.kwargs
+        assert not {"temperature", "top_p", "repetition_penalty"} & sent.keys()
+        assert f'"allowedModels": ["{CHAT_MODEL}"]' in sent["messages"][1]["content"]
+
+
+# ─── Quiz generation tests ────────────────────────────────────────────────────
+
+QUIZ_MODULE = {
+    "title": "Quadratic Equations",
+    "gradeLevel": "Grade 11",
+    "subject": "General Mathematics",
+    "quarter": "Q1",
+    "learningObjectives": ["Solve quadratic equations by factoring."],
+    "sections": [
+        {"title": "Solving by Factoring", "content": "If (x - r1)(x - r2) = 0 then x = r1 or x = r2."},
+    ],
+}
+QUIZ_QUESTION = {
+    "question": "Solve x^2 - 5x + 6 = 0.",
+    "choices": {"A": "x = 1 or 6", "B": "x = 2 or 3", "C": "x = -2 or -3", "D": "x = 1 or -6"},
+    "correct": "B",
+    "explanation": "x^2 - 5x + 6 = (x - 2)(x - 3).",
+    "competencyCode": "M11GM-Ia-1",
+}
+
+
+def _firestore_with_module(module_doc):
+    """A Firestore stand-in holding one module; returns (db, the mock `quizzes` collection)."""
+    module_snapshot = MagicMock(exists=True)
+    module_snapshot.to_dict.return_value = module_doc
+    modules = MagicMock()
+    modules.document.return_value.get.return_value = module_snapshot
+    quizzes = MagicMock()
+    collections = {"modules": modules, "quizzes": quizzes}
+    db = MagicMock()
+    db.collection.side_effect = lambda name: collections[name]
+    return db, quizzes
+
+
+def _generate_quiz(db, **chat_mock_options):
+    """POST generate-quiz with the Firestore stand-in and a mocked Claude reply; returns (response, chat mock)."""
+    with (
+        patch("routes.teacher_materials._get_firestore_client", return_value=db),
+        patch(
+            "services.inference_client.call_hf_chat_async",
+            new_callable=AsyncMock,
+            **chat_mock_options,
+        ) as mock_chat,
+    ):
+        response = client.post("/api/teacher-materials/quadratics-1/generate-quiz")
+    return response, mock_chat
+
+
+class TestGenerateModuleQuiz:
+    """POST /api/teacher-materials/{moduleId}/generate-quiz."""
+
+    def test_stores_and_returns_the_questions_claude_writes(self):
+        db, quizzes = _firestore_with_module(QUIZ_MODULE)
+
+        response, mock_chat = _generate_quiz(db, return_value=json.dumps({"questions": [QUIZ_QUESTION]}))
+
+        assert response.status_code == 200
+        payload = response.json()
+        assert payload["questions"] == [QUIZ_QUESTION]
+
+        sent = mock_chat.call_args.kwargs
+        assert sent["task_type"] == "quiz_generation"
+        assert "Quadratic Equations" in sent["messages"][0]["content"]
+
+        quizzes.document.assert_called_once_with(payload["quizId"])
+        stored = quizzes.document.return_value.set.call_args.args[0]
+        assert stored["moduleId"] == "quadratics-1"
+        assert stored["questions"] == [QUIZ_QUESTION]
+        assert datetime.fromisoformat(stored["createdAt"]).utcoffset() is not None
+
+    def test_leaves_room_for_ten_questions(self):
+        db, _quizzes = _firestore_with_module(QUIZ_MODULE)
+
+        _response, mock_chat = _generate_quiz(db, return_value=json.dumps({"questions": [QUIZ_QUESTION]}))
+
+        assert mock_chat.call_args.kwargs["max_tokens"] == 4096
+
+    def test_prompt_carries_section_text_stored_as_body_or_as_content(self):
+        module_doc = {
+            **QUIZ_MODULE,
+            "sections": [
+                {"title": "Generated Section", "body": "BODY-TEXT: a quadratic has degree two."},
+                {"title": "Older Section", "content": "CONTENT-TEXT: factor, then set each factor to zero."},
+                {"title": "Both Fields", "body": "PREFERRED-TEXT", "content": "IGNORED-TEXT"},
+            ],
+        }
+        db, _quizzes = _firestore_with_module(module_doc)
+
+        _response, mock_chat = _generate_quiz(db, return_value=json.dumps({"questions": [QUIZ_QUESTION]}))
+
+        prompt = mock_chat.call_args.kwargs["messages"][0]["content"]
+        assert "BODY-TEXT: a quadratic has degree two." in prompt
+        assert "CONTENT-TEXT: factor, then set each factor to zero." in prompt
+        assert "PREFERRED-TEXT" in prompt
+        assert "IGNORED-TEXT" not in prompt
+
+    @pytest.mark.parametrize(
+        "reply",
+        [
+            json.dumps([QUIZ_QUESTION]),
+            "Here is your quiz:\n```json\n" + json.dumps({"questions": [QUIZ_QUESTION]}) + "\n```\nGood luck!",
+            "Sure. " + json.dumps({"questions": [QUIZ_QUESTION]}),
+        ],
+        ids=["bare-list", "fenced-in-prose", "prose-preamble"],
+    )
+    def test_recovers_questions_from_a_reply_that_is_not_bare_json(self, reply):
+        db, quizzes = _firestore_with_module(QUIZ_MODULE)
+
+        response, _mock_chat = _generate_quiz(db, return_value=reply)
+
+        assert response.status_code == 200
+        assert response.json()["questions"] == [QUIZ_QUESTION]
+        assert quizzes.document.return_value.set.call_args.args[0]["questions"] == [QUIZ_QUESTION]
+
+    @pytest.mark.parametrize(
+        "chat_options",
+        [
+            {"return_value": "I could not write a quiz for this module."},
+            {"return_value": json.dumps({"questions": []})},
+            {"return_value": json.dumps({"error": "no questions"})},
+            {"return_value": "[]"},
+            {"return_value": '{"questions": [{"question": "cut off mid-'},
+            {"side_effect": RuntimeError("Claude unavailable")},
+        ],
+        ids=["prose", "empty-list", "wrong-envelope", "bare-empty-list", "truncated", "model-error"],
+    )
+    def test_returns_502_and_stores_no_quiz_when_no_questions_come_back(self, chat_options):
+        db, quizzes = _firestore_with_module(QUIZ_MODULE)
+
+        response, _mock_chat = _generate_quiz(db, **chat_options)
+
+        assert response.status_code == 502
+        assert response.json()["detail"] == "The AI did not return any quiz questions. Please try again."
+        quizzes.document.assert_not_called()
+
 
 # ─── Response shape tests ──────────────────────────────────────────────────────
 
 class TestTeacherMaterialsResponseShape:
     """TeacherMaterialUploadResponse schema is respected."""
 
-    def test_success_response_has_required_fields(self, mock_firestore_unavailable, mock_deepseek_success):
+    def test_success_response_has_required_fields(self, mock_firestore_unavailable, mock_claude_success):
         """Success payload contains: success=True, moduleId, title, message."""
         files = {"file": ("lesson.pdf", _make_pdf(), "application/pdf")}
         data = {"gradeLevel": "Grade 11", "subject": "Math", "quarter": "Q1"}
@@ -362,7 +517,7 @@ class TestTeacherMaterialsResponseShape:
         if payload["success"] is True:
             assert "moduleId" in payload or "message" in payload
 
-    def test_error_response_has_error_field(self, mock_firestore_unavailable, mock_deepseek_failure):
+    def test_error_response_has_error_field(self, mock_firestore_unavailable, mock_claude_failure):
         """Error payload has error or message string."""
         files = {"file": ("lesson.pdf", _make_pdf(), "application/pdf")}
         data = {"gradeLevel": "Grade 11", "subject": "Math", "quarter": "Q1"}
@@ -385,7 +540,7 @@ class TestTeacherMaterialsResponseShape:
 class TestTeacherMaterialsRAG:
     """RAG context is retrieved and passed to the generator."""
 
-    def test_rag_context_is_passed_to_generator(self, mock_firestore_unavailable, mock_deepseek_success):
+    def test_rag_context_is_passed_to_generator(self, mock_firestore_unavailable, mock_claude_success):
         """When RAG returns passages, they should be included in module generation."""
         files = {"file": ("lesson.pdf", _make_pdf(), "application/pdf")}
         data = {"gradeLevel": "Grade 11", "subject": "Math", "quarter": "Q1"}
