@@ -17,6 +17,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Loader2, Upload, RefreshCw, BookOpen, FileText, Sparkles, Bell, ChevronDown, ChevronUp, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 import { isValidFirebaseStoragePdfPath } from '../utils/firebaseStoragePath';
+import MathText from './MathText';
+import AiText from './AiText';
 
 interface PdfStatus {
   filename: string;
@@ -475,7 +477,7 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                 >
                   <div className="flex items-start justify-between gap-3 cursor-pointer" onClick={() => setExpandedQuestion(expandedQuestion === q.id ? null : q.id)}>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-[#1e293b] line-clamp-2">{q.question}</p>
+                      <p className="text-[13px] font-medium text-[#1e293b] line-clamp-2"><MathText>{q.question}</MathText></p>
                       <div className="flex items-center gap-2 mt-2">
                         <span className="text-[11px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-600 font-semibold">Grade {q.grade_level}</span>
                         <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-medium">{q.topic}</span>
@@ -493,12 +495,12 @@ export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
                       <div className="space-y-1">
                         {q.choices.map((c, i) => (
                           <p key={i} className={`text-[12px] px-3 py-1.5 rounded-lg ${c === q.correct_answer ? 'bg-green-50 text-green-700 font-semibold border border-green-200' : 'bg-slate-50 text-[#475569]'}`}>
-                            {String.fromCharCode(65 + i)}. {c}
+                            {String.fromCharCode(65 + i)}. <MathText>{c}</MathText>
                           </p>
                         ))}
                       </div>
                       {q.explanation && (
-                        <p className="text-[12px] text-[#64748b] italic mt-2 flex items-center gap-1"><Lightbulb size={12} /> {q.explanation}</p>
+                        <p className="text-[12px] text-[#64748b] italic mt-2 flex items-center gap-1"><Lightbulb size={12} /> <AiText inline>{q.explanation}</AiText></p>
                       )}
                     </div>
                   )}

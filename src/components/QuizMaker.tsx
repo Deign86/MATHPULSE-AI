@@ -26,6 +26,8 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import BloomsTaxonomyModal from './BloomsTaxonomyModal';
 import ConfirmModal from './ConfirmModal';
+import MathText from './MathText';
+import AiText from './AiText';
 import {
   saveGeneratedQuiz,
   publishQuiz,
@@ -1201,7 +1203,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                 <span className="text-[11px] sm:text-[12px] font-semibold text-[#64748b] px-2 py-0.5 sm:py-1 hidden sm:inline-block border-l border-slate-200 truncate max-w-[200px]">{q.topic}</span>
               )}
             </div>
-            <p className="text-xs sm:text-sm md:text-[15px] font-bold text-[#1e293b] pr-2 sm:pr-4 leading-snug sm:leading-relaxed break-words">{q.question}</p>
+            <p className="text-xs sm:text-sm md:text-[15px] font-bold text-[#1e293b] pr-2 sm:pr-4 leading-snug sm:leading-relaxed break-words"><MathText>{q.question}</MathText></p>
           </div>
           <div className="flex flex-col items-end justify-between h-full gap-2 sm:gap-4 shrink-0 mt-0.5 sm:mt-1">
             <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest hidden sm:block border shadow-xs ${bloom.badge}`}>
@@ -1239,7 +1241,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                               : 'bg-white border border-[#e2e8f0] text-[#475569] hover:border-[#a855f7] hover:shadow-[0_2px_8px_rgba(168,85,247,0.1)]'
                           }`}>
                             {isCorrect && <div className="absolute left-0 top-0 w-1 h-full bg-emerald-500" />}
-                            <span className={isCorrect ? 'pl-2' : ''}>{opt}</span>
+                            <span className={isCorrect ? 'pl-2' : ''}><MathText>{opt}</MathText></span>
                             {isCorrect && (
                               <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs absolute right-3 sm:right-4 top-1/2 -translate-y-1/2">
                                 <Check size={12} />
@@ -1265,7 +1267,7 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
                       <p className="text-[10px] sm:text-[11px] font-bold text-purple-700 uppercase tracking-wider mb-1 sm:mb-2 flex items-center gap-1.5">
                         <Sparkles size={13} /> AI Explanation
                       </p>
-                      <p className="text-xs sm:text-[13px] text-[#475569] leading-relaxed font-medium">{q.explanation}</p>
+                      <p className="text-xs sm:text-[13px] text-[#475569] leading-relaxed font-medium"><AiText inline>{q.explanation}</AiText></p>
                     </div>
                   </div>
                 )}

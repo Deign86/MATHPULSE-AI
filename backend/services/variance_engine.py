@@ -12,6 +12,7 @@ import random
 from typing import List, Dict
 
 from services.ai_client import complete_text, CHAT_MODEL
+from services.llm_json import loads_jsonish
 
 logger = logging.getLogger("mathpulse.variance_engine")
 from services.question_bank_service import get_cached_session, cache_session_questions
@@ -91,7 +92,7 @@ Do NOT change "topic", "difficulty", "grade_level", or "source_chunk_id"."""
             json_output=True,
             timeout=120.0,
         )
-        varied_questions = json.loads(content)
+        varied_questions = loads_jsonish(content)
 
         if not isinstance(varied_questions, list) or len(varied_questions) != len(questions):
             raise ValueError("Invalid response format from Claude")

@@ -1,5 +1,7 @@
 """parse_json_response feeds weakness detection and the at-risk brief; a reply it can't read falls back silently."""
 
+import json
+
 import pytest
 
 from services.inference_client import parse_json_response
@@ -18,6 +20,20 @@ FLAGGED = {"flagged_topics": ["rational functions"], "confidence": {"rational fu
 )
 def test_recovers_the_json_object(reply: str) -> None:
     assert parse_json_response(reply) == FLAGGED
+
+
+def test_keeps_single_backslash_latex() -> None:
+    # \t, \f decode as control characters and \s, \c are invalid JSON escapes unless repaired.
+    reply = r'Result: {"a": "$\sqrt{x} \times 2 \frac{1}{2}$"}'
+    assert parse_json_response(reply) == {"a": r"$\sqrt{x} \times 2 \frac{1}{2}$"}
+
+
+def test_outer_json_returns_repaired_span() -> None:
+    from services.ai_client import outer_json
+
+    span = outer_json(r'text {"a": "$\sqrt{x} \times 2$"} end')
+    assert span is not None
+    assert json.loads(span) == {"a": r"$\sqrt{x} \times 2$"}
 
 
 @pytest.mark.parametrize(

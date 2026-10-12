@@ -77,6 +77,7 @@ import { subscribeToUserProgress } from '../services/progressService';
 import { watchModule } from '../services/moduleWatchService';
 import type { ModuleProgress, UserProgress } from '../types/models';
 import AiText from './AiText';
+import MathText from './MathText';
 
 interface ModulesPageProps {
   onEarnXP?: (xp: number, message: string) => void;
@@ -1232,7 +1233,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                           Q{i + 1}
                         </span>
                         <p className="text-sm sm:text-base font-bold text-slate-900 dark:text-white leading-relaxed">
-                          {q.question}
+                          <MathText>{q.question}</MathText>
                         </p>
                       </div>
 
@@ -1267,7 +1268,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                                 <span className="w-5 h-5 rounded-lg bg-slate-100 dark:bg-slate-700 text-[11px] font-black flex items-center justify-center shrink-0">
                                   {opt.label}
                                 </span>
-                                <span className="break-words leading-snug">{opt.text}</span>
+                                <span className="break-words leading-snug"><MathText>{opt.text}</MathText></span>
                               </span>
                               {isAnswered && isThisCorrect && (
                                 <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0 ml-2" />
@@ -1294,7 +1295,7 @@ const ModulesPage: React.FC<ModulesPageProps> = ({
                           </button>
                           {isExplanationOpen && (
                             <div className="p-3.5 rounded-xl bg-purple-50/50 dark:bg-purple-950/30 border border-purple-100 dark:border-purple-900/40 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                              <span className="font-bold text-purple-700 dark:text-purple-300">Teacher's Note:</span> {q.explanation}
+                              <span className="font-bold text-purple-700 dark:text-purple-300">Teacher's Note:</span> <AiText inline>{q.explanation}</AiText>
                             </div>
                           )}
                         </div>

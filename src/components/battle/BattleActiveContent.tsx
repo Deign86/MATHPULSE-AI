@@ -2,6 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Bot, Users, Loader2, Sparkles } from 'lucide-react';
 import { cn } from '../ui/utils';
+import MathText from '../MathText';
 import type { QuizBattleRoundResult } from '../../services/quizBattleService';
 import type {
   BattleActiveMatchView,
@@ -82,7 +83,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
             transition={{ duration: 0.18 }}
             className="text-base sm:text-lg md:text-xl text-white font-extrabold leading-tight tracking-tight mt-1 min-h-[40px] flex items-center justify-center"
           >
-            {activeMatch.currentQuestion?.prompt}
+            <MathText>{activeMatch.currentQuestion?.prompt ?? ''}</MathText>
           </motion.p>
         </AnimatePresence>
 
@@ -140,7 +141,7 @@ export const BattleActiveContent: React.FC<BattleActiveContentProps> = React.mem
               )}
             >
               <span className="mr-3 md:mr-4 text-xs md:text-sm opacity-60 bg-black/20 px-3 py-1 rounded-full">{String.fromCharCode(65 + idx)}</span>
-              <span className="line-clamp-2">{choice}</span>
+              <span className="line-clamp-2"><MathText>{choice}</MathText></span>
 
               <div className="absolute right-3 md:right-4 flex items-center gap-1.5 md:gap-2">
                  {opponentSelectedThis && (

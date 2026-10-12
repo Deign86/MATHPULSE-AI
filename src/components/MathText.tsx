@@ -52,8 +52,9 @@ function containsProse(text: string): boolean {
  * escape both dollars so remark-math leaves them literal instead of collapsing the sentence.
  */
 function escapeCurrencyDollars(text: string): string {
-  return text.replace(/\$([^$]+)\$/g, (pair, inner: string) =>
-    !inner.includes('\\') && containsProse(inner) ? `\\$${inner}\\$` : pair,
+  // Consume $$...$$ display blocks first so their inner dollars are never paired as currency.
+  return text.replace(/\$\$[\s\S]+?\$\$|\$([^$]+)\$/g, (pair, inner: string | undefined) =>
+    inner !== undefined && !inner.includes('\\') && containsProse(inner) ? `\\$${inner}\\$` : pair,
   );
 }
 

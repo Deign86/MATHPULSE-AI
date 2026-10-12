@@ -52,6 +52,7 @@ from .ai_client import (
     outer_json,
     reply_text,
 )
+from .llm_json import loads_jsonish
 from .logging_utils import configure_structured_logging, log_model_call
 
 LOGGER = configure_structured_logging("mathpulse.inference")
@@ -956,7 +957,7 @@ def parse_json_response(text: Optional[str]) -> Optional[dict]:
     if not text:
         return None
     candidate = outer_json(text)
-    parsed = json.loads(candidate) if candidate else None
+    parsed = loads_jsonish(candidate) if candidate else None
     if not isinstance(parsed, dict):
         LOGGER.warning("[CLAUDE] Failed to parse JSON response")
         return None

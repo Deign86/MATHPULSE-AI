@@ -52,6 +52,15 @@ describe('MathText spacing (S7)', () => {
     expect(container.querySelector('.katex')).not.toBeNull();
   });
 
+  it('renders a mid-paragraph $$...$$ block as math even when it holds words', () => {
+    const { container } = render(
+      <MathText>{'From rate times days: $$profit = sales - cost$$ In general, $G = r \\times d$.'}</MathText>,
+    );
+    expect(container.querySelectorAll('.katex')).toHaveLength(2);
+    expect(container.textContent).not.toContain('$$');
+    expect(container.querySelector('.katex-error')).toBeNull();
+  });
+
   it('renders plain prose without math untouched', () => {
     expect(renderedText('What is the mean of 4, 7, and 12?')).toBe('What is the mean of 4, 7, and 12?');
   });

@@ -431,7 +431,8 @@ Return as JSON:
                 json_output=True,
                 timeout=60.0,
             )
-            insights = json.loads(content or "{}")
+            from services.llm_json import loads_jsonish
+            insights = loads_jsonish(content or "{}")
             return {k: to_plain_text(v, strip_bullets=False) if isinstance(v, str) else v for k, v in insights.items()}
         except Exception as e:
             logger.warning(f"Claude insights failed: {e}")
@@ -504,7 +505,8 @@ Return ONLY valid JSON:
                 json_output=True,
                 timeout=60.0,
             )
-            parsed = sanitize_tree(json.loads(content or "{}"))
+            from services.llm_json import loads_jsonish
+            parsed = sanitize_tree(loads_jsonish(content or "{}"))
 
             steps = []
             for s in parsed.get("steps", []):
@@ -586,7 +588,8 @@ Return as a JSON array of strings. Each recommendation max 25 words. Be specific
                 json_output=True,
                 timeout=60.0,
             )
-            parsed = json.loads(content or "[]")
+            from services.llm_json import loads_jsonish
+            parsed = loads_jsonish(content or "[]")
             if isinstance(parsed, dict):
                 parsed = parsed.get("recommendations", parsed.get("actions", []))
             if isinstance(parsed, list):

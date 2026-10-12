@@ -21,6 +21,8 @@ from __future__ import annotations
 import re
 from typing import Any, Callable, Iterable, Mapping, Optional
 
+from services.llm_json import TEX_N_COMMANDS
+
 __all__ = [
     "clean_llm_text",
     "to_plain_text",
@@ -111,7 +113,14 @@ def _outside_math(text: str, fn: Callable[[str], str]) -> str:
 
 def _fix_escapes(segment: str) -> str:
     # JSON-escaped newlines/tabs that survived parsing as literal text.
-    segment = segment.replace("\\r\\n", "\n").replace("\\n", "\n").replace("\\t", "  ")
+    # A letter run after \n or \t can be a TeX command (\neq, \times): keep those.
+    segment = segment.replace("\\r\\n", "\n")
+    segment = re.sub(
+        r"\\n([A-Za-z]*)",
+        lambda m: m.group(0) if "n" + m.group(1) in TEX_N_COMMANDS else "\n" + m.group(1),
+        segment,
+    )
+    segment = re.sub(r"\\t(?![A-Za-z])", "  ", segment)
     # Double-escaped TeX from over-escaped JSON strings: \\frac → \frac
     segment = re.sub(r"\\\\(?=[A-Za-z])", r"\\", segment)
     # Escaped dollars in front of TeX commands block the math delimiter.

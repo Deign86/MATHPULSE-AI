@@ -26,7 +26,7 @@ from fastapi import File, Form, UploadFile
 from pydantic import BaseModel, Field
 
 from services.ai_client import CHAT_MODEL
-from services.llm_json import extract_dict_list, extract_json_value
+from services.llm_json import extract_dict_list, extract_json_value, loads_jsonish
 
 logger = logging.getLogger("mathpulse.teacher_materials")
 
@@ -338,7 +338,10 @@ Respond with JSON only, no markdown or extra text."""
         if json_start < 0 or json_end <= json_start:
             raise ValueError(f"Could not find JSON in AI response: {raw_response[:200]}")
 
-        module_json = json.loads(raw_response[json_start:json_end])
+        module_span = raw_response[json_start:json_end]
+        module_json = loads_jsonish(module_span)
+        if module_json is None:
+            raise json.JSONDecodeError("Unparseable module JSON", module_span, 0)
         return module_json
 
     except json.JSONDecodeError as e:

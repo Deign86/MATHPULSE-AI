@@ -24,6 +24,7 @@ import pypdf
 
 from rag.firebase_storage_loader import _init_firebase_storage
 from services.ai_client import complete_text, get_anthropic_client, CHAT_MODEL
+from services.llm_json import loads_jsonish
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +97,7 @@ Return a JSON array only, no extra text."""
             json_output=True,
             timeout=120.0,
         )
-        questions = json.loads(raw_response)
+        questions = loads_jsonish(raw_response)
         return questions if isinstance(questions, list) else []
     except json.JSONDecodeError as e:
         logger.error(f"Failed to parse Claude response as JSON for chunk {chunk_id}: {e}")

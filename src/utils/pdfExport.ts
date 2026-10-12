@@ -1,3 +1,5 @@
+import { latexToPlainText } from './latexToPlainText';
+
 export interface GradesPdfSubjectRow {
   readonly subject: string;
   readonly average: number;
@@ -41,7 +43,7 @@ export async function createGradesPdf(options: GradesPdfOptions): Promise<Blob> 
   };
 
   const writeWrapped = (text: string, indent = 0): void => {
-    const lines = doc.splitTextToSize(text, contentWidth - indent);
+    const lines = doc.splitTextToSize(latexToPlainText(text), contentWidth - indent);
     for (const line of lines) {
       checkPage(5);
       doc.text(line, margin + indent, cursorY);
@@ -52,7 +54,9 @@ export async function createGradesPdf(options: GradesPdfOptions): Promise<Blob> 
   const drawTable = (headers: readonly string[], rows: readonly PdfCellValue[][]): void => {
     autoTable(doc, {
       head: [Array.from(headers)],
-      body: rows.map((row) => Array.from(row)),
+      body: rows.map((row) =>
+        row.map((cell) => latexToPlainText(String(cell))),
+      ),
       startY: cursorY,
       margin: { left: margin, right: margin, bottom: footerHeight },
       theme: 'grid',

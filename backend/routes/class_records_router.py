@@ -20,6 +20,7 @@ from fastapi import APIRouter, Form, HTTPException, Query, Request, UploadFile, 
 from fastapi.responses import StreamingResponse
 
 from services.inference_client import call_hf_chat_async
+from services.llm_json import loads_jsonish
 from services.wri_service import compute_wri
 
 logger = logging.getLogger("mathpulse.class_records")
@@ -725,8 +726,6 @@ async def get_upload_students(
 
 @router.post("/class-records/{uploadId}/ai-report")
 async def generate_ai_class_report(request: Request, uploadId: str):
-    import json as _json
-
     user: Any = getattr(request.state, "user", None)
     if user is None:
         raise HTTPException(status_code=401, detail="Authentication required")
@@ -790,7 +789,7 @@ async def generate_ai_class_report(request: Request, uploadId: str):
             max_tokens=400, task_type="class_report"
         )
         try:
-            parsed = _json.loads(response_text)
+            parsed = loads_jsonish(response_text)
             recommendations = parsed.get("recommendations", [])
         except Exception:
             recommendations = [r.strip() for r in response_text.split('\n') if len(r.strip()) > 20][:2]

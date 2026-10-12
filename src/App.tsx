@@ -1285,7 +1285,7 @@ const App = ({ authOverride }: AppProps = {}) => {
         )}
 
         {/* Main Content */}
-        <div className={`flex-1 min-h-0 flex flex-col min-w-0 ${activeTab === 'Quiz Battle' ? 'bg-[#0B0F19]' : 'bg-gradient-to-br from-[#f8faff] via-[#f1f5fd] to-[#f5f0fc] dark:from-[#050d18] dark:via-[#0c1527] dark:to-[#120e24] shadow-[rgba(124,58,237,0.04)_0px_0px_30px_inset]'} relative z-10 overflow-hidden`}>
+        <div className={`flex-1 min-h-0 flex flex-col min-w-0 ${activeTab === 'Quiz Battle' ? 'bg-[#0B0F19]' : 'bg-gradient-to-br from-[#f8faff] via-[#f1f5fd] to-[#f5f0fc] dark:from-[#050d18] dark:via-[#0c1527] dark:to-[#120e24] shadow-[rgba(124,58,237,0.04)_0px_0px_30px_inset]'} relative z-10 overflow-clip`}>
           {/* Ambient glowing gradient orbs */}
           {activeTab !== 'Quiz Battle' && (
             <>

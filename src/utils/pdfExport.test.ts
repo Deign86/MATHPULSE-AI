@@ -56,6 +56,32 @@ describe('createGradesPdf', () => {
     expect(pdfText).toContain('No grade data available for the selected filters.');
   });
 
+  it('renders LaTeX in text and table cells as plain text', async () => {
+    const pdf = await createGradesPdf({
+      studentName: 'Ada Lovelace',
+      exportDate: '2026-09-21',
+      subjectFilter: '$G = r \\times d$',
+      typeFilter: 'all',
+      subjectRows: [],
+      quizRows: [
+        {
+          title: '$\\frac{1}{2}$ Fractions',
+          subject: 'General Mathematics',
+          score: 90,
+          date: '2026-09-21',
+          type: 'Practice',
+          status: 'Completed',
+        },
+      ],
+    });
+    const pdfText = await readPdfText(pdf);
+
+    expect(pdfText).toContain('Subject Filter: G = r');
+    expect(pdfText).toContain('1/2 Fractions');
+    expect(pdfText).not.toContain('\\times');
+    expect(pdfText).not.toContain('\\frac');
+  });
+
   it('keeps jsPDF and AutoTable out of the initial module imports', () => {
     const source = readFileSync(new URL('./pdfExport.ts', import.meta.url), 'utf8');
 

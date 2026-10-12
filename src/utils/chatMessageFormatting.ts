@@ -106,8 +106,57 @@ export function stripThinkTags(input: string, options: ThinkTagStripOptions = {}
   return sanitized;
 }
 
+const MATH_LIKE_TAIL_PATTERN = /[\\^_{=]/;
+
+/**
+ * Index where an unfinished math span begins, or -1 when the text ends outside
+ * math. Code spans and escaped dollars are skipped; a lone `$` only counts when
+ * its tail looks like TeX, so currency such as "$500 per week" stays visible.
+ */
+function findUnclosedMathStart(text: string): number {
+  let cursor = 0;
+  while (cursor < text.length) {
+    if (text.startsWith('```', cursor)) {
+      const fenceEnd = text.indexOf('```', cursor + 3);
+      if (fenceEnd === -1) return -1;
+      cursor = fenceEnd + 3;
+    } else if (text[cursor] === '`') {
+      const codeEnd = text.indexOf('`', cursor + 1);
+      const lineEnd = text.indexOf('\n', cursor + 1);
+      cursor = codeEnd !== -1 && (lineEnd === -1 || codeEnd < lineEnd) ? codeEnd + 1 : cursor + 1;
+    } else if (text[cursor] === '\\' && (text[cursor + 1] === '(' || text[cursor + 1] === '[')) {
+      const closer = text[cursor + 1] === '(' ? '\\)' : '\\]';
+      const closeAt = text.indexOf(closer, cursor + 2);
+      if (closeAt === -1) return cursor;
+      cursor = closeAt + 2;
+    } else if (text[cursor] === '\\') {
+      cursor += 2;
+    } else if (text.startsWith('$$', cursor)) {
+      const closeAt = text.indexOf('$$', cursor + 2);
+      if (closeAt === -1) return cursor;
+      cursor = closeAt + 2;
+    } else if (text[cursor] === '$') {
+      const lineEnd = text.indexOf('\n', cursor + 1);
+      const line = text.slice(cursor + 1, lineEnd === -1 ? text.length : lineEnd);
+      const closeAt = line.indexOf('$');
+      if (closeAt !== -1) {
+        cursor += closeAt + 2;
+      } else if (lineEnd === -1 && MATH_LIKE_TAIL_PATTERN.test(line)) {
+        return cursor;
+      } else {
+        cursor += 1;
+      }
+    } else {
+      cursor += 1;
+    }
+  }
+  return -1;
+}
+
 export function formatAssistantResponseForStreaming(input: string): string {
-  return stripThinkTags(input, { streamingSafeTail: true }).trim();
+  const visible = stripThinkTags(input, { streamingSafeTail: true });
+  const unclosedMathStart = findUnclosedMathStart(visible);
+  return (unclosedMathStart === -1 ? visible : visible.slice(0, unclosedMathStart)).trim();
 }
 
 export function formatAssistantResponseForStorage(input: string): string {
@@ -188,6 +237,12 @@ function normalizeMultilineBrackets(input: string): string {
   return result;
 }
 
+// TeX commands beginning with "n"; mirrors the backend's list.
+const TEX_N_COMMANDS = new Set([
+  'nabla', 'natural', 'nearrow', 'neg', 'neq', 'newline', 'ngeq', 'ngtr', 'ni', 'nleq', 'nless',
+  'nmid', 'not', 'notin', 'nparallel', 'nsubseteq', 'nsupseteq', 'nu', 'nwarrow',
+]);
+
 /**
  * Normalize model output before markdown rendering so common raw TeX commands
  * (for example \boxed{3}) are rendered as math instead of plain text.
@@ -213,11 +268,15 @@ const normalizedBrackets = normalizeMultilineBrackets(normalizedNewlines);
           // Convert escaped newline sequences ("\\n") into real newlines
           // within non-code segments so model-emitted "\\n" is rendered as a
           // line break in the final markdown.
-          const withNewlines = segment.replace(/\\n/g, '\n');
+          // A "\n" that starts a TeX command (\neq, \nabla, ...) is left alone.
+          const withNewlines = segment.replace(
+            /\\n([A-Za-z]*)/g,
+            (match, letters: string) => (TEX_N_COMMANDS.has(`n${letters}`) ? match : `\n${letters}`),
+          );
 
           // Unescape double-backslashes in LaTeX commands: \\ → \
           const unescaped = withNewlines
-            .replace(/\\\\(?=(?:boxed|frac|sqrt|cdot|times|pm|mp|leq|geq|neq|approx|alpha|beta|gamma|delta|theta|pi|sum|int|left|right|begin|end)\b)/g, '\\');
+            .replace(/\\\\(?=(?:boxed|frac|sqrt|cdot|times|pm|mp|le|ge|leq|geq|neq|approx|ldots|cdots|mathbb|infty|div|text|alpha|beta|gamma|delta|theta|pi|sum|int|left|right|begin|end)\b)/g, '\\');
 
           // If a backslash was accidentally placed before a dollar sign that
           // immediately precedes a TeX command (for example "\$\\boxed"),

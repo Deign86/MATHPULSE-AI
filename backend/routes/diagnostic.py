@@ -21,12 +21,16 @@ from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from services.ai_client import complete_text
-from services.llm_json import LLMJsonError, extract_json_value, extract_dict_list
+from services.llm_json import LLMJsonError, extract_json_value, extract_dict_list, loads_jsonish
 from rag.curriculum_rag import retrieve_curriculum_context
 import firebase_admin
 from firebase_admin import firestore as fs
 
 logger = logging.getLogger("mathpulse.diagnostic")
+
+# Bump when cached AI analyses must regenerate (e.g. they were saved with corrupted LaTeX).
+_ANALYSIS_CACHE_VERSION = "2026-10-latex"
+_ANALYSIS_CACHE_VERSION_FIELD = "cacheVersion"
 
 router = APIRouter(prefix="/api/diagnostic", tags=["diagnostic"])
 
@@ -904,8 +908,10 @@ async def analyze_diagnostic(request: DiagnosticAnalysisRequest, req: Request):
     # Check server-side cache first
     cache_ref = firestore_client.collection("diagnosticResults").document(request.user_id).collection("cache").document("analysis")
     cache_doc = cache_ref.get()
-    if cache_doc.exists:
-        return DiagnosticAnalysisResponse(success=True, analysis=cache_doc.to_dict())
+    cached_analysis = (cache_doc.to_dict() or {}) if cache_doc.exists else {}
+    # A version mismatch is a cache miss, so analyses cached before the LaTeX-repair fix regenerate.
+    if cached_analysis.pop(_ANALYSIS_CACHE_VERSION_FIELD, None) == _ANALYSIS_CACHE_VERSION:
+        return DiagnosticAnalysisResponse(success=True, analysis=cached_analysis)
 
     results_data = results_doc.to_dict() or {}
     responses = results_data.get("responses", [])
@@ -1011,7 +1017,9 @@ Return ONLY valid JSON, no markdown fences."""
                 cleaned = cleaned[:-3]
             cleaned = cleaned.strip()
 
-        analysis = json.loads(cleaned)
+        analysis = loads_jsonish(cleaned)
+        if analysis is None:
+            raise json.JSONDecodeError("Unparseable analysis JSON", cleaned, 0)
     except json.JSONDecodeError as e:
         logger.warning(f"[diagnostic/analyze] AI JSON parse failed: {e}, using fallback")
         analysis = _build_fallback_analysis(responses, domain_scores, risk_profile)
@@ -1021,7 +1029,7 @@ Return ONLY valid JSON, no markdown fences."""
 
     # Cache the analysis in Firestore for future requests
     try:
-        cache_ref.set(analysis)
+        cache_ref.set({**analysis, _ANALYSIS_CACHE_VERSION_FIELD: _ANALYSIS_CACHE_VERSION})
     except Exception as e:
         logger.warning(f"[diagnostic/analyze] Failed to cache analysis: {e}")
 
