@@ -37,8 +37,10 @@ test('mapped doc satisfies the canonical battle question shape', () => {
   const doc = toBankDoc(question(), 'gen-math', stamp);
   assert.equal(doc.subject, 'gen-math');
   assert.equal(doc.gradeLevel, 11);
-  assert.equal(doc.curriculumVersion, 'strengthened');
-  assert.equal(doc.curriculumVersionSetId, 'shs-core-v1');
+  // Must match the Grade 11 profile default (functions/src/config/diagnosticPolicies.ts), which
+  // quiz battle normalizes to "legacy"; any other version is filtered out of every match.
+  assert.equal(doc.curriculumVersion, 'legacy');
+  assert.equal(doc.curriculumVersionSetId, 'g11-core-genmath-legacy-detail-strengthened-structure');
   assert.equal(doc.topic, 'gm-1');
   assert.equal(doc.subtopic, 'Operations on Functions');
   assert.equal(doc.competencyCode, 'gm-1-L3');

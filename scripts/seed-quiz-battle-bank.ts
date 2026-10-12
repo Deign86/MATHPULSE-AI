@@ -202,8 +202,10 @@ export function toBankDoc<Stamp>(question: SeedQuestion, subjectId: string, serv
   return {
     subject: subjectId,
     gradeLevel: 11,
-    curriculumVersion: 'strengthened',
-    curriculumVersionSetId: 'shs-core-v1',
+    // The Grade 11 profile default (functions/src/config/diagnosticPolicies.ts); quiz battle normalizes it to
+    // "legacy" and drops bank questions whose version differs from the player's.
+    curriculumVersion: 'legacy',
+    curriculumVersionSetId: 'g11-core-genmath-legacy-detail-strengthened-structure',
     curriculumTrack: 'core',
     topic: question.moduleId,
     subtopic: question.lessonTitle,

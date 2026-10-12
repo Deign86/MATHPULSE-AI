@@ -18,6 +18,11 @@ Scope: `scripts/seed-quiz-battle-bank.ts` generates and verifies (Claude Haiku) 
 - [x] G4: Hand review of the generated set before writing
   EVIDENCE: first dry run had 3/19 bad gm-1 items (wrong key P(4); two equivalent correct choices twice) -> verifier tightened; second run hand-checked gm-1 (25), gm-3 (25), sp-1 (25): 75/75 correct with exactly one correct choice
 
+- [x] G6: Seeded docs carry the Grade 11 profile default version set, so matches select them (a "strengthened" tag was filtered out of every match)
+  CHECK: node --test scripts/seed-quiz-battle-bank.test.ts 2>&1
+  EXPECT: /# fail 0/
+  EVIDENCE: 8 pass / 0 fail (red before the fix). Live: rules deployed, 175 docs upserted from the reviewed JSON (md5 336c609b… unchanged); 5-question VS Bot match on gm-1 xZrzKvQrm6foxPXz0ceQ served ai-gm-1-80228c82a608, -eeefd9bc35b0, -859394a2f267, -ce7d8f4eed85, -0215b3350a0e (all seeded Functions items); previous match before the fix served static qb-gm-01..05
+
 - [x] G5: Students cannot read bank answers; teachers/admins keep read access for the Question Bank panel; writes stay server-only
   CHECK: cd functions && npm run build && npm test 2>&1
   EXPECT: /# fail 0/
