@@ -163,14 +163,14 @@ const AssessmentResultView: React.FC<{ result: AssessmentResult }> = ({ result }
                   <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
                     <span className="text-slate-500 dark:text-slate-400">Your answer:</span>
                     <span className={`px-2 py-0.5 rounded-md font-bold ${ans.isCorrect ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-700 dark:text-rose-300'}`}>
-                      {ans.userAnswer || '—'}
+                      <MathText>{ans.userAnswer || '—'}</MathText>
                     </span>
                     {!ans.isCorrect && (
                       <>
                         <span className="text-slate-400">&bull;</span>
                         <span className="text-slate-500 dark:text-slate-400">Correct:</span>
                         <span className="px-2 py-0.5 rounded-md font-bold bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300">
-                          {ans.correctAnswer}
+                          <MathText>{ans.correctAnswer}</MathText>
                         </span>
                       </>
                     )}

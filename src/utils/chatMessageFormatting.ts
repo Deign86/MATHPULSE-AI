@@ -188,6 +188,12 @@ function normalizeMultilineBrackets(input: string): string {
   return result;
 }
 
+// TeX commands beginning with "n"; mirrors the backend's list.
+const TEX_N_COMMANDS = new Set([
+  'nabla', 'natural', 'nearrow', 'neg', 'neq', 'newline', 'ngeq', 'ngtr', 'ni', 'nleq', 'nless',
+  'nmid', 'not', 'notin', 'nparallel', 'nsubseteq', 'nsupseteq', 'nu', 'nwarrow',
+]);
+
 /**
  * Normalize model output before markdown rendering so common raw TeX commands
  * (for example \boxed{3}) are rendered as math instead of plain text.
@@ -213,11 +219,15 @@ const normalizedBrackets = normalizeMultilineBrackets(normalizedNewlines);
           // Convert escaped newline sequences ("\\n") into real newlines
           // within non-code segments so model-emitted "\\n" is rendered as a
           // line break in the final markdown.
-          const withNewlines = segment.replace(/\\n/g, '\n');
+          // A "\n" that starts a TeX command (\neq, \nabla, ...) is left alone.
+          const withNewlines = segment.replace(
+            /\\n([A-Za-z]*)/g,
+            (match, letters: string) => (TEX_N_COMMANDS.has(`n${letters}`) ? match : `\n${letters}`),
+          );
 
           // Unescape double-backslashes in LaTeX commands: \\ → \
           const unescaped = withNewlines
-            .replace(/\\\\(?=(?:boxed|frac|sqrt|cdot|times|pm|mp|leq|geq|neq|approx|alpha|beta|gamma|delta|theta|pi|sum|int|left|right|begin|end)\b)/g, '\\');
+            .replace(/\\\\(?=(?:boxed|frac|sqrt|cdot|times|pm|mp|le|ge|leq|geq|neq|approx|ldots|cdots|mathbb|infty|div|text|alpha|beta|gamma|delta|theta|pi|sum|int|left|right|begin|end)\b)/g, '\\');
 
           // If a backslash was accidentally placed before a dollar sign that
           // immediately precedes a TeX command (for example "\$\\boxed"),

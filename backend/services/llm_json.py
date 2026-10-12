@@ -22,6 +22,7 @@ __all__ = [
     "strip_reasoning",
     "extract_json_blocks",
     "normalize_candidate",
+    "repair_latex_backslashes",
     "loads_jsonish",
     "extract_json_value",
     "extract_json_object",
@@ -88,6 +89,41 @@ def extract_json_blocks(text: str) -> List[str]:
     return blocks
 
 
+# TeX commands that start with ``n``; any other ``\n<letters>`` is a newline
+# followed by prose ("\nThe next step").
+TEX_N_COMMANDS = frozenset(
+    {
+        "nabla", "natural", "nearrow", "neg", "neq", "newline", "ngeq", "ngtr",
+        "ni", "nleq", "nless", "nmid", "not", "notin", "nparallel", "nsubseteq",
+        "nsupseteq", "nu", "nwarrow",
+    }
+)
+_BACKSLASH_ESCAPE_RE = re.compile(r"\\(u[0-9a-fA-F]{4}|.)([A-Za-z]*)", re.DOTALL)
+
+
+def _repair_backslash(match: "re.Match[str]") -> str:
+    escape, letters = match.group(1), match.group(2)
+    whole = match.group(0)
+    if escape in ('"', "\\", "/") or len(escape) == 5:
+        return whole
+    if escape == "n":
+        return "\\" + whole if escape + letters in TEX_N_COMMANDS else whole
+    if escape in "bfrt" and not letters:
+        return whole
+    # A TeX command (\times, \text, \frac, \beta, \right) or an escape JSON
+    # rejects (\sqrt, \cdot): keep the backslash literal.
+    return "\\" + whole
+
+
+def repair_latex_backslashes(candidate: str) -> str:
+    r"""Double single backslashes that start LaTeX commands inside JSON text.
+
+    Models write ``\times`` where JSON needs ``\\times``; ``json.loads`` would
+    decode the ``\t`` as a TAB and the lesson would show "imes".
+    """
+    return _BACKSLASH_ESCAPE_RE.sub(_repair_backslash, candidate)
+
+
 def normalize_candidate(candidate: str) -> str:
     """Repair the defects models introduce into otherwise valid JSON."""
     normalized = candidate.strip().lstrip("\ufeff")
@@ -100,6 +136,7 @@ def normalize_candidate(candidate: str) -> str:
         .replace("\u2018", "'")
         .replace("\u2019", "'")
     )
+    normalized = repair_latex_backslashes(normalized)
     # Drop trailing commas before an object/array closer.
     return re.sub(r",(\s*[}\]])", r"\1", normalized)
 

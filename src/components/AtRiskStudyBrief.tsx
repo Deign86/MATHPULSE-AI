@@ -11,6 +11,7 @@ import {
   DrawerClose,
 } from './ui/drawer';
 import { watchModule } from '../services/moduleWatchService';
+import AiText from './AiText';
 
 export type ResolutionState = 'coming_soon' | 'progression_locked' | 'no_module';
 
@@ -122,7 +123,7 @@ const AtRiskStudyBrief: React.FC<AtRiskStudyBriefProps> = ({
               {/* Summary */}
               <div>
                 <h4 className="text-sm font-semibold text-gray-900 mb-1">Overview</h4>
-                <p className="text-sm text-gray-700 leading-relaxed">{fallbackContent.summary}</p>
+                <p className="text-sm text-gray-700 leading-relaxed"><AiText inline>{fallbackContent.summary}</AiText></p>
               </div>
 
               {/* Key Concepts */}
@@ -133,7 +134,7 @@ const AtRiskStudyBrief: React.FC<AtRiskStudyBriefProps> = ({
                     {fallbackContent.key_concepts.map((concept, i) => (
                       <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
                         <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-purple-500 flex-shrink-0" />
-                        {concept}
+                        <AiText inline>{concept}</AiText>
                       </li>
                     ))}
                   </ul>
@@ -161,11 +162,11 @@ const AtRiskStudyBrief: React.FC<AtRiskStudyBriefProps> = ({
                         <div className="px-3 py-3 space-y-2">
                           <div>
                             <span className="text-xs font-bold text-gray-500 uppercase">Problem</span>
-                            <p className="text-sm text-gray-800 mt-0.5">{fallbackContent.one_worked_example.problem}</p>
+                            <p className="text-sm text-gray-800 mt-0.5"><AiText inline>{fallbackContent.one_worked_example.problem}</AiText></p>
                           </div>
                           <div>
                             <span className="text-xs font-bold text-gray-500 uppercase">Solution</span>
-                            <p className="text-sm text-gray-800 mt-0.5 whitespace-pre-line">{fallbackContent.one_worked_example.solution}</p>
+                            <p className="text-sm text-gray-800 mt-0.5 whitespace-pre-line"><AiText inline>{fallbackContent.one_worked_example.solution}</AiText></p>
                           </div>
                         </div>
                       </motion.div>

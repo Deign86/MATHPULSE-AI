@@ -1,21 +1,33 @@
-# Gates: main content shell scrolls sideways on AI Chat
+# Gates: AI lesson LaTeX corruption + main shell sideways scroll
 
-Scope: the student main content shell (`src/App.tsx`) uses `overflow-hidden`, which still allows programmatic scrolling. `scrollIntoView` calls (chat input/messages, Grades, LessonViewer) scroll the shell to reveal the decorative blur orbs that sit outside it, shifting the page 125px left / 150px up. Switch the shell to `overflow-clip` so it can't be scrolled.
+Scope: AI lessons showed `\times` as "imes" and `\text{` as "ext{", plus a red `\` before `$$` blocks. Causes: (1) `json.loads` on model JSON with single-backslash TeX decodes `\t`/`\f`/`\b`/`\n`/`\r`, and ~20 call sites bypassed the shared parser; (2) `llm_text._fix_escapes` and the frontend chat formatter turned literal `\t`/`\n` into whitespace even inside TeX; (3) `MathText.escapeCurrencyDollars` paired the inner dollars of `$$...$$`; (4) several components printed AI text as plain text. Cached broken lessons and diagnostic analyses must regenerate. Also: the student main shell (`overflow-hidden`) is scrolled by `scrollIntoView`, shifting AI Chat 125px left / 150px up.
 
 - [x] G1: The main content shell uses overflow-clip, not overflow-hidden
   CHECK: grep -c "relative z-10 overflow-clip" src/App.tsx
   EXPECT: /^1$/m
   EVIDENCE: 1
 
-- [x] G2: TypeScript typecheck passes
+- [x] G2: Shared parser keeps single-backslash TeX (\times \text \frac \beta \neq \nabla \right \sqrt \cdot \underline) and still decodes real JSON escapes
+  CHECK: cd backend && PYTEST_ADDOPTS="-p no:cacheprovider" PYTHONPATH=. PYTHONUTF8=1 python -m pytest tests/test_llm_json.py tests/test_llm_text.py tests/test_parse_json_response.py -q 2>&1
+  EXPECT: /^(?!.*\b(failed|errors?)\b).*\d+ passed/m
+  EVIDENCE: test_llm_json + test_llm_text + test_rag_regression: 71 passed; lane B run incl. test_parse_json_response: 265 passed
+
+- [x] G3: Cached corrupted lessons and diagnostic analyses become cache misses
+  CHECK: grep -c 'LESSON_PROMPT_VERSION = "2026-10-v3"' backend/routes/rag_routes.py && grep -c '_ANALYSIS_CACHE_VERSION = "2026-10-latex"' backend/routes/diagnostic.py
+  EXPECT: /^1\s+1$/m
+  EVIDENCE: 1 / 1 (read-only Firestore scan: 4 of 11 cached lessons corrupted, all promptVersion 2026-10-v2)
+
+- [x] G4: MathText renders a mid-paragraph `$$...$$` containing words as math (no red `\`), chat formatter keeps `\neq`/`\nabla`
+  CHECK: npx vitest run src/components/MathText.test.tsx src/utils/chatMessageFormatting.test.ts 2>&1
+  EXPECT: /Tests\s+\d+ passed/
+  EVIDENCE: MathText 9 passed; chatMessageFormatting 20 passed
+
+- [x] G5: Full frontend suite, typecheck and anti-slop lint pass
   CHECK: npx tsc --noEmit 2>&1 && echo TSC_CLEAN
   EXPECT: TSC_CLEAN
-  EVIDENCE: TSC_CLEAN
+  EVIDENCE: TSC_CLEAN; oxlint --quiet clean; vitest Test Files 155 passed (155), Tests 966 passed (966)
 
-- [x] G3: App-level tests still pass
-  CHECK: npx vitest run src/App 2>&1
-  EXPECT: /Tests\s+\d+ passed/
-  EVIDENCE: Test Files  1 passed (1) | Tests  2 passed (2)
+- [x] G6: Full backend suite passes
+  EVIDENCE: pytest tests -q (excluding e2e): 1144 passed, 2 warnings in 124.74s
 
-- [x] G4: On the live AI Chat page, scrollIntoView on the chat input scrolls the shell with overflow-hidden (control: scrollTop 150) and does not with overflow-clip (scrollTop 0, scrollLeft 0)
-  EVIDENCE: live /chat, 2026-10-12: overflow-hidden -> scrollIntoView left shell at [0,150] (earlier send: [125,150]); overflow clip -> [0,0]
+Post-deploy check (not a pre-merge gate): reopen the "Represent business transactions…" lesson in the live app and confirm \times, \text and $$ blocks render.

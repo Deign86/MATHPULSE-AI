@@ -140,3 +140,39 @@ class TestCollectDictObjects:
 
     def test_ignores_arrays(self) -> None:
         assert collect_dict_objects("[1, 2]") == []
+
+
+class TestLatexBackslashes:
+    """Models often emit single-backslash LaTeX inside JSON strings."""
+
+    @pytest.mark.parametrize(
+        "tex",
+        [
+            r"G = r \times d",
+            r"\text{Profit} = S - C",
+            r"\frac{1}{2}",
+            r"\beta + \rho",
+            r"x \neq 0",
+            r"\nabla f",
+            r"\left( x \right)",
+            r"\sqrt{x} \cdot y",
+            r"\underline{x} \le 3",
+        ],
+    )
+    def test_single_backslash_tex_survives(self, tex: str) -> None:
+        raw = '{"body": "Use $' + tex + '$ here."}'
+        assert extract_json_object(raw) == {"body": f"Use ${tex}$ here."}
+
+    def test_correctly_escaped_tex_is_unchanged(self) -> None:
+        raw = r'{"body": "$\\times$ and $\\frac{a}{b}$"}'
+        assert extract_json_object(raw) == {"body": r"$\times$ and $\frac{a}{b}$"}
+
+    def test_real_json_escapes_still_decode(self) -> None:
+        raw = r'{"body": "Line one\nThe next line\n\nSay \"hi\" ₱ a\/b \\ end"}'
+        assert extract_json_object(raw) == {
+            "body": 'Line one\nThe next line\n\nSay "hi" ₱ a/b \\ end'
+        }
+
+    def test_newline_before_prose_word_stays_newline(self) -> None:
+        raw = r'{"body": "Step 1\nNote that\nnext"}'
+        assert extract_json_object(raw) == {"body": "Step 1\nNote that\nnext"}

@@ -476,7 +476,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                         {analysis.strength_areas.map((s, i) => (
                           <li key={i} className="text-xs sm:text-sm text-emerald-900 dark:text-emerald-200 flex items-start gap-2">
                             <CheckCircle2 className="w-4 h-4 mt-0.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                            <span><strong className="font-black text-emerald-950 dark:text-emerald-100">{s.domain}:</strong> {s.detail}</span>
+                            <span><strong className="font-black text-emerald-950 dark:text-emerald-100">{s.domain}:</strong> <AiText inline>{s.detail}</AiText></span>
                           </li>
                         ))}
                       </ul>
@@ -501,7 +501,7 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                           <li key={w.domain} className="text-xs sm:text-sm text-amber-900 dark:text-amber-200 flex items-start justify-between gap-2">
                             <div className="flex items-start gap-2">
                               <AlertTriangle className="w-4 h-4 mt-0.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                              <span><strong className="font-black text-amber-950 dark:text-amber-100">{w.domain}:</strong> {w.detail}</span>
+                              <span><strong className="font-black text-amber-950 dark:text-amber-100">{w.domain}:</strong> <AiText inline>{w.detail}</AiText></span>
                             </div>
                             <button type="button" onClick={() => handleOpenLesson(w.domain)} className="shrink-0 px-2 py-0.5 rounded-md bg-amber-200/60 dark:bg-amber-900/60 text-amber-900 dark:text-amber-200 text-[9px] font-black uppercase tracking-wider">
                               Find matching lesson
@@ -534,10 +534,10 @@ const DiagnosticBreakdown: React.FC<DiagnosticBreakdownProps> = ({ userId, mode,
                             <div className="flex items-center gap-1.5 text-purple-700 dark:text-purple-400 text-xs font-black mb-1">
                               <span>Step {i + 1}</span>
                               <span className="text-slate-400">•</span>
-                              <span className="text-slate-800 dark:text-white font-bold">{r.action}</span>
+                              <span className="text-slate-800 dark:text-white font-bold"><AiText inline>{r.action}</AiText></span>
                             </div>
                             <p className="text-slate-600 dark:text-slate-400 text-xs leading-relaxed">
-                              {r.reason}
+                              <AiText inline>{r.reason}</AiText>
                             </p>
                           </div>
                           <button

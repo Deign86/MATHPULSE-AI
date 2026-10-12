@@ -380,7 +380,7 @@ def _ensure_7_sections(lesson_data: dict, lesson_title: str, chunks: Optional[Li
 # ─── Lesson pipeline: per-student cache, in-flight dedupe, streamed generation ─
 
 # Bump when build_lesson_prompt or the richness rules change: new keys -> lessons regenerate on next open.
-LESSON_PROMPT_VERSION = "2026-10-v2"
+LESSON_PROMPT_VERSION = "2026-10-v3"
 _LESSON_MEMORY_MAX_ENTRIES = 256
 _RETRIEVAL_MEMORY_MAX_ENTRIES = 256
 _LESSON_GENERATION_CAP_SEC = 300.0

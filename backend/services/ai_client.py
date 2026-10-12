@@ -18,6 +18,8 @@ from anthropic import (
 from anthropic.lib.streaming import BetaMessageStreamManager
 from anthropic.types.beta import BetaMessage
 
+from .llm_json import normalize_candidate
+
 try:
     from dotenv import load_dotenv
     for _env_path in [
@@ -213,11 +215,13 @@ def outer_json(text: str) -> Optional[str]:
     if not starts or end < min(starts):
         return None
     candidate = text[min(starts) : end + 1]
+    # Return the repaired span so the caller's json.loads keeps single-backslash LaTeX (\times, \sqrt) intact.
+    repaired = normalize_candidate(candidate)
     try:
-        json.loads(candidate)
+        json.loads(repaired)
     except json.JSONDecodeError:
         return None
-    return candidate
+    return repaired
 
 
 def reply_text(message: BetaMessage, *, json_output: bool = False) -> str:

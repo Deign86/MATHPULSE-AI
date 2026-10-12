@@ -42,6 +42,27 @@ it('keeps code fences untouched', () => {
     expect(normalizeChatMarkdownForRender(input)).toBe('Step 1\nFinal Answer: $\\boxed{7}$');
   });
 
+  it('keeps TeX commands that start with \\n inside math', () => {
+    expect(normalizeChatMarkdownForRender('$a \\neq b$')).toBe('$a \\neq b$');
+    expect(normalizeChatMarkdownForRender('$\\nabla f$')).toBe('$\\nabla f$');
+    expect(normalizeChatMarkdownForRender('$\\nu + \\not\\in$')).toBe('$\\nu + \\not\\in$');
+  });
+
+  it('keeps \\t and \\r TeX commands intact', () => {
+    const input = '$x \\times y \\to \\theta \\text{ok} \\right) \\rho$';
+    expect(normalizeChatMarkdownForRender(input)).toBe(input);
+  });
+
+  it('still converts real escaped newlines', () => {
+    expect(normalizeChatMarkdownForRender('Step 1\\nStep 2')).toBe('Step 1\nStep 2');
+    expect(normalizeChatMarkdownForRender('a\\n\\nb')).toBe('a\n\nb');
+    expect(normalizeChatMarkdownForRender('a\\nThe next')).toBe('a\nThe next');
+  });
+
+  it('unescapes double-escaped common commands', () => {
+    expect(normalizeChatMarkdownForRender('$x \\\\le y \\\\infty \\\\mathbb{R}$')).toBe('$x \\le y \\infty \\mathbb{R}$');
+  });
+
   it('removes raw think blocks from rendered markdown', () => {
     const input = 'Solve this<think>internal reasoning</think>\nFinal Answer: \\boxed{3}';
 

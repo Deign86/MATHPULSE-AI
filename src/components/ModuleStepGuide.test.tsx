@@ -232,7 +232,7 @@ describe('ModuleStepGuide intervention practice', () => {
     }));
 
     expect(await screen.findByText('What is 2 + 3?')).toBeInTheDocument();
-    expect(screen.getByText('B. 5')).toBeInTheDocument();
+    expect(screen.getByText('B.', { exact: false })).toHaveTextContent('B. 5');
   });
 
   it('generates a mastery check for an assessment step using the requested item count', async () => {

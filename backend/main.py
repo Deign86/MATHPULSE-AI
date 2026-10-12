@@ -3525,7 +3525,9 @@ Respond with ONLY a JSON object (no markdown, no explanation outside the JSON):
         json_start = raw.find("{")
         json_end = raw.rfind("}") + 1
         if json_start >= 0 and json_end > json_start:
-            parsed = json.loads(raw[json_start:json_end])
+            parsed = loads_jsonish(raw[json_start:json_end])
+            if not isinstance(parsed, dict):
+                raise ValueError("Could not parse judge response")
         else:
             logger.warning(f"LLM judge returned non-JSON: {raw[:200]}")
             return {"correct": False, "issues": ["Could not parse judge response"], "confidence": 0.0}
@@ -9135,7 +9137,7 @@ TEXT:
                     json_end = topic_text.rfind("}") + 1
                     topic_payload: Dict[str, Any] = {}
                     if json_start >= 0 and json_end > json_start:
-                        topic_payload = json.loads(topic_text[json_start:json_end])
+                        topic_payload = loads_jsonish(topic_text[json_start:json_end]) or {}
 
                     for idx, topic in enumerate((topic_payload.get("topics") or [])[:10]):
                         title = str(topic.get("title", "")).strip()
@@ -10139,7 +10141,7 @@ def _parse_lesson_plan_json(raw: str) -> Dict[str, Any]:
     end = cleaned.rfind("}") + 1
     if start >= 0 and end > start:
         try:
-            parsed = json.loads(cleaned[start:end])
+            parsed = loads_jsonish(cleaned[start:end])
             if isinstance(parsed, dict):
                 return parsed
         except Exception:
@@ -11706,7 +11708,7 @@ def _validate_quiz_questions(
                     return []
                 if text.startswith("[") and text.endswith("]"):
                     try:
-                        parsed = json.loads(text)
+                        parsed = loads_jsonish(text)
                         if isinstance(parsed, list):
                             return [str(item).strip() for item in parsed if str(item).strip()]
                     except Exception:
@@ -13890,10 +13892,12 @@ Return ONLY this exact JSON (no other text):
         import re
         json_match = re.search(r'\{.*\}', response, re.DOTALL)
         if json_match:
-            lesson_data = json.loads(json_match.group())
+            lesson_data = loads_jsonish(json_match.group())
         else:
-            lesson_data = json.loads(response)
-        
+            lesson_data = loads_jsonish(response)
+        if lesson_data is None:
+            raise ValueError("Could not parse lesson JSON from model response")
+
         return DiagnosticLessonResponse(**sanitize_tree(lesson_data))
     except Exception as e:
         logger.error(f"Diagnostic lesson generation error: {e}")
@@ -14306,10 +14310,12 @@ Return ONLY this strict JSON array:
         import re
         json_match = re.search(r'\[.*\]', items_json, re.DOTALL)
         if json_match:
-            raw_items = json.loads(json_match.group())
+            raw_items = loads_jsonish(json_match.group())
         else:
-            raw_items = json.loads(items_json) if items_json.strip().startswith('[') else []
-        
+            raw_items = loads_jsonish(items_json) if items_json.strip().startswith('[') else []
+        if raw_items is None:
+            raise ValueError("Could not parse quiz items JSON from model response")
+
         items: List[AdaptiveQuizItem] = []
         for i, qi in enumerate(raw_items[:count]):
             qi = sanitize_tree(qi) if isinstance(qi, dict) else qi
@@ -14513,9 +14519,11 @@ Return as JSON with fields: topic, sections (array of title/content), suggested_
             # Extract JSON from response
             json_match = re.search(r'\{.*\}', response_text, re.DOTALL)
             if json_match:
-                lesson_data = json.loads(json_match.group())
+                lesson_data = loads_jsonish(json_match.group())
             else:
-                lesson_data = json.loads(response_text)
+                lesson_data = loads_jsonish(response_text)
+            if lesson_data is None:
+                raise json.JSONDecodeError("Unparseable lesson JSON", response_text, 0)
 
             lesson_data = sanitize_tree(lesson_data)
             return PersonalizedLessonResponse(

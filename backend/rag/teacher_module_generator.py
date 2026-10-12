@@ -6,6 +6,8 @@ import logging
 import uuid
 from datetime import datetime
 
+from services.llm_json import loads_jsonish
+
 logger = logging.getLogger(__name__)
 
 class ExampleItem(BaseModel):
@@ -95,19 +97,15 @@ def _parse_module_json(raw: str) -> Optional[Dict[str, Any]]:
     cleaned = re.sub(r"<think>[\s\S]*?</think>", "", cleaned, flags=re.IGNORECASE)
     cleaned = cleaned.strip()
 
-    try:
-        return json.loads(cleaned)
-    except json.JSONDecodeError:
-        # Try to find a JSON object in the string
-        try:
-            start_idx = cleaned.find('{')
-            end_idx = cleaned.rfind('}')
-            if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
-                json_str = cleaned[start_idx:end_idx + 1]
-                return json.loads(json_str)
-        except Exception:
-            pass
-        return None
+    parsed = loads_jsonish(cleaned)
+    if parsed is not None:
+        return parsed
+    # Try to find a JSON object in the string
+    start_idx = cleaned.find('{')
+    end_idx = cleaned.rfind('}')
+    if start_idx != -1 and end_idx != -1 and end_idx >= start_idx:
+        return loads_jsonish(cleaned[start_idx:end_idx + 1])
+    return None
 
 async def generate_teacher_module(
     course_material_text: str,

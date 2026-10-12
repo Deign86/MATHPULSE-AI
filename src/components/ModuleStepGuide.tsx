@@ -20,6 +20,7 @@ import { apiService } from '../services/apiService';
 import { generatePracticeSession } from '../services/practiceService';
 import type { LearningStep } from '../services/interventionService';
 import AiText from './AiText';
+import MathText from './MathText';
 
 interface ModuleSection {
   title: string;
@@ -399,7 +400,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                   : 'bg-slate-100/80 dark:bg-slate-800 border border-slate-200/60 dark:border-slate-700/60 text-slate-800 dark:text-slate-200 rounded-tl-xs whitespace-pre-wrap'
               }`}
             >
-              {msg.content}
+              {msg.role === 'user' ? msg.content : <AiText>{msg.content}</AiText>}
             </div>
           </div>
         ))}
@@ -797,7 +798,7 @@ export const ModuleStepGuide: React.FC<Props> = ({
                                 onChange={() => updatePractice({ answers: { ...selectedAnswers, [i]: opt.label } })}
                                 className="mr-2 accent-indigo-600"
                               />
-                              <span>{opt.label}. {opt.text}</span>
+                              <span>{opt.label}. <MathText>{opt.text}</MathText></span>
                               {isCorrect && submittedAnswers[i] && (
                                 <Check size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0 ml-1.5" />
                               )}

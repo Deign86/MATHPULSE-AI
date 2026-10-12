@@ -4584,14 +4584,14 @@ const AnalyticsView: React.FC<{
                     <BarChart3 size={18} className="text-indigo-600" />
                     <h4 className="text-[13px] font-semibold text-[#1e293b]">Class Overview</h4>
                   </div>
-                  <p className="text-[12px] text-[#475569] leading-relaxed">{backendReport.insights.class_summary}</p>
+                  <p className="text-[12px] text-[#475569] leading-relaxed"><AiText inline>{backendReport.insights.class_summary}</AiText></p>
                 </div>
                 <div className="bg-white/70 rounded-[14px] p-4 border border-white">
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp size={18} className="text-emerald-600" />
                     <h4 className="text-[13px] font-semibold text-[#1e293b]">What's Working</h4>
                   </div>
-                  <p className="text-[12px] text-[#475569] leading-relaxed">{backendReport.insights.class_strengths}</p>
+                  <p className="text-[12px] text-[#475569] leading-relaxed"><AiText inline>{backendReport.insights.class_strengths}</AiText></p>
                 </div>
                 <div className="bg-white/70 rounded-[14px] p-4 border border-white">
                   <div className="flex items-center gap-2 mb-2">
@@ -4602,7 +4602,7 @@ const AnalyticsView: React.FC<{
                     {backendReport.insights.recommended_actions.map((action, i) => (
                       <li key={i} className="text-[12px] text-[#475569] leading-relaxed flex items-start gap-1.5">
                         <span className="text-indigo-500 mt-0.5 shrink-0">•</span>
-                        {action}
+                        <AiText inline>{action}</AiText>
                       </li>
                     ))}
                   </ul>
@@ -5694,14 +5694,14 @@ const InterventionView: React.FC<{
                   {lessonPlan.lessonObjective && (
                     <div className="bg-white border border-[#e2e8f0] rounded-[14px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
                       <p className="text-[10px] font-semibold text-[#64748b] uppercase tracking-wider mb-1.5">Lesson objective</p>
-                      <p className="text-[13px] text-[#1e293b]">{lessonPlan.lessonObjective}</p>
+                      <p className="text-[13px] text-[#1e293b]"><AiText inline>{lessonPlan.lessonObjective}</AiText></p>
                     </div>
                   )}
 
                   {lessonPlan.realWorldHook && (
                     <div className="bg-[#f3e8ff]/50 border border-[#f3e8ff] rounded-[14px] p-4 shadow-[0_1px_4px_rgba(0,0,0,0.02)]">
                       <p className="text-[10px] font-semibold text-[#a855f7] uppercase tracking-wider mb-1.5">Real-life application</p>
-                      <p className="text-[13px] text-[#1e293b]">{lessonPlan.realWorldHook}</p>
+                      <p className="text-[13px] text-[#1e293b]"><AiText inline>{lessonPlan.realWorldHook}</AiText></p>
                     </div>
                   )}
 

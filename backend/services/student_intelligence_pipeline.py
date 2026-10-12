@@ -512,7 +512,8 @@ Generate JSON:
                 json_output=True,
                 timeout=60.0,
             )
-            parsed = json.loads(content or "{}")
+            from services.llm_json import loads_jsonish
+            parsed = loads_jsonish(content or "{}")
             parsed["generated_at"] = _now_iso()
             parsed["based_on_wri_status"] = profile.get("risk_status", "pending_assessment")
             return parsed

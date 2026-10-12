@@ -481,7 +481,8 @@ Be specific to Filipino K-12 DepEd context. If data is limited, acknowledge it a
                 json_output=True,
                 timeout=60.0,
             )
-            parsed = json.loads(content or "{}")
+            from services.llm_json import loads_jsonish
+            parsed = loads_jsonish(content or "{}")
 
             return ClassInsights(
                 class_id=class_id,

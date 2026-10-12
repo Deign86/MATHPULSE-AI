@@ -17,6 +17,13 @@ class TestCleanLlmText:
         raw = "Step 1\\nStep 2 uses \\(x^2\\) and \\[a = b\\]"
         assert clean_llm_text(raw) == "Step 1\nStep 2 uses $x^2$ and $$a = b$$"
 
+    def test_tex_commands_starting_with_n_t_r_survive(self):
+        raw = r"$G = r \times d$, $\text{Profit} = S - C$, $a \neq b$, $\nabla f$, $\theta \to \rho$"
+        assert clean_llm_text(raw) == raw
+
+    def test_literal_escapes_before_prose_still_decode(self):
+        assert clean_llm_text(r"Step 1\nThe next\n\nnext\t2") == "Step 1\nThe next\n\nnext  2"
+
     def test_double_escaped_tex_unescaped(self):
         assert clean_llm_text("Use $\\\\frac{1}{2}$") == "Use $\\frac{1}{2}$"
 
