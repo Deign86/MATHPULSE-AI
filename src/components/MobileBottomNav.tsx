@@ -57,6 +57,16 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   const isBattleActive = activeTab === 'Quiz Battle' || activeTab === 'Leaderboard';
   const isProfileActive = activeTab === 'Settings' || activeTab === 'Profile' || activeTab === 'profile';
 
+  // Highlight one bar button at a time: an open popup takes precedence over the current page's tab.
+  const activeGroup: ExpandableMenu | 'dashboard' =
+    activeTab === 'Dashboard' ? 'dashboard'
+      : isModulesActive ? 'modules'
+      : isAIActive ? 'ai'
+      : isBattleActive ? 'battle'
+      : isProfileActive ? 'profile'
+      : null;
+  const highlighted = openMenu ?? activeGroup;
+
   return (
     <nav
       ref={navRef}
@@ -75,59 +85,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           />
         )}
 
-        {/* MODULES Expansion Popup (Modules + Assessment) */}
-        <AnimatePresence>
-          {openMenu === 'modules' && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.95 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute bottom-[calc(100%+12px)] left-8 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-purple-200 dark:border-purple-800/80 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-48"
-            >
-              <button
-                type="button"
-                data-tour-nav="Modules"
-                onClick={() => handleSelectTabAndClose('Modules')}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
-                  activeTab === 'Modules'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Modules' ? 'bg-white/20' : 'bg-purple-100 dark:bg-purple-900/50 text-purple-600'}`}>
-                    <BookOpen size={16} aria-hidden="true" />
-                  </div>
-                  <span>Modules</span>
-                </div>
-                <ChevronRight size={14} className="opacity-70" />
-              </button>
-
-              <button
-                type="button"
-                data-tour-nav="Grades"
-                onClick={() => handleSelectTabAndClose('Grades')}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
-                  activeTab === 'Grades'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Grades' ? 'bg-white/20' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600'}`}>
-                    <BarChart3 size={16} aria-hidden="true" />
-                  </div>
-                  <span>Assessment</span>
-                </div>
-                <ChevronRight size={14} className="opacity-70" />
-              </button>
-
-              {/* Triangle pointer */}
-              <div className="absolute -bottom-2 left-8 w-4 h-4 bg-white dark:bg-slate-900 border-r border-b border-purple-200 dark:border-purple-800/80 rotate-45" />
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* AI ICON Expansion Popup (AI Chat + Avatar Studio) */}
         <AnimatePresence>
@@ -183,59 +140,6 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           )}
         </AnimatePresence>
 
-        {/* QUIZ BATTLE Expansion Popup (Quiz Battle + Leaderboard) */}
-        <AnimatePresence>
-          {openMenu === 'battle' && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 8, scale: 0.95 }}
-              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute bottom-[calc(100%+12px)] right-12 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-purple-200 dark:border-purple-800/80 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-48"
-            >
-              <button
-                type="button"
-                data-tour-nav="Quiz Battle"
-                onClick={() => handleSelectTabAndClose('Quiz Battle')}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
-                  activeTab === 'Quiz Battle'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Quiz Battle' ? 'bg-white/20' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-600'}`}>
-                    <Swords size={16} aria-hidden="true" />
-                  </div>
-                  <span>Quiz Battle</span>
-                </div>
-                <ChevronRight size={14} className="opacity-70" />
-              </button>
-
-              <button
-                type="button"
-                data-tour-nav="Leaderboard"
-                onClick={() => handleSelectTabAndClose('Leaderboard')}
-                className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
-                  activeTab === 'Leaderboard'
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
-                    : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
-                }`}
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Leaderboard' ? 'bg-white/20' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-600'}`}>
-                    <Trophy size={16} aria-hidden="true" />
-                  </div>
-                  <span>Leaderboard</span>
-                </div>
-                <ChevronRight size={14} className="opacity-70" />
-              </button>
-
-              {/* Triangle pointer */}
-              <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white dark:bg-slate-900 border-r border-b border-purple-200 dark:border-purple-800/80 rotate-45" />
-            </motion.div>
-          )}
-        </AnimatePresence>
 
         {/* PROFILE Expansion Popup (My Profile + Settings + Sign Out) */}
         <AnimatePresence>
@@ -360,31 +264,86 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             aria-label="Dashboard"
             aria-current={activeTab === 'Dashboard' ? 'page' : undefined}
             className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
-              activeTab === 'Dashboard'
+              highlighted === 'dashboard'
                 ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
                 : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800'
             }`}
           >
-            <Home size={20} className={activeTab === 'Dashboard' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+            <Home size={20} className={highlighted === 'dashboard' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
             <span className="text-[10px] mt-1 leading-none truncate font-display">Dashboard</span>
           </button>
 
           {/* 2. MODULES (Expandable: Modules & Assessment) */}
-          <button
-            type="button"
-            onClick={() => setOpenMenu(prev => prev === 'modules' ? null : 'modules')}
-            aria-label="Module Options: Modules and Assessment"
-            aria-expanded={openMenu === 'modules'}
-            aria-haspopup="true"
-            className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
-              isModulesActive || openMenu === 'modules'
-                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
-                : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800'
-            }`}
-          >
-            <BookOpen size={20} className={isModulesActive || openMenu === 'modules' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
-            <span className="text-[10px] mt-1 leading-none truncate font-display">Modules</span>
-          </button>
+          <div className="relative flex-1 flex">
+            {/* MODULES Expansion Popup (Modules + Assessment) */}
+            <AnimatePresence>
+              {openMenu === 'modules' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-purple-200 dark:border-purple-800/80 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-48"
+                >
+                  <button
+                    type="button"
+                    data-tour-nav="Modules"
+                    onClick={() => handleSelectTabAndClose('Modules')}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                      activeTab === 'Modules'
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Modules' ? 'bg-white/20' : 'bg-purple-100 dark:bg-purple-900/50 text-purple-600'}`}>
+                        <BookOpen size={16} aria-hidden="true" />
+                      </div>
+                      <span>Modules</span>
+                    </div>
+                    <ChevronRight size={14} className="opacity-70" />
+                  </button>
+
+                  <button
+                    type="button"
+                    data-tour-nav="Grades"
+                    onClick={() => handleSelectTabAndClose('Grades')}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                      activeTab === 'Grades'
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Grades' ? 'bg-white/20' : 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600'}`}>
+                        <BarChart3 size={16} aria-hidden="true" />
+                      </div>
+                      <span>Assessment</span>
+                    </div>
+                    <ChevronRight size={14} className="opacity-70" />
+                  </button>
+
+                  {/* Triangle pointer */}
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-slate-900 border-r border-b border-purple-200 dark:border-purple-800/80 rotate-45" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <button
+              type="button"
+              onClick={() => setOpenMenu(prev => prev === 'modules' ? null : 'modules')}
+              aria-label="Module Options: Modules and Assessment"
+              aria-expanded={openMenu === 'modules'}
+              aria-haspopup="true"
+              className={`flex flex-col items-center justify-center w-full min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                highlighted === 'modules'
+                  ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
+                  : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800'
+              }`}
+            >
+              <BookOpen size={20} className={highlighted === 'modules' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Modules</span>
+            </button>
+          </div>
 
           {/* 3. AI (Center Button - Highlighted Purple with Extra-Large AI Avatar Head, No Label) */}
           <button
@@ -403,21 +362,76 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
           </button>
 
           {/* 4. QUIZ BATTLE (Expandable: Quiz Battle & Leaderboard) */}
-          <button
-            type="button"
-            onClick={() => setOpenMenu(prev => prev === 'battle' ? null : 'battle')}
-            aria-label="Battle Options: Quiz Battle and Leaderboard"
-            aria-expanded={openMenu === 'battle'}
-            aria-haspopup="true"
-            className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
-              isBattleActive || openMenu === 'battle'
-                ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
-                : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800'
-            }`}
-          >
-            <Swords size={20} className={isBattleActive || openMenu === 'battle' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
-            <span className="text-[10px] mt-1 leading-none truncate font-display">Quiz Battle</span>
-          </button>
+          <div className="relative flex-1 flex">
+            {/* QUIZ BATTLE Expansion Popup (Quiz Battle + Leaderboard) */}
+            <AnimatePresence>
+              {openMenu === 'battle' && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                  transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                  className="absolute bottom-[calc(100%+12px)] left-1/2 -translate-x-1/2 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border border-purple-200 dark:border-purple-800/80 shadow-[0_12px_36px_rgba(124,58,237,0.18)] rounded-2xl p-1.5 flex flex-col gap-1 w-48"
+                >
+                  <button
+                    type="button"
+                    data-tour-nav="Quiz Battle"
+                    onClick={() => handleSelectTabAndClose('Quiz Battle')}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                      activeTab === 'Quiz Battle'
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Quiz Battle' ? 'bg-white/20' : 'bg-rose-100 dark:bg-rose-900/50 text-rose-600'}`}>
+                        <Swords size={16} aria-hidden="true" />
+                      </div>
+                      <span>Quiz Battle</span>
+                    </div>
+                    <ChevronRight size={14} className="opacity-70" />
+                  </button>
+
+                  <button
+                    type="button"
+                    data-tour-nav="Leaderboard"
+                    onClick={() => handleSelectTabAndClose('Leaderboard')}
+                    className={`flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-display font-bold transition-all active:scale-95 ${
+                      activeTab === 'Leaderboard'
+                        ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
+                        : 'text-slate-700 dark:text-slate-200 hover:bg-purple-50 dark:hover:bg-purple-950/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${activeTab === 'Leaderboard' ? 'bg-white/20' : 'bg-amber-100 dark:bg-amber-900/50 text-amber-600'}`}>
+                        <Trophy size={16} aria-hidden="true" />
+                      </div>
+                      <span>Leaderboard</span>
+                    </div>
+                    <ChevronRight size={14} className="opacity-70" />
+                  </button>
+
+                  {/* Triangle pointer */}
+                  <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-4 h-4 bg-white dark:bg-slate-900 border-r border-b border-purple-200 dark:border-purple-800/80 rotate-45" />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            <button
+              type="button"
+              onClick={() => setOpenMenu(prev => prev === 'battle' ? null : 'battle')}
+              aria-label="Battle Options: Quiz Battle and Leaderboard"
+              aria-expanded={openMenu === 'battle'}
+              aria-haspopup="true"
+              className={`flex flex-col items-center justify-center w-full min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
+                highlighted === 'battle'
+                  ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
+                  : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800'
+              }`}
+            >
+              <Swords size={20} className={highlighted === 'battle' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <span className="text-[10px] mt-1 leading-none truncate font-display">Quiz Battle</span>
+            </button>
+          </div>
 
           {/* 5. PROFILE (Expandable: My Profile, Settings, Sign Out) */}
           <button
@@ -429,7 +443,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             aria-haspopup="true"
             aria-current={isProfileActive ? 'page' : undefined}
             className={`flex flex-col items-center justify-center flex-1 min-w-[48px] min-h-[48px] py-1 px-1 rounded-xl transition-all active:scale-95 ${
-              isProfileActive || openMenu === 'profile'
+              highlighted === 'profile'
                 ? 'text-purple-600 dark:text-purple-400 font-bold bg-purple-50 dark:bg-purple-950/40'
                 : 'text-slate-500 dark:text-slate-400 font-medium hover:text-slate-800'
             }`}
@@ -439,11 +453,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 src={profilePhoto}
                 alt={profileName || 'Profile'}
                 className={`w-5 h-5 rounded-full object-cover border ${
-                  isProfileActive ? 'border-purple-600 ring-1 ring-purple-400' : 'border-purple-200 dark:border-purple-800'
+                  highlighted === 'profile' ? 'border-purple-600 ring-1 ring-purple-400' : 'border-purple-200 dark:border-purple-800'
                 }`}
               />
             ) : (
-              <User size={20} className={isProfileActive ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
+              <User size={20} className={highlighted === 'profile' ? 'stroke-[2.4]' : 'stroke-[1.8]'} aria-hidden="true" />
             )}
             <span className="text-[10px] mt-1 leading-none truncate font-display">Profile</span>
           </button>
