@@ -592,6 +592,43 @@ export function deriveResolvedClassCounts(
   };
 }
 
+/**
+ * When the roster came from the all-students fallback, only students already in
+ * one of the teacher's classes count as enrolled; the rest are an unassigned pool.
+ */
+export interface EnrollmentSplit<S> {
+  enrolled: S[];
+  unassigned: S[];
+}
+
+export function splitEnrolledStudents<S extends ClassCountStudent>(
+  loadedStudents: readonly S[],
+  classViews: readonly ClassCountClass[],
+  isUnassignedPool: boolean,
+): EnrollmentSplit<S> {
+  if (!isUnassignedPool) return { enrolled: [...loadedStudents], unassigned: [] };
+  const enrolled: S[] = [];
+  const unassigned: S[] = [];
+  loadedStudents.forEach((student) => {
+    (classViews.some((classView) => isStudentInClass(student, classView)) ? enrolled : unassigned).push(student);
+  });
+  return { enrolled, unassigned };
+}
+
+export const UnassignedStudentsNotice: React.FC<{ count: number }> = ({ count }) => (
+  <div className="text-left p-4 bg-amber-50/60 dark:bg-amber-950/20 rounded-2xl border border-amber-200 dark:border-amber-800">
+    <span className="text-[10px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+      Unassigned students
+    </span>
+    <p className="font-body text-sm font-semibold text-slate-700 dark:text-slate-200 mt-2">
+      {count} {count === 1 ? 'student' : 'students'} not in any class
+    </p>
+    <p className="font-body text-xs text-slate-500 mt-0.5">
+      These students aren't in any of your classes yet. Add them to a class to track their progress.
+    </p>
+  </div>
+);
+
 export function mergeClassViews(primary: ClassView[], imported: ClassView[]): ClassView[] {
   const merged = new Map<string, ClassView>();
 
@@ -820,7 +857,13 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
   // Data from Firebase
   const [classes, setClasses] = useState<ClassView[]>([]);
-  const [students, setStudents] = useState<StudentView[]>([]);
+  const [allLoadedStudents, setStudents] = useState<StudentView[]>([]);
+  // True when the list came from the all-students fallback (teacher has no students of their own).
+  const [studentsAreUnassignedPool, setStudentsAreUnassignedPool] = useState(false);
+  const { enrolled: students, unassigned: unassignedStudents } = useMemo(
+    () => splitEnrolledStudents(allLoadedStudents, classes, studentsAreUnassignedPool),
+    [allLoadedStudents, classes, studentsAreUnassignedPool],
+  );
   const resolvedClassCounts = useMemo(
     () => deriveResolvedClassCounts(classes, students),
     [classes, students],
@@ -1111,6 +1154,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
         // Fallback: if no students found via teacher-scoped queries, load all
         // registered students so the teacher can see and assign them to classes.
         let finalRegisteredStudents = registeredStudents;
+        let loadedAllStudentsFallback = false;
         if (registeredStudents.length === 0 && allManagedStudents.length === 0) {
           try {
             const { collection: firestoreCollection, query: firestoreQuery, where: firestoreWhere, getDocs: firestoreGetDocs } = await import('firebase/firestore');
@@ -1136,6 +1180,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 createdAt: data.createdAt || undefined,
               };
             }).filter((s) => s.name !== 'Student' || s.email);
+            loadedAllStudentsFallback = true;
           } catch (err) {
             console.warn('[TeacherDashboard] fallback all-students fetch failed:', err);
           }
@@ -1253,6 +1298,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
           }
           return classViews;
         });
+        setStudentsAreUnassignedPool(loadedAllStudentsFallback);
         setStudents((prev) => {
           if (studentViews.length === 0 && prev.length > 0) {
             return prev;
@@ -2197,6 +2243,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     totalAtRisk={totalAtRisk}
                     avgPerformance={avgPerformance}
                     onCreateClass={() => setShowCreateClassModal(true)}
+                    unassignedStudentCount={unassignedStudents.length}
                   />
                 )}
                 {activeView === 'analytics' && effectiveAnalyticsClass && (
@@ -3050,7 +3097,8 @@ const DashboardView: React.FC<{
   totalAtRisk: number;
   avgPerformance: number;
   onCreateClass?: () => void;
-}> = ({ classes, liveActivity, onViewClass, onDeleteClass, deletingClassId, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance, onCreateClass }) => {
+  unassignedStudentCount?: number;
+}> = ({ classes, liveActivity, onViewClass, onDeleteClass, deletingClassId, onViewAllClasses, onViewActivityStudent, dailyInsight, insightLoading, isInsightDismissed, onDismissInsight, onOpenInsightModal, totalStudents, totalAtRisk, avgPerformance, onCreateClass, unassignedStudentCount = 0 }) => {
   const riskPercentage = totalStudents > 0 ? Math.round((totalAtRisk / totalStudents) * 100) : 0;
   const engagementRate = totalStudents > 0 ? Math.round(((totalStudents - totalAtRisk) / totalStudents) * 100) : 0;
 
@@ -3187,6 +3235,7 @@ const DashboardView: React.FC<{
         </div>
 
         <div className="space-y-3">
+          {unassignedStudentCount > 0 && <UnassignedStudentsNotice count={unassignedStudentCount} />}
           {classes.length === 0 && (
             <div className="text-center py-8 bg-slate-50/50 rounded-2xl border border-dashed border-slate-200">
               <p className="font-body text-sm text-slate-500 mb-3">No classes available yet.</p>
