@@ -123,7 +123,13 @@ jobs:
               try {
                 await github.rest.issues.getLabel({ owner, repo, name: label });
               } catch {
-                await github.rest.issues.createLabel({ owner, repo, name: label, color, description: 'Auto-managed by AI Change Audit workflow' });
+                try {
+                  await github.rest.issues.createLabel({ owner, repo, name: label, color, description: 'Auto-managed by AI Change Audit workflow' });
+                } catch (error) {
+                  // A concurrent audit run created it between our lookup and create; that's the state we want.
+                  const alreadyExists = error.status === 422 && (error.response?.data?.errors || []).some((entry) => entry.code === 'already_exists');
+                  if (!alreadyExists) throw error;
+                }
               }
             }
 
