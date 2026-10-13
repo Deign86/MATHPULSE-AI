@@ -408,27 +408,43 @@ def test_prefetch_slots_held_never_block_interactive_lessons(seams: LessonSeams)
 
 def test_prefetch_concurrent_burst_never_queues_interactive_behind_the_semaphore(seams: LessonSeams, monkeypatch: pytest.MonkeyPatch) -> None:
     """A prefetch accepted while the last slot is being taken must not leave a job waiting on the semaphore,
-    because an interactive open of that lesson joins the job and would wait behind other students' prefetches."""
+    because an interactive open of that lesson joins the job and would wait behind other students' prefetches.
+
+    Alice's prefetch generation stays blocked until bob's interactive lesson is back, so bob's lesson finishes only if
+    it neither waits on the semaphore nor joins alice's job. The only time limit is a 10 s timeout on a ~0.1 s request."""
     monkeypatch.setattr(rag_routes, "_prefetch_semaphore", asyncio.Semaphore(1))
-    seams.stream_delay = 0.8
+    # Each profile names its student, so the fake model can tell whose lesson it is writing.
+    monkeypatch.setattr(rag_routes, "_load_learner_profile", lambda uid, _payload: f"Student: {uid}")
+    alice_generating, release_alice = threading.Event(), threading.Event()
 
-    async def scenario(http: httpx.AsyncClient) -> Tuple[List[Dict[str, object]], float, int]:
-        burst = await asyncio.gather(
-            *(http.post("/api/rag/lesson/prefetch", json=PAYLOAD, headers=_as(uid)) for uid in ("alice", "bob"))
-        )
-        started = time.perf_counter()
-        bob_open = await http.post("/api/rag/lesson", json=PAYLOAD, headers=_as("bob"))
-        elapsed = time.perf_counter() - started
-        await asyncio.sleep(0.9)
-        return [r.json() for r in burst], elapsed, bob_open.status_code
+    def stream_holding_alice(
+        messages: List[Dict[str, str]], model: str, report_progress: Callable[[str, int], None], stop: threading.Event
+    ) -> str:
+        if "Student: alice" in str(messages):
+            alice_generating.set()
+            release_alice.wait(timeout=60)
+        return seams.stream(messages, model, report_progress, stop)
 
-    statuses, bob_open_seconds, bob_status = _run(scenario)
+    monkeypatch.setattr(rag_routes, "_stream_reasoner_lesson", stream_holding_alice)
 
-    assert bob_status == 200
-    assert sorted(s["status"] for s in statuses) == ["queued", "skipped"], statuses
-    assert bob_open_seconds < 1.4, (
-        f"bob's interactive lesson waited {bob_open_seconds:.2f}s behind alice's prefetch slot (statuses={statuses})"
-    )
+    async def scenario(http: httpx.AsyncClient) -> int:
+        try:
+            burst = await asyncio.gather(
+                *(http.post("/api/rag/lesson/prefetch", json=PAYLOAD, headers=_as(uid)) for uid in ("alice", "bob"))
+            )
+            # gather starts alice's request first, so alice's prefetch takes the only slot.
+            assert [response.json() for response in burst] == [{"status": "queued"}, {"status": "skipped"}]
+            assert await asyncio.to_thread(alice_generating.wait, 10), "alice's prefetch never started generating"
+            try:
+                bob_open = await asyncio.wait_for(http.post("/api/rag/lesson", json=PAYLOAD, headers=_as("bob")), timeout=10)
+            except TimeoutError:
+                pytest.fail("bob's interactive lesson waited 10s behind alice's prefetch (its semaphore slot or its job)")
+        finally:
+            release_alice.set()
+        await _settle(seams, 2)
+        return bob_open.status_code
+
+    assert _run(scenario) == 200
 
 
 # ─── 13. Foolproof lesson guards ─────────────────────────────────────────────────────────────────

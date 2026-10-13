@@ -152,8 +152,9 @@ async def _call_claude(system_prompt: str, user_message: str) -> str:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_message},
             ],
-            # Up to 20 questions with explanations can outgrow the 4096-token default.
-            max_tokens=8192,
+            # Up to 20 questions, each ~500 output tokens with its explanation; the 90 s timeout fits
+            # that at Haiku's ~250 tokens/s.
+            max_tokens=10000,
             json_output=True,
             timeout=90.0,
             max_retries=1,

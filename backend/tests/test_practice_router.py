@@ -23,6 +23,9 @@ from routes import practice as practice_routes
 
 client = TestClient(app)
 
+# Claude Haiku writes about this many output tokens per second.
+HAIKU_OUTPUT_TOKENS_PER_SECOND = 250
+
 
 @pytest.fixture(autouse=True)
 def _patch_firebase_auth():
@@ -162,12 +165,13 @@ class TestPracticeClaudeCall:
             {"role": "system", "content": "system prompt"},
             {"role": "user", "content": "user message"},
         ]
-        assert mock_complete.call_args.kwargs == {
-            "max_tokens": 8192,
-            "json_output": True,
-            "timeout": 90.0,
-            "max_retries": 1,
-        }
+        sent = dict(mock_complete.call_args.kwargs)
+        # 20 questions (the request maximum) at ~500 output tokens each, explanation included; the call is
+        # not streamed, so it stays under the 16000-token cap, and writing it all must fit the timeout.
+        max_tokens = sent.pop("max_tokens")
+        assert 20 * 500 <= max_tokens <= 16000
+        assert max_tokens / HAIKU_OUTPUT_TOKENS_PER_SECOND <= sent["timeout"]
+        assert sent == {"json_output": True, "timeout": 90.0, "max_retries": 1}
 
     def test_maps_upstream_failure_to_http_500(self):
         with patch("routes.practice.complete_text", side_effect=RuntimeError("upstream down")):
