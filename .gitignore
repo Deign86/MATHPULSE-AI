@@ -76,18 +76,13 @@ ui-debug.log
 **/_kaggle_outputs/
 kaggle_llm_api_job/
 kaggle_merge_job/
-datasets/vectorstore/*
-# EXCEPT the ChromaDB sqlite file (needed for RAG at runtime)
-!datasets/vectorstore/chroma.sqlite3
-!datasets/vectorstore/ingest_summary.json
-backend/datasets/vectorstore/*
-!backend/datasets/vectorstore/chroma.sqlite3
-!backend/datasets/vectorstore/ingest_summary.json
-!backend/datasets/vectorstore/teacher_materials/
+# Chroma vector stores are built by ingest and pulled from Firebase Storage at runtime
+datasets/vectorstore/
+backend/datasets/vectorstore/
 
 # Curriculum binaries are hosted on HF storage, not in git
-datasets/curriculum/*.pdf
-backend/datasets/curriculum/*.pdf
+datasets/curriculum/**/*.pdf
+backend/datasets/curriculum/**/*.pdf
 
 # Local curriculum PDFs (extracted for analysis, not committed)
 documents/
@@ -156,3 +151,12 @@ scripts/output/
 # Unlazy artifacts: test_rag_lesson_stream.py rewrites .unlazy/ on every backend run; hook state is per-checkout
 .unlazy/
 .unlazy-hook-state.json
+
+# Agent run leftovers: evidence, screenshots, per-lane gate files
+.omo/
+gates/
+audit_screenshots/
+test-results/
+GATES-*.md
+PR_BODY.md
+ci_status.json
