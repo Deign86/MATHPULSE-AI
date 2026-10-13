@@ -1422,33 +1422,6 @@ def _ensure_ai_available() -> None:
 # ─── Chat Helpers (Claude via InferenceClient) ────────────────
 
 
-def _strip_repetition(text: str, min_chunk: int = 40) -> str:
-    """Remove repeated blocks from model output (a common issue with smaller LLMs)."""
-    lines = text.split("\n")
-    seen_blocks: list[str] = []
-    result_lines: list[str] = []
-    i = 0
-    while i < len(lines):
-        # Try to match a block of 2-4 lines that repeats
-        matched = False
-        for blen in (4, 3, 2):
-            if i + blen > len(lines):
-                continue
-            block = "\n".join(lines[i : i + blen]).strip()
-            if len(block) < min_chunk:
-                continue
-            if block in seen_blocks:
-                # Skip this repeated block
-                i += blen
-                matched = True
-                break
-            seen_blocks.append(block)
-        if not matched:
-            result_lines.append(lines[i])
-            i += 1
-    return "\n".join(result_lines).strip()
-
-
 def call_hf_chat(
     messages: List[Dict[str, str]],
     *,
@@ -1464,8 +1437,7 @@ def call_hf_chat(
         max_new_tokens=max_tokens,
         timeout_sec=timeout,
     )
-    text = get_inference_client().generate_from_messages(req)
-    return _strip_repetition(text)
+    return get_inference_client().generate_from_messages(req).strip()
 
 
 def call_hf_chat_stream(
