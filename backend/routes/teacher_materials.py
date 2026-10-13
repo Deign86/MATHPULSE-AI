@@ -636,7 +636,8 @@ async def generate_module_quiz(request: Request, moduleId: str):
         from services.inference_client import call_hf_chat_async  # type: ignore[import-not-found]
         response_text = await call_hf_chat_async(
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=4096, task_type="quiz_generation"
+            # 10 questions, each ~500 output tokens with its explanation.
+            max_tokens=5000, task_type="quiz_generation"
         )
         questions = extract_dict_list(extract_json_value(response_text, preferred=(dict, list)))
     except Exception as e:

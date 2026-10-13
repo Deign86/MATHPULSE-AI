@@ -28,7 +28,7 @@ Scope: `backend/tests/test_regression_rag_lesson.py::test_prefetch_concurrent_bu
   EVIDENCE: temporary parametrize x200, reverted: 200 passed in 56.78s idle; 200 passed in 177.41s with 24 CPU-spinning processes on 12 cores for the whole run (slowest iteration 1.33s). Run before the final wording edits (docstring, comment, failure message; no logic change)
 
 - [x] G8: Full backend suite passes
-  EVIDENCE: cd backend && PYTHONPATH="$(pwd)" PYTHONUTF8=1 PYTEST_ADDOPTS="-p no:cacheprovider" python -m pytest tests/ -q on the final test text -> 1144 passed, 2 warnings in 141.15s (exit 0); then git checkout -- backend/datasets/vectorstore. First run, before the wording edits: 1144 passed in 186.08s
+  EVIDENCE: cd backend && PYTHONPATH="$(pwd)" PYTHONUTF8=1 PYTEST_ADDOPTS="-p no:cacheprovider" python -m pytest tests/ -q on the final test text merged with main d1ee6c4b (#345) -> 1162 passed, 2 warnings in 143.70s (exit 0); then git checkout -- backend/datasets/vectorstore. Before the merge: 1144 passed in 141.15s
 
 - [x] G9: Only the test file changed under backend/ (mutations reverted, Chroma files restored)
   CHECK: git diff --quiet HEAD -- backend ":(exclude)backend/tests/test_regression_rag_lesson.py" && echo ONLY_THE_TEST_CHANGED
