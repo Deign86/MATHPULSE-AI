@@ -428,7 +428,8 @@ class TestGenerateModuleQuiz:
 
         _response, mock_chat = _generate_quiz(db, return_value=json.dumps({"questions": [QUIZ_QUESTION]}))
 
-        assert mock_chat.call_args.kwargs["max_tokens"] == 4096
+        # ~500 output tokens per question, explanation included; the call is not streamed, so it stays under 16000.
+        assert 10 * 500 <= mock_chat.call_args.kwargs["max_tokens"] <= 16000
 
     def test_prompt_carries_section_text_stored_as_body_or_as_content(self):
         module_doc = {

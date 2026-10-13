@@ -1548,8 +1548,20 @@ def _get_hf_call_semaphore() -> asyncio.Semaphore:
 
 async def _run_hf_blocking(func, /, *args, **kwargs):
     semaphore = _get_hf_call_semaphore()
-    async with semaphore:
-        return await asyncio.to_thread(func, *args, **kwargs)
+    await semaphore.acquire()
+    thread_call = asyncio.create_task(asyncio.to_thread(func, *args, **kwargs))
+
+    def _free_the_slot(finished_call: asyncio.Task[Any]) -> None:
+        semaphore.release()
+        if not finished_call.cancelled():
+            # shield() stops listening once its caller is cancelled; reading the outcome here keeps
+            # a failure nobody awaits from logging "Task exception was never retrieved".
+            finished_call.exception()
+
+    # A cancelled caller cannot stop its worker thread, so the slot stays taken until the thread
+    # returns; freeing it sooner would let more than HF_BLOCKING_CALL_CONCURRENCY model calls run.
+    thread_call.add_done_callback(_free_the_slot)
+    return await asyncio.shield(thread_call)
 
 
 async def call_hf_chat_async(
@@ -2805,6 +2817,59 @@ def _build_stream_continuation_prompt(original_question: str, expected_end_marke
     return "\n".join(lines)
 
 
+async def _guided_hint_reply(message: str) -> Optional[ChatResponse]:
+    """The canned guided-hint reply when Jev rates a first-turn message as a request for the final answer.
+
+    None otherwise, and when routing fails: a failed judgment must never block the normal answer.
+    """
+    try:
+        intent_res = await route_student_intent(message)
+        if (
+            intent_res.get("choice") == "direct_answer_request"
+            and float(intent_res.get("confidence", 0.0)) >= 0.80
+        ):
+            return ChatResponse(
+                response=(
+                    "I can guide you step-by-step, but I won't give the final answer "
+                    "directly! What is the governing formula or first step you think "
+                    "we should use here?"
+                ),
+                sources=[],
+                suggestedFollowups=[
+                    "What is the first step?",
+                    "Can you explain the formula?",
+                    "Give me a hint",
+                ],
+                confidence=float(intent_res.get("confidence", 0.95)),
+                activeModel="jev-socratic-router",
+            )
+    except Exception as intent_err:
+        logger.warning("Jev intent routing failed; continuing with chat: %s", intent_err)
+    return None
+
+
+def _abandon_task(task: asyncio.Task[Any]) -> None:
+    """Stop waiting on a task: cancel it while it runs; once finished, read its outcome so a
+    failure nobody awaits cannot log "Task exception was never retrieved"."""
+    if not task.done():
+        task.cancel()
+    elif not task.cancelled():
+        task.exception()
+
+
+async def _timed_chat_answer(messages: List[Dict[str, str]]) -> str:
+    """The tutor's model call, timed from its own start: it runs beside the intent check, so the
+    route's wait for that check must not count as model time."""
+    started_ms = int(time.monotonic() * 1000)
+    answer = await call_hf_chat_async(
+        messages,
+        max_tokens=CHAT_MAX_NEW_TOKENS,
+        task_type="chat",
+    )
+    logger.info(f"TIMING [model_call] {int(time.monotonic() * 1000) - started_ms}ms | messages={len(messages)}")
+    return answer
+
+
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_tutor_endpoint(request: Request, chat_request: ChatRequest):
     return await chat_tutor(chat_request, request)
@@ -2813,6 +2878,8 @@ async def chat_tutor_endpoint(request: Request, chat_request: ChatRequest):
 async def chat_tutor(request: ChatRequest, http_request: Request = None):
     """AI Math Tutor powered by Claude."""
     _start_ms = int(time.monotonic() * 1000)
+    guided_reply_task: Optional[asyncio.Task[Optional[ChatResponse]]] = None
+    answer_task: Optional[asyncio.Task[str]] = None
     try:
         _enforce_chat_rate_limit(http_request)
         # ─── Context-Aware Intent Gate (before scope check) ──────
@@ -2834,30 +2901,10 @@ async def chat_tutor(request: ChatRequest, http_request: Request = None):
             if boundary_response is not None:
                 return ChatResponse(response=boundary_response)
 
+        # The intent check and the answer do not depend on each other, so a first turn
+        # runs them side by side instead of paying for two model round trips in a row.
         if not request.history and not _skip_scope_check:
-            try:
-                intent_res = await route_student_intent(request.message)
-                if (
-                    intent_res.get("choice") == "direct_answer_request"
-                    and float(intent_res.get("confidence", 0.0)) >= 0.80
-                ):
-                    return ChatResponse(
-                        response=(
-                            "I can guide you step-by-step, but I won't give the final answer "
-                            "directly! What is the governing formula or first step you think "
-                            "we should use here?"
-                        ),
-                        sources=[],
-                        suggestedFollowups=[
-                            "What is the first step?",
-                            "Can you explain the formula?",
-                            "Give me a hint",
-                        ],
-                        confidence=float(intent_res.get("confidence", 0.95)),
-                        activeModel="jev-socratic-router",
-                    )
-            except Exception as intent_err:
-                logger.warning("Jev intent routing failed; continuing with chat: %s", intent_err)
+            guided_reply_task = asyncio.create_task(_guided_hint_reply(request.message))
 
         # ─── Memory + scoped RAG context ────────────────────────
         _t0 = int(time.monotonic() * 1000)
@@ -2893,21 +2940,26 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
         messages.extend(_budgeted_chat_history(request.history))
         messages.append({"role": "user", "content": request.message})
 
+        # A verdict that is already in makes starting the answer pointless.
+        if guided_reply_task is not None and guided_reply_task.done():
+            guided_reply = guided_reply_task.result()
+            if guided_reply is not None:
+                return guided_reply
+
         # Call Claude with retry (handled inside call_hf_chat)
-        _t1 = int(time.monotonic() * 1000)
+        answer_task = asyncio.create_task(_timed_chat_answer(messages))
+        if guided_reply_task is not None:
+            guided_reply = await guided_reply_task
+            if guided_reply is not None:
+                return guided_reply
         try:
-            answer = await call_hf_chat_async(
-                messages,
-                max_tokens=CHAT_MAX_NEW_TOKENS,
-                task_type="chat",
-            )
+            answer = await answer_task
         except Exception as hf_err:
             logger.error(f"HF chat failed: {hf_err}")
             raise HTTPException(
                 status_code=502,
                 detail="AI model service is temporarily unavailable. Please try again.",
             )
-        logger.info(f"TIMING [model_call] {int(time.monotonic() * 1000) - _t1}ms | messages={len(messages)}")
         answer = clean_llm_text(answer)
 
         # ─── Background Memory Update (async, non-blocking) ─────
@@ -2945,6 +2997,12 @@ Overall Risk Level: {risk.get('overall_risk', 'unknown')}
     except Exception as e:
         logger.error(f"Chat error: {e}")
         raise HTTPException(status_code=500, detail=f"Chat service error: {str(e)}")
+    finally:
+        # Cancelling the answer task cannot stop a model call already running in its worker thread:
+        # that call finishes and its reply is dropped.
+        for chat_task in (guided_reply_task, answer_task):
+            if chat_task is not None:
+                _abandon_task(chat_task)
 
 
 async def _update_memory_after_response(
@@ -11607,6 +11665,18 @@ def _parse_quiz_json(raw: str) -> List[Dict[str, Any]]:
     ]
 
 
+def _quiz_output_token_budget(num_questions: int) -> int:
+    """Output-token ceiling for generating, or rewriting, a quiz of ``num_questions`` questions.
+
+    Claude Haiku 5.5 writes about 355 tokens per question (stem, options, answer and the required
+    step-by-step explanation; up to ~400 on verbose topics); a ceiling below that cuts the reply off
+    mid-quiz and forces a regeneration. 500 leaves headroom, and a ceiling costs nothing when the
+    model stops earlier. 16000 stays under the SDK's refusal of non-streaming requests above ~21K
+    tokens and still fits MAX_QUESTIONS_LIMIT questions.
+    """
+    return min(16000, max(3072, num_questions * 500))
+
+
 async def _repair_quiz_json_with_llm(
     raw_output: str,
     *,
@@ -11635,7 +11705,7 @@ async def _repair_quiz_json_with_llm(
 
     repaired_text = await call_hf_chat_async(
         repair_messages,
-        max_tokens=min(4096, max(2048, num_questions * 260)),
+        max_tokens=_quiz_output_token_budget(num_questions),
         timeout=timeout,
         task_type="default",
         model=model_id,
@@ -11672,7 +11742,7 @@ async def _regenerate_quiz_json_strict(
 
     strict_text = await call_hf_chat_async(
         strict_messages,
-        max_tokens=min(4096, max(2048, num_questions * 260)),
+        max_tokens=_quiz_output_token_budget(num_questions),
         timeout=timeout,
         task_type="default",
         model=model_id,
@@ -11902,7 +11972,7 @@ Remember:
 
         # Scale max_tokens based on requested questions and allow larger completions
         # for higher-count quizzes while keeping provider-side limits reasonable.
-        max_tokens = min(8192, max(3072, request.numQuestions * 320))
+        max_tokens = _quiz_output_token_budget(request.numQuestions)
         # Use longer HTTP timeout for larger quiz payloads.
         http_timeout = min(300, max(120, request.numQuestions * 10))
 

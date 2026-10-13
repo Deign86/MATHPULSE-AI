@@ -88,7 +88,11 @@ Do NOT change "topic", "difficulty", "grade_level", or "source_chunk_id"."""
                 {"role": "user", "content": user_prompt},
             ],
             model=CHAT_MODEL,
-            max_tokens=4000,
+            # The reply repeats every question in full (~220-360 tokens each). The Cloud Function stops waiting
+            # for these questions after 30 s, so the ceiling stops writing at ~24 s (Haiku writes ~250 tokens/s):
+            # room for a typical 20-round battle, the game's maximum, while a longer reply still falls back to
+            # the plain shuffle in time.
+            max_tokens=6000,
             json_output=True,
             timeout=120.0,
         )
