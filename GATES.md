@@ -1,54 +1,27 @@
-# Gates: TESTING.md worktree install matches CI
+# Gates: stop the repetition stripper from deleting model replies
 
-Scope: TESTING.md's worktree setup said plain `npm ci`, which fails with ERESOLVE in a fresh worktree (2026-10-13). Change it to `npm ci --legacy-peer-deps` for the root and `functions/`, as every CI install does, and say that the pre-commit hook's `npx oxlint --quiet` needs the worktree's node_modules. TESTING.md is the only content change; this file is the Unlazy ledger.
+Scope: `call_hf_chat` (backend/main.py) passes every non-streaming model reply through `_strip_repetition`, written in February for small models that looped. The stripper records a block at each line in several lengths, so two lengths at the same line that collapse to the same text after `strip()` (any paragraph followed by a blank line) count as a "repeat". Normal Markdown loses paragraphs, sometimes all of them. Measured on the merged perf build: an ordinary first-turn chat returned HTTP 200 with an empty reply from 202 output tokens, and other replies kept only their last paragraph (430-char reply -> 107 chars offline). Pretty-printed quiz JSON is cut to half and stops parsing. 18 call sites in main.py use this path (non-streaming chat, step guides, quiz generation, solution checks, learning paths, insights); `/api/chat/stream` does not. PR CI, merge and the production deploy are checked after this commit and reported on the PR.
 
-Post-commit checks (a commit cannot gate its own PR): the PR from `docs/testing-legacy-peer-deps` into main is open, and its CI checks pass. Verified after the push and reported on the PR and in chat.
+- [x] G1: Model replies reach callers unchanged: a multi-paragraph Markdown tutor reply and a pretty-printed 10-question quiz both come back from call_hf_chat intact
+  CHECK: cd backend && python -X utf8 -m pytest tests/test_model_reply_passthrough.py -q -p no:cacheprovider 2>&1 | findstr /r /c:" passed" /c:" failed" /c:" error"
+  EXPECT: /^(?!.*\b(failed|errors?)\b).*\d+ passed/m
+  EVIDENCE: 3 passed in 27.88s
 
-- [x] G1: TESTING.md tells agents to install the worktree root with `npm ci --legacy-peer-deps` (ci.yml:61, deploy-frontend.yml:49, release-android.yml:47)
-  CHECK: git grep -n -F "npm ci --legacy-peer-deps  # repo root of the worktree" -- TESTING.md
-  EXPECT: /TESTING\.md:\d+:npm ci --legacy-peer-deps  # repo root of the worktree/
-  EVIDENCE: TESTING.md:26:npm ci --legacy-peer-deps  # repo root of the worktree (and cd functions && npm ci --legacy-peer-deps if touching functions)
+- [x] G2: The new tests fail when the stripper is put back
+  EVIDENCE: with origin/main's backend/main.py (stripper present) swapped in: "3 failed in 181.47s" (both call_hf_chat cases and the /api/chat route case); fixed main.py restored afterwards (0 references to _strip_repetition). Offline probe of the old stripper: a 430-char five-paragraph tutor reply -> 107 chars (last paragraph only, matching the truncated benchmark reply "Once you find that value, ..."); a 182-char reply -> its last line; 10-question pretty-printed quiz JSON 4486 -> 2232 chars and invalid JSON.
 
-- [x] G2: The functions install in TESTING.md matches its CI step (`npm ci --legacy-peer-deps` under `working-directory: functions` at ci.yml:156, deploy-functions.yml:40 and :67)
-  CHECK: git grep -n -F "cd functions && npm ci --legacy-peer-deps" -- TESTING.md
-  EXPECT: /TESTING\.md:\d+:.*cd functions && npm ci --legacy-peer-deps/
-  EVIDENCE: TESTING.md:26:npm ci --legacy-peer-deps  # repo root of the worktree (and cd functions && npm ci --legacy-peer-deps if touching functions)
+- [x] G3: Backend test suite fully green
+  CHECK: cd backend && set PYTHONPATH=C:\Users\APG\Downloads\MATHPULSE-AI\backend&& set PYTHONUTF8=1&& python -m pytest tests/ -q 2>&1 | findstr /r /c:" passed" /c:" failed" /c:" error"
+  EXPECT: /^(?!.*\b(failed|errors?)\b).*\d+ passed/m
+  EVIDENCE: 1165 passed, 2 warnings in 147.70s (0:02:27)
 
-- [x] G3: No `npm ci` without `--legacy-peer-deps` is left in TESTING.md or any workflow
-  CHECK: git grep -n -P "npm ci(?! --legacy-peer-deps)" -- TESTING.md .github/workflows || echo NO_BARE_NPM_CI
-  EXPECT: /^\s*NO_BARE_NPM_CI\s*$/
-  EVIDENCE: NO_BARE_NPM_CI
+- [x] G4: Backend mypy: no new errors (baseline 16, all in the pre-existing main.py block)
+  EVIDENCE: `python -m mypy --config-file mypy.ini --explicit-package-bases backend/main.py backend/analytics.py` -> "Found 16 errors in 1 file", all `object | Any` index/attr errors at main.py:8545-8567 (the pre-existing block, 28 lines up).
 
-- [x] G4: TESTING.md says to install before committing from a worktree, because the pre-commit hook runs `npx oxlint --quiet`, which needs `oxlint` and `@oxlint/plugins` from the worktree's node_modules
-  CHECK: git grep -n -e "before running any Node toolchain or committing" -e "npx oxlint --quiet" -- TESTING.md
-  EXPECT: /committing in the worktree[\s\S]*pre-commit[\s\S]*npx oxlint --quiet[\s\S]*@oxlint\/plugins/
-  EVIDENCE: TESTING.md:23:After `git worktree add`, before running any Node toolchain or committing in the worktree: | TESTING.md:32:Commits from a worktree run the main checkout's pre-commit hook (`.git/hooks/pr
+- [x] G5: Live re-measure with the production models: no empty chat reply, every reply as long as its output tokens imply, and each 10-question quiz in one model call
+  EVIDENCE: live run on this fix (MODEL_PROFILE=prod, Haiku 5.5 through the real routes, Firebase off): first-turn chat replies 747 / 1269 / 452 chars from 273 / 468 / 195 output tokens (2.3-2.7 chars per token), none empty, 2.09 / 3.22 / 2.01 s; guided reply 1.64 s. The same benchmark on the merged code before this fix: 0 / 267 / 123 chars from 202 / 387 / 257 tokens. Quizzes 13.29 / 13.01 / 11.51 s, one call each (end_turn, 3119-3338 tokens); "Domain and Range of Functions" needed a second call in both earlier runs (22.38 s, 25.39 s).
 
-- [x] G5: The ERESOLVE cause cited in TESTING.md matches package-lock.json: `@capacitor-firebase/authentication` 7.5.0 has optional peer `firebase@^11.2.0` (lines 290-310); the installed firebase is 12.12.1 (line 8562)
-  CHECK: git grep -n -E "firebase.: .\^11\.2\.0|firebase-12\.12\.1\.tgz" -- package-lock.json
-  EXPECT: /package-lock\.json:306:\s+"firebase": "\^11\.2\.0"[\s\S]*firebase-12\.12\.1\.tgz/
-  EVIDENCE: package-lock.json:306:        "firebase": "^11.2.0" | package-lock.json:8563:      "resolved": "https://registry.npmjs.org/firebase/-/firebase-12.12.1.tgz",
-
-- [x] G6: Both documented installs exit 0 in this fresh worktree (no node_modules at the root or in functions/ beforehand)
-  EVIDENCE: `ls -d node_modules functions/node_modules` before the runs -> both "No such file or directory"; root `npm ci --legacy-peer-deps` -> "added 812 packages, and audited 813 packages in 1m", exit=0 (69 s); `cd functions && npm ci --legacy-peer-deps` -> "added 463 packages, and audited 464 packages in 1m", exit=0 (76 s, run concurrently); no ERESOLVE or "npm error" line in either log
-
-- [x] G7: The doc's post-install check passes for both installs
-  CHECK: powershell -NoProfile -Command "Test-Path -LiteralPath 'node_modules\.bin\tsc'; Test-Path -LiteralPath 'functions\node_modules\.bin\tsc'"
-  EXPECT: /True\s+True/
-  EVIDENCE: True | True
-
-- [x] G8: The pre-commit hook's lint step runs clean from this worktree's node_modules
-  CHECK: npx oxlint --quiet 2>NUL && echo HOOK_OXLINT_OK: npx oxlint --quiet exited 0
-  EXPECT: HOOK_OXLINT_OK
-  EVIDENCE: HOOK_OXLINT_OK: npx oxlint --quiet exited 0
-
-- [x] G9: TESTING.md is the only content change (plus this ledger)
-  CHECK: git status --porcelain 2>NUL
-  EXPECT: /^ M GATES\.md\r?\n M TESTING\.md\s*$/
-  EVIDENCE: M GATES.md | M TESTING.md
-
-- [x] G10: The added prose names no LLM provider or model and has no filler
-  EVIDENCE: `.agents/skills/anti-slop/scripts/detect_slop.py --verbose` on the 4 non-blank added lines (`git diff -U0 TESTING.md`) -> "Overall Slop Score: 0/100"; read-through: they name only npm, ERESOLVE, @capacitor-firebase/authentication, firebase, the pre-commit hook paths, oxlint and @oxlint/plugins
-
-- [x] G11: Without the flag the root install fails with ERESOLVE, as TESTING.md now says (reproduced, not taken on report)
-  EVIDENCE: scratch copy of package.json + package-lock.json (no node_modules), `npm ci --dry-run` -> "npm error code ERESOLVE" / "While resolving: @capacitor-firebase/authentication@7.5.0" / "Found: firebase@12.12.1" / "peerOptional firebase@"^11.2.0" from @capacitor-firebase/authentication@7.5.0"; same copy, `npm ci --legacy-peer-deps --dry-run --ignore-scripts` -> exit=0 (scripts skipped because the copy lacks scripts/setup-git-hooks.mjs, which `prepare` runs)
+- [x] G6: No tracked file mentions the retired provider
+  CHECK: git grep -i -l -e "deep[s]eek" || echo NO_PROVIDER_MENTIONS
+  EXPECT: NO_PROVIDER_MENTIONS
+  EVIDENCE: NO_PROVIDER_MENTIONS
