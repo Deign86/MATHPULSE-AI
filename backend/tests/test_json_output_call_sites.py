@@ -29,6 +29,13 @@ PIPELINE_EVENT = student_intelligence_pipeline.StudentActivityEvent(
     student_id="student-1", event_type="quiz", occurred_at="2026-01-01T00:00:00Z"
 )
 
+# Claude Haiku writes about this many output tokens per second; a call's token budget must be writable inside its timeout.
+HAIKU_OUTPUT_TOKENS_PER_SECOND = 250
+# Quiz Battle rounds are clamped to 3-20, and the Cloud Function stops waiting for /api/quiz-battle/generate after
+# 30 s (functions/src/triggers/quizBattleApi.ts).
+BATTLE_MAX_ROUNDS = 20
+BATTLE_CALLER_TIMEOUT_SECONDS = 30
+
 # Each case: how to trigger the site, the reply the site can parse, and the timeout it must pass.
 # services.ai_client.complete_text is looked up at call time inside these modules, so patching it there reaches them.
 LAZY_IMPORT_SITES = [
@@ -147,6 +154,30 @@ def test_variance_engine_requests_json_output_with_a_120_second_timeout() -> Non
     sent = complete_text.call_args.kwargs
     assert sent["json_output"] is True
     assert sent["timeout"] == 120.0
+
+
+def test_variance_engine_fits_a_full_battle_inside_the_callers_wait() -> None:
+    """A rewrite repeats every question in full (~300 tokens each): a 20-round battle does not fit the old 4000-token
+    budget, and a budget the model cannot write within the Cloud Function's wait would lose the whole rewrite."""
+    question = {
+        "question": "What is 2+2?",
+        "choices": ["A) 3", "B) 4", "C) 5", "D) 6"],
+        "correct_answer": "B",
+        "topic": "math",
+        "grade_level": 8,
+    }
+    battle = [{**question, "question": f"What is {number}+2?"} for number in range(BATTLE_MAX_ROUNDS)]
+    varied = [{**original, "variance_applied": ["paraphrase"]} for original in battle]
+    with (
+        patch.object(variance_engine, "get_cached_session", new=AsyncMock(return_value=None)),
+        patch.object(variance_engine, "cache_session_questions", new=AsyncMock()),
+        patch.object(variance_engine, "complete_text", return_value=json.dumps(varied)) as complete_text,
+    ):
+        asyncio.run(variance_engine.apply_variance(battle, "session-1"))
+
+    sent = complete_text.call_args.kwargs
+    assert BATTLE_MAX_ROUNDS * 300 <= sent["max_tokens"]
+    assert sent["max_tokens"] / HAIKU_OUTPUT_TOKENS_PER_SECOND < BATTLE_CALLER_TIMEOUT_SECONDS
 
 
 def test_chunk_question_generation_requests_json_output_with_a_120_second_timeout() -> None:

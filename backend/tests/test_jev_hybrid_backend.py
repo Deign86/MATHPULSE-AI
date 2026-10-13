@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
-from unittest.mock import patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -241,11 +241,11 @@ async def test_chat_direct_answer_socratic_short_circuit(
     async def route_intent(_message: str) -> dict[str, object]:
         return {"choice": "direct_answer_request", "confidence": 0.93}
 
-    async def unexpected_llm_call(*_args: object, **_kwargs: object) -> str:
-        raise AssertionError("Claude must not run for a direct answer request")
+    # A raising fake would prove nothing here: chat_tutor drops the failure of an answer it abandoned.
+    claude_call = AsyncMock(return_value="x = -3")
 
     monkeypatch.setattr(main, "route_student_intent", route_intent)
-    monkeypatch.setattr(main, "call_hf_chat_async", unexpected_llm_call)
+    monkeypatch.setattr(main, "call_hf_chat_async", claude_call)
 
     response = await main.chat_tutor(main.ChatRequest(message="Just give me the answer"))
 
@@ -261,3 +261,4 @@ async def test_chat_direct_answer_socratic_short_circuit(
     ]
     assert response.confidence == 0.93
     assert response.activeModel == "jev-socratic-router"
+    claude_call.assert_not_awaited()
