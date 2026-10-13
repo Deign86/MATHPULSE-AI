@@ -20,12 +20,16 @@ Single source of truth for how each layer is verified. Commands below mirror `.g
 
 ## Worktree setup (fresh worktrees have NO node_modules)
 
-After `git worktree add`, before running any Node toolchain in the worktree:
+After `git worktree add`, before running any Node toolchain or committing in the worktree:
 
 ```powershell
-npm ci  # repo root of the worktree (and cd functions && npm ci if touching functions)
+npm ci --legacy-peer-deps  # repo root of the worktree (and cd functions && npm ci --legacy-peer-deps if touching functions)
 Test-Path -LiteralPath "node_modules\.bin\tsc"  # must be True before typecheck/lint/test
 ```
+
+`--legacy-peer-deps` matches CI, which installs both the root and `functions/` with it. Without it the root install fails with `ERESOLVE`: `@capacitor-firebase/authentication@7.5.0` has an optional `firebase@^11.2.0` peer, and the app is on `firebase@12`.
+
+Commits from a worktree run the main checkout's pre-commit hook (`.git/hooks/pre-commit`, installed from `scripts/git-hooks/pre-commit`). It runs `npx oxlint --quiet` from the worktree root, which needs that worktree's `node_modules`: `oxlint`, plus `@oxlint/plugins` for the vendored anti-slop plugin.
 
 The system Python environment works across worktrees (no venv in this repo). Never run `npm run dev`, vite preview, emulators, or E2E suites in parallel lanes — browser automation and dev ports are exclusive to one lane at a time.
 
