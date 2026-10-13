@@ -1,34 +1,48 @@
-# Gates: quiz token budgets + chat intent check in parallel
+# Gates: deterministic prefetch-burst regression test
 
-Scope: (1) the three quiz-generation paths in backend/main.py budget enough output tokens for Claude Haiku 5.5 (benchmark: a 10-question quiz hit the 3200-token cap on every attempt, retried, and one run returned 502 after 61 s); (2) `/api/chat` starts the answer while the first-turn intent check runs, instead of after it (benchmark: first turn 3.62 s = intent ~1.4 s + answer ~2.1 s). Added after the Opus review: (3) `_run_hf_blocking` keeps a cancelled call's slot until its worker thread returns; (4) the other per-question budgets sized for the old model (practice set, teacher module quiz, Quiz Battle rewrite). PR CI, merge and the production deploy are checked after this commit (the pre-commit hook needs every gate here to pass) and reported on the PR.
+Scope: `backend/tests/test_regression_rag_lesson.py::test_prefetch_concurrent_burst_never_queues_interactive_behind_the_semaphore` asserted that bob's interactive open finished in under 1.4 s against a fake model that sleeps 0.8 s. It failed once in Deploy FastAPI backend run 38323146786 (commit 15ff95f0) at 1.52 s with statuses [queued, skipped], so the code was correct and the runner was slow. Replace the wall-clock limit with a gate: alice's prefetch generation stays blocked until bob's interactive lesson is back, and that lesson can only come back if it neither waits on `_prefetch_semaphore` nor joins alice's job. Production code does not change.
 
-- [x] G1: Quiz budgets fit the largest allowed quiz at Haiku's measured verbosity, in all three paths
-  EVIDENCE: main.py `_quiz_output_token_budget(n) = min(16000, max(3072, n * 500))`, used by generate, JSON repair and strict regeneration; route max 12 questions -> 6000, request-model max 30 -> 15000 (under the 16000 cap). tests/test_quiz_token_budget.py (7 cases) fails when any path is put back to 320/260 per question; 16 passed with the quiz + chat files.
+- [x] G1: The rewritten test passes
+  CHECK: cd backend && python -X utf8 -m pytest tests/test_regression_rag_lesson.py -q -p no:cacheprovider -k concurrent_burst 2>&1
+  EXPECT: /\b1 passed, \d+ deselected/
+  EVIDENCE: .                                                                        [100%] | 1 passed, 24 deselected in 39.42s
 
-- [x] G2: Chat runs the intent check and the answer concurrently; the guided-hint reply still wins when the check says so, and an intent failure still falls back to the answer
-  EVIDENCE: tests/test_chat_jev_socratic.py: concurrency test (deadlocks if sequential — mutation proved), guided reply wins and cancels the in-flight answer, intent failure -> answer, answer failure + guided -> guided reply with no leaked task error (loop exception handler + gc). Each new test fails under its targeted mutation.
+- [x] G2: The test has no wall-clock limit left (no perf_counter timing, no 0.8 s model sleep, no 1.4 s bound)
+  CHECK: git grep -n -e "time.perf_counter" -e "stream_delay = 0.8" -e "< 1.4" -- backend/tests/test_regression_rag_lesson.py || echo NO_WALL_CLOCK_LIMIT
+  EXPECT: /^NO_WALL_CLOCK_LIMIT/
+  EVIDENCE: NO_WALL_CLOCK_LIMIT
 
-- [x] G3: Backend test suite fully green
-  CHECK: cd backend && set PYTHONPATH=C:\Users\APG\Downloads\MATHPULSE-AI\backend&& set PYTHONUTF8=1&& python -m pytest tests/ -q 2>&1 | findstr /r /c:" passed" /c:" failed" /c:" error"
+- [x] G3: A slow runner cannot fail it: with a 0.7 s stall added to every fake generation (temporary `time.sleep(0.7)` in `LessonSeams.stream`, reverted), the old test fails the way CI did and the new test passes
+  EVIDENCE: old test: 1 failed, "bob's interactive lesson waited 1.51s behind alice's prefetch slot (statuses=[{'status': 'queued'}, {'status': 'skipped'}])" (CI: 1.52s). New test, same stall: 1 passed (call 1.52s). Run before the final wording edits (docstring, comment, failure message; no logic change)
+
+- [x] G4: It fails when the interactive path acquires `_prefetch_semaphore` (temporary mutation: `async with _prefetch_semaphore:` around the job join in `rag_lesson`, reverted)
+  EVIDENCE: final test text: 1 failed after 10.02s, "Failed: bob's interactive lesson waited 10s behind alice's prefetch (its semaphore slot or its job)" (first run, before the wording edits: 10.27s)
+
+- [x] G5: It fails when a prefetch accepted during the burst leaves its job waiting on the semaphore (temporary mutation: no slot claimed in `rag_lesson_prefetch`, `_run_lesson_job` acquires it after the first await, reverted)
+  EVIDENCE: final test text: 1 failed in 0.01s, both prefetches accepted, "At index 1 diff: {'status': 'queued'} != {'status': 'skipped'}"
+
+- [x] G6: It fails when bob's interactive open joins alice's in-flight job (temporary mutation: `_get_or_start_lesson` keys jobs as ("", key, forceRefresh), reverted)
+  EVIDENCE: final test text: 1 failed after 10.03s, "bob's interactive lesson waited 10s behind alice's prefetch (its semaphore slot or its job)". The old test PASSED under this mutation (1 passed), so its timing check never caught a cross-student join
+
+- [x] G7: Repeated targeted runs are stable (alice always takes the slot, no failures)
+  EVIDENCE: temporary parametrize x200, reverted: 200 passed in 56.78s idle; 200 passed in 177.41s with 24 CPU-spinning processes on 12 cores for the whole run (slowest iteration 1.33s). Run before the final wording edits (docstring, comment, failure message; no logic change)
+
+- [x] G8: Full backend suite passes
+  EVIDENCE: cd backend && PYTHONPATH="$(pwd)" PYTHONUTF8=1 PYTEST_ADDOPTS="-p no:cacheprovider" python -m pytest tests/ -q on the final test text merged with main d1ee6c4b (#345) -> 1162 passed, 2 warnings in 143.70s (exit 0); then git checkout -- backend/datasets/vectorstore. Before the merge: 1144 passed in 141.15s
+
+- [x] G9: Only the test file changed under backend/ (mutations reverted, Chroma files restored)
+  CHECK: git diff --quiet HEAD -- backend ":(exclude)backend/tests/test_regression_rag_lesson.py" && echo ONLY_THE_TEST_CHANGED
+  EXPECT: ONLY_THE_TEST_CHANGED
+  EVIDENCE: ONLY_THE_TEST_CHANGED
+
+- [x] G10: No untracked or modified files under backend/datasets/vectorstore after the suite
+  CHECK: git status --porcelain -- backend/datasets/vectorstore && echo VECTORSTORE_CLEAN
+  EXPECT: /^VECTORSTORE_CLEAN\s*$/
+  EVIDENCE: VECTORSTORE_CLEAN
+
+- [x] G11: The repo-wide retired-provider name scan still passes
+  CHECK: cd backend && python -X utf8 -m pytest tests/test_regression_claude_migration.py -q -p no:cacheprovider -k retired_provider 2>&1
   EXPECT: /^(?!.*\b(failed|errors?)\b).*\d+ passed/m
-  EVIDENCE: 1162 passed, 2 warnings in 116.25s (0:01:56)
+  EVIDENCE: -- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html | 6 passed, 131 deselected, 1 warning in 32.69s
 
-- [x] G4: Backend mypy: no new errors (baseline 16, all in the pre-existing main.py block)
-  EVIDENCE: `python -m mypy --config-file mypy.ini --explicit-package-bases backend/main.py backend/analytics.py` -> "Found 16 errors in 1 file", all `object | Any` index/attr errors at main.py:8573-8595 (the pre-existing block, shifted by the new code).
-
-- [x] G5: Live re-measure: a 10-question quiz completes in one model call with no 502 and is faster than the old 17.8 s; chat first turn is faster than 3.62 s
-  EVIDENCE: real Haiku 5.5 through the routes (MODEL_PROFILE=prod, Firebase off, auth mocked), budget 4500 at the time: quiz 14.22 s / 14.86 s / 13.23 s in one call each (end_turn, 3332-3778 output tokens); 1 of 4 took 25.39 s with a strict-regeneration second call because the first reply parsed to fewer than 10 questions (stopped at 3974 of 4500, not truncated); no 502s. Before the fix: 23.5 s, 41.2 s and a 502 after 60.7 s. Chat first turn 1.71 / 2.36 / 2.90 s (median 2.36 s vs 3.62 s); guided reply 1.68 s. Budget since raised to 500/question for verbose topics (worst run used 397 tokens/question).
-
-- [x] G6: Opus adversarial review: every confirmed finding fixed or dispositioned
-  EVIDENCE: verdict "safe to merge for correctness". (1) medium, cancelled caller freed its slot while its thread kept calling the model -> fixed, G9. (2) answer started even when the verdict was already in -> not started any more (main.py chat_tutor; test_a_verdict_that_is_already_in_means_the_answer_is_never_created). (3) two "AI must not run" guards could not fail (abandoned-task errors are swallowed) -> rewritten with AsyncMock + assert_not_awaited in test_chat_jev_socratic.py and test_jev_hybrid_backend.py; both fail once an answer is allowed to start, while the old raising versions still pass. (4) finished answer vs guided verdict untested -> test_guided_reply_wins_over_an_answer_that_already_finished (fails if a finished answer wins). (5) TIMING [model_call] counted the verdict wait -> `_timed_chat_answer` times the call itself; stepped-clock test expects 1250ms with a 5 s verdict wait. (6) same bug class in other budgets -> G10. routes/quiz_generation_routes.py `/generate` (6000 for 20) is never mounted (main.py does not include that router; both frontend request shapes reach main.py's route via the topic/questionCount aliases) -> no change.
-
-- [x] G7: No tracked file mentions the retired provider
-  CHECK: git grep -i -l -e "deep[s]eek" || echo NO_PROVIDER_MENTIONS
-  EXPECT: NO_PROVIDER_MENTIONS
-  EVIDENCE: NO_PROVIDER_MENTIONS
-
-- [x] G9: A cancelled caller keeps its `_run_hf_blocking` slot until its worker thread returns, so concurrent model calls never exceed HF_BLOCKING_CALL_CONCURRENCY
-  EVIDENCE: tests/test_event_loop_offload.py: cancelled calls keep their slots (fails on the old `async with`, without shield, or never releasing), a caller cancelled while queued neither leaks nor adds a slot, an abandoned call's failure is not left unretrieved. Probe with the real backend, burst of 48 chats whose guided reply wins: answer threads peak 16 (the limit) vs 28 before the fix; abandoned wave: 0 free slots while 16 threads still run, vs 16 free and a peak of 32 before.
-
-- [x] G10: Practice set (20 questions), teacher module quiz (10) and Quiz Battle rewrite (20 rounds) budgets fit their largest request and can be written before their caller stops waiting
-  EVIDENCE: practice.py 8192 -> 10000 (20 x 500; ~40 s of output vs the 90 s timeout); teacher_materials.py 4096 -> 5000 (10 x 500); variance_engine.py 4000 -> 6000 (20 rounds x 300; ~24 s of output vs the Cloud Function's 30 s wait — the worker's 15000 would have taken up to 60 s). test_practice_router.py, test_teacher_materials.py and test_json_output_call_sites.py::test_variance_engine_fits_a_full_battle_inside_the_callers_wait fail at the old values; the battle test also fails at 15000 (mutation run: 6000 passed, 4000 failed, 15000 failed).
+Post-commit check (not a pre-commit gate): a PR against main is open and left unmerged.
