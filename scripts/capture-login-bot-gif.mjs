@@ -20,9 +20,9 @@ const browser = await puppeteer.launch({
 const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 800, deviceScaleFactor: 1 });
 try {
-  await page.goto('http://127.0.0.1:5173/', { waitUntil: 'networkidle2', timeout: 60000 });
+  await page.goto('https://mathpulse-ai-2026.web.app/', { waitUntil: 'networkidle2', timeout: 60000 });
   await page.waitForFunction(
-    () => (document.body.innerText || '').includes('QUICK DEMO ACCESS'),
+    () => (document.body.innerText || '').includes('Sign In'),
     { timeout: 25000 },
   );
   await sleep(2500);

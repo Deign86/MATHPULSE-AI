@@ -70,7 +70,7 @@
 </p>
 
 <p align="center">
-  <em>Click the image above to open the live app on <a href="https://mathpulse-ai-2026.web.app">mathpulse-ai-2026.web.app</a> — sign in with a 1-click demo account, no setup required.</em>
+  <em>Click the image above to open the live app on <a href="https://mathpulse-ai-2026.web.app">mathpulse-ai-2026.web.app</a>.</em>
 </p>
 
 <p align="center">
@@ -107,17 +107,17 @@ MathPulse AI is an **installable, gamified learning platform** for SHS math — 
 
 ## Try it live
 
-No install, no keys. Open the deploy and pick a demo account:
+No install needed. Sign in with email/password or Google; demo accounts are available from the maintainer.
 
-| Account | 1-Click login | Lands on |
-| ------- | ------------- | -------- |
-| **Student** | `teststudent@school.edu` | Dashboard, Curriculum Modules, L.O.L.I. chat, Quiz Battle, Leaderboards |
-| **Teacher** | `testteacher@school.edu` | Class dashboard (12 students, at-risk flags), Class Analytics, AI Quiz Maker, Data Import |
-| **Admin** | `testadmin@school.edu` | Platform overview, User/Class Management, RAG Manager, Audit Log |
+| Account | Lands on |
+| ------- | -------- |
+| **Student** | Dashboard, Curriculum Modules, L.O.L.I. chat, Assessment, Quiz Battle, Leaderboards, Avatar Studio |
+| **Teacher** | Teacher dashboard (students, class average, engagement, at-risk count), My Classes, Topic Mastery, AI Quiz Maker, Question Bank, Data Import |
+| **Admin** | Platform overview, User/Class Management, RAG Manager, Curriculum Control, Analytics, Audit Log |
 
 > **[Open the live app →](https://mathpulse-ai-2026.web.app)**
 >
-> Screenshots in this README were captured from that deploy with Chrome DevTools (`docs/screenshots/`, re-capture anytime with `node scripts/capture-readme-screenshots.mjs`; login bot GIF with `node scripts/capture-login-bot-gif.mjs` + ffmpeg).
+> Screenshots in this README were captured from that deploy (`docs/screenshots/`). Re-capture with `node scripts/capture-readme-screenshots.mjs`: it opens a Chrome window per role, you sign in by hand, and it saves the shots. Login bot GIF: `node scripts/capture-login-bot-gif.mjs` + ffmpeg.
 
 ---
 
@@ -156,12 +156,12 @@ Gamified home base: hero greeting with Continue Learning, Start Learning module 
 ### Teacher studio
 
 <p align="center">
-  <img src="docs/screenshots/05-teacher-dashboard.png" alt="Teacher dashboard with class stats and AI insight" width="800" />
+  <img src="docs/screenshots/05-teacher-dashboard.png" alt="Teacher dashboard with student, class average, engagement and at-risk cards" width="800" />
 </p>
 
-Mission control for a class: headcount, class average, engagement, and at-risk counts up top; AI insight banner calling out students falling behind; class cards with risk badges; calendar + live activity stream on the rail.
+Mission control for a class: total students, class average, engagement, and needs-attention counts up top; My Classes with an unassigned-students prompt; schedule and calendar in the sidebar.
 
-- **Teacher Dashboard** — 12-student overview with AI-generated daily insight and review-student shortcut
+- **Teacher Dashboard** — class overview with AI-generated daily insight and review-student shortcut
 - **Risk Classification** — dual pipeline: Claude JSON-output labels + supervised XGBoost/RandomForest scoring with SHAP explanations
 - **Class Analytics & Topic Mastery** — per-student and class-wide metrics, topic performance views, competency tracking
 - **AI Quiz Maker & Question Bank** — import-grounded generation from uploaded class materials
@@ -174,7 +174,7 @@ Mission control for a class: headcount, class average, engagement, and at-risk c
   <img src="docs/screenshots/06-admin-dashboard.png" alt="Admin dashboard with platform overview and AI model status" width="800" />
 </p>
 
-Platform-wide command deck: active students/teachers/classes, XP event volume, at-risk alerts, AI-vs-manual activity chart, model success-rate monitor with health check, top-performer mastery cards, and subject breakdowns.
+Platform-wide command deck: quick actions (add faculty or student, class sections, upload curriculum, analytics hub), faculty / section / AI-session / intervention counts, a learning-engagement chart comparing AI tutoring with self-study, the academic honor roll, and subject breakdowns.
 
 - **Platform Overview** — students, teachers, classes, XP events, at-risk alerts at a glance
 - **User & Class Management** — create, edit, and manage accounts across all roles

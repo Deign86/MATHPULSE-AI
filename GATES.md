@@ -1,18 +1,14 @@
-# Gates: shrink the tracked repo
+# Gates: README screenshots of the current live app
 
-Scope: the tracked tree was 409 MB across 1615 files, too large to add as a Claude project. Most of it is generated or local-only: two copies of the 80 MB Chroma vector store (the HF Space downloads it from Firebase Storage; deploy-backend.yml already excludes it), curriculum PDFs (hosted in Firebase Storage; their Parsed Markdown stays), unreferenced master/hero videos, and agent run leftovers (.omo, .tmp, gates/, audit screenshots, test-results). Vector stores, PDFs and .opencode are untracked but stay on disk; everything else is deleted and stays recoverable from git history.
+Scope: the README screenshots (Sep 6) and login GIF showed the old login page with 1-click demo buttons, which the live deploy no longer has. Recapture all six screenshots and the GIF from mathpulse-ai-2026.web.app, update the README text that described the old login and data, and fix the capture scripts: the screenshot script now opens a Chrome window per role for a manual sign-in (it never handles credentials) and closes the Initial Assessment prompt with Escape (session-only, no Firestore write).
 
-- [x] G1: No vector store, curriculum PDF or agent-leftover path is tracked
-  CHECK: git ls-files datasets/vectorstore backend/datasets/vectorstore .omo .tmp .opencode gates audit_screenshots test-results public/assets/masters "datasets/curriculum/*.pdf" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>console.log('TRACKED='+s.split('\n').filter(Boolean).length))"
-  EXPECT: TRACKED=0
+- [x] G1: Six screenshots and the GIF are fresh captures of the current live app with no popup covering the page
+  EVIDENCE: 01-login (Welcome Back form, no demo buttons), 02-student-dashboard, 03-modules, 04-ai-chat (no Initial Assessment prompt), 05-teacher-dashboard, 06-admin-dashboard, all 1280x800 captured 2026-10-14 and checked by eye; login-bot-look.gif built from 9 live frames (video sweep 0.046 -> 2.254 s), 627 KB.
 
-- [x] G2: Tracked tree is under 60 MB
-  CHECK: node -e "const fs=require('fs');const f=require('child_process').execSync('git ls-files -z').toString().split('\0').filter(Boolean);let s=0;for(const p of f){try{s+=fs.statSync(p).size}catch{}}console.log('MB='+Math.round(s/1048576))"
-  EXPECT: /MB=([0-5]?\d)\b/
+- [x] G2: README no longer promises 1-click demo login or lists the retired test accounts
+  CHECK: git grep -n -i -e "1-click" -e "QUICK DEMO" -e "teststudent@" -e "testteacher@" -e "testadmin@" -- README.md scripts/capture-readme-screenshots.mjs scripts/capture-login-bot-gif.mjs || echo NO_STALE_LOGIN_TEXT
+  EXPECT: NO_STALE_LOGIN_TEXT
 
-- [x] G3: Local RAG files still on disk after untracking
-  CHECK: if exist datasets\vectorstore\chroma.sqlite3 if exist backend\datasets\vectorstore\chroma.sqlite3 echo LOCAL_KEPT
-  EXPECT: LOCAL_KEPT
-
-- [x] G4: Frontend production build still succeeds without the removed media
-  EVIDENCE: VITE_API_URL=/api npm run build -> "built in 15.45s", check-prod-host PASS, check:no-demo-creds PASS
+- [x] G3: Every local image the README references exists
+  CHECK: node -e "const fs=require('fs');const m=[...fs.readFileSync('README.md','utf8').matchAll(/src=.([\w./:-]+)/g)].map(x=>x[1]).filter(p=>!p.startsWith('http')&&!fs.existsSync(p));console.log('MISSING='+m.length+' '+m.join(' '))"
+  EXPECT: /MISSING=0\b/
