@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as firestore from 'firebase/firestore';
 import type { DocumentData, DocumentSnapshot } from 'firebase/firestore';
 import AdminSettingsPage from './AdminSettingsPage';
+import { DEFAULT_USER_SETTINGS } from '../../types/models';
 
 function generalSettingsSnapshot(): DocumentSnapshot {
   // SAFETY: AdminSettingsPage only calls data() on the settings/general snapshot.
@@ -48,5 +49,19 @@ describe('Admin settings tour replay', () => {
       render(<AdminSettingsPage onSaveSettings={async () => {}} />);
     });
     expect(screen.queryByRole('button', { name: 'Replay admin guide' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Admin settings theme preview', () => {
+  it('restores the saved settings when leaving with an unsaved preview', async () => {
+    const applyPreview = vi.fn();
+    const view = render(
+      <AdminSettingsPage settingsData={DEFAULT_USER_SETTINGS} onSaveSettings={async () => {}} onApplySettingsPreview={applyPreview} />,
+    );
+    await act(async () => {});
+    fireEvent.click(screen.getByRole('button', { name: /Dark Mode/ }));
+    expect(applyPreview).toHaveBeenLastCalledWith(expect.objectContaining({ appearance: expect.objectContaining({ darkMode: true }) }));
+    view.unmount();
+    expect(applyPreview).toHaveBeenLastCalledWith(DEFAULT_USER_SETTINGS);
   });
 });

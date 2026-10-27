@@ -3,6 +3,7 @@ import React from 'react';
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import TeacherSettingsPage from './TeacherSettingsPage';
+import { DEFAULT_USER_SETTINGS } from '../../types/models';
 
 afterEach(cleanup);
 
@@ -29,5 +30,18 @@ describe('Teacher settings tour replay', () => {
   it('hides the guide card without a replay handler', () => {
     render(<TeacherSettingsPage onSaveSettings={async () => {}} />);
     expect(screen.queryByRole('button', { name: 'Replay teacher guide' })).not.toBeInTheDocument();
+  });
+});
+
+describe('Teacher settings theme preview', () => {
+  it('restores the saved settings when leaving with an unsaved preview', () => {
+    const applyPreview = vi.fn();
+    const view = render(
+      <TeacherSettingsPage settingsData={DEFAULT_USER_SETTINGS} onSaveSettings={async () => {}} onApplySettingsPreview={applyPreview} />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Dark Theme/ }));
+    expect(applyPreview).toHaveBeenLastCalledWith(expect.objectContaining({ appearance: expect.objectContaining({ darkMode: true }) }));
+    view.unmount();
+    expect(applyPreview).toHaveBeenLastCalledWith(DEFAULT_USER_SETTINGS);
   });
 });

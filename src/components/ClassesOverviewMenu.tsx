@@ -19,7 +19,6 @@ interface ClassesOverviewMenuProps {
   classes: ClassView[];
   totalStudentCount: number;
   onSelectClass: (classItem: ClassView) => void;
-  onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   insightDismissed?: boolean;
   onOpenInsightModal?: () => void;
@@ -39,7 +38,6 @@ export const ClassesOverviewMenu: React.FC<ClassesOverviewMenuProps> = ({
   classes,
   totalStudentCount,
   onSelectClass,
-  onOpenNotifications,
   onOpenProfile,
   insightDismissed,
   onOpenInsightModal,

@@ -31,7 +31,6 @@ interface PdfStatus {
 }
 
 interface QuestionBankPanelProps {
-  onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   onOpenInsightModal?: () => void;
   userPhoto?: string;
@@ -39,7 +38,6 @@ interface QuestionBankPanelProps {
 }
 
 export const QuestionBankPanel: React.FC<QuestionBankPanelProps> = ({
-  onOpenNotifications,
   onOpenProfile,
   onOpenInsightModal,
   userPhoto,

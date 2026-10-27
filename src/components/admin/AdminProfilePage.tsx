@@ -76,6 +76,8 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
   };
 
   const handleSave = async () => {
+    if (!isDirty || isSaving) return;
+
     const validationError = validateProfileDraft({
       name: accountData.name || '',
       phone: accountData.phone || '',
@@ -210,7 +212,7 @@ export const AdminProfilePage: React.FC<AdminProfilePageProps> = ({
                 <Button
                   type="button"
                   onClick={handleSave}
-                  disabled={isSaving}
+                  disabled={isSaving || !isDirty}
                   className={`w-full sm:w-auto h-10 px-4 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
                     isDirty
                       ? 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/30'

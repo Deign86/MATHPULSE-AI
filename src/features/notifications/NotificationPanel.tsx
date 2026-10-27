@@ -11,12 +11,14 @@ import { NOTIFICATION_PAGE_SIZE, paginateNotifications } from './types';
 
 interface NotificationPanelProps {
   onClose: () => void;
+  onViewAll?: () => void;
   panelRef?: React.RefObject<HTMLDivElement | null>;
   triggerRef?: React.RefObject<HTMLElement | null>;
 }
 
 export const NotificationPanel: React.FC<NotificationPanelProps> = ({
   onClose,
+  onViewAll,
   panelRef: externalPanelRef,
   triggerRef,
 }) => {
@@ -122,6 +124,21 @@ export const NotificationPanel: React.FC<NotificationPanelProps> = ({
             >
               <ChevronDown size={14} aria-hidden="true" />
               <span>Show more ({notifications.length - visibleNotifications.length} remaining)</span>
+            </button>
+          </div>
+        )}
+
+        {onViewAll && (
+          <div className="p-2.5 border-t border-slate-100 dark:border-slate-800 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                onViewAll();
+                onClose();
+              }}
+              className="w-full px-3 py-2 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 transition-colors focus-visible:ring-2 focus-visible:ring-purple-400 focus-visible:outline-none cursor-pointer"
+            >
+              View all notifications
             </button>
           </div>
         )}

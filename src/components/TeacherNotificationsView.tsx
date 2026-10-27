@@ -20,7 +20,6 @@ import { formatDistanceToNow, isToday, isYesterday } from 'date-fns';
 interface TeacherNotificationsViewProps {
   liveActivity?: { id: string; student: string; action: string; topic: string; time: string; type: string }[];
   atRiskStudents?: { name: string; riskLevel: string; weakestTopic: string }[];
-  onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   onOpenInsightModal?: () => void;
   userPhoto?: string;

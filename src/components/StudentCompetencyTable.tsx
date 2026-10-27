@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { getDefaultAvatar } from '../utils/avatarUtils';
 import { motion, AnimatePresence } from 'motion/react';
 import {
@@ -314,11 +314,10 @@ const StudentCompetencyTable: React.FC<{
   className?: string;
   fallbackStudents?: FallbackStudentInput[];
   onBack?: () => void;
-  onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   insightDismissed?: boolean;
   onOpenInsightModal?: () => void;
-}> = ({ classSectionId, className, fallbackStudents = [], onBack, onOpenNotifications, onOpenProfile, insightDismissed, onOpenInsightModal }) => {
+}> = ({ classSectionId, className, fallbackStudents = [], onBack, onOpenProfile, insightDismissed, onOpenInsightModal }) => {
   const { currentUser, userProfile } = useAuth();
 
   const competencyMatrixLoadIdRef = useRef(0);
@@ -364,15 +363,20 @@ const StudentCompetencyTable: React.FC<{
     accountUid: student.accountUid,
   }), []);
 
+  // Keyed on content: the parent rebuilds its roster array on every merge, and each new reference
+  // would otherwise rerun the whole load (backend overview plus one progress read per student).
+  const mappedFallbackStudents = fallbackStudents.map(mapFallbackStudent);
+  const fallbackStudentsKey = JSON.stringify(mappedFallbackStudents);
+  const stableFallbackStudents = useMemo(() => mappedFallbackStudents, [fallbackStudentsKey]);
+
   const loadCompetencyMatrices = useCallback(async (students: CompetencyStudent[], loadId: number) => {
-    const summaryByStudentId = new Map<string, CompetencyMatrixSummary | null>();
-    const scoreByStudentId = new Map<string, number>();
-    students.forEach((student) => summaryByStudentId.set(student.id, null));
     const COMPETENCY_MATRIX_BATCH_SIZE = 25;
 
     for (let index = 0; index < students.length; index += COMPETENCY_MATRIX_BATCH_SIZE) {
       if (competencyMatrixLoadIdRef.current !== loadId) return;
 
+      const summaryByStudentId = new Map<string, CompetencyMatrixSummary | null>();
+      const scoreByStudentId = new Map<string, number>();
       const batch = students.slice(index, index + COMPETENCY_MATRIX_BATCH_SIZE);
       const results = await Promise.allSettled(
         batch.map(async (student) => {
@@ -398,22 +402,23 @@ const StudentCompetencyTable: React.FC<{
           summaryByStudentId.set(studentId, null);
         }
       });
+
+      if (competencyMatrixLoadIdRef.current !== loadId) return;
+
+      // Fill each batch in as it arrives instead of waiting for the whole class.
+      setRows((prev) => prev.map((row) => {
+        if (!summaryByStudentId.has(row.student.id)) return row;
+        const enrichedScore = scoreByStudentId.get(row.student.id);
+        return {
+          ...row,
+          student: enrichedScore != null && enrichedScore > row.student.avgQuizScore
+            ? { ...row.student, avgQuizScore: Math.round(enrichedScore) }
+            : row.student,
+          competencyMatrix: summaryByStudentId.get(row.student.id) ?? null,
+          competencyMatrixLoading: false,
+        };
+      }));
     }
-
-    if (competencyMatrixLoadIdRef.current !== loadId) return;
-
-    setRows((prev) => prev.map((row) => {
-      if (!summaryByStudentId.has(row.student.id)) return row;
-      const enrichedScore = scoreByStudentId.get(row.student.id);
-      return {
-        ...row,
-        student: enrichedScore != null && enrichedScore > row.student.avgQuizScore
-          ? { ...row.student, avgQuizScore: Math.round(enrichedScore) }
-          : row.student,
-        competencyMatrix: summaryByStudentId.get(row.student.id) ?? null,
-        competencyMatrixLoading: false,
-      };
-    }));
   }, []);
 
   // -”€-”€-”€ Load students -”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€-”€
@@ -423,7 +428,10 @@ const StudentCompetencyTable: React.FC<{
     setLoading(true);
     setStudentsWarning('');
     try {
-      const students = await getStudentsByTeacher(currentUser.uid);
+      const [students, importedOverview] = await Promise.all([
+        getStudentsByTeacher(currentUser.uid),
+        apiService.getImportedClassOverview({ classSectionId, limit: 3000 }),
+      ]);
       let normalizedStudents: CompetencyStudent[] = students.map((student) => ({
         id: student.id,
         name: student.name,
@@ -437,18 +445,14 @@ const StudentCompetencyTable: React.FC<{
         accountUid: student.accountUid,
       }));
 
-      if (fallbackStudents.length > 0) {
-        normalizedStudents = mergeCompetencyStudents(
-          normalizedStudents,
-          fallbackStudents.map(mapFallbackStudent),
-        );
+      if (stableFallbackStudents.length > 0) {
+        normalizedStudents = mergeCompetencyStudents(normalizedStudents, stableFallbackStudents);
       }
 
       if (classSectionId) {
         normalizedStudents = normalizedStudents.filter((student) => student.classSectionId === classSectionId);
       }
 
-      const importedOverview = await apiService.getImportedClassOverview({ classSectionId, limit: 3000 });
       if (importedOverview.warnings.length > 0) {
         setStudentsWarning(importedOverview.warnings.join(' '));
       }
@@ -474,9 +478,8 @@ const StudentCompetencyTable: React.FC<{
       void loadCompetencyMatrices(dedupedStudents, competencyMatrixLoadId);
     } catch (err) {
       console.error('Failed to load students:', err);
-      if (fallbackStudents.length > 0) {
-        const fallbackRows = fallbackStudents
-          .map(mapFallbackStudent)
+      if (stableFallbackStudents.length > 0) {
+        const fallbackRows = stableFallbackStudents
           .filter((student) => !classSectionId || student.classSectionId === classSectionId)
           .map((student, index) => ({
             rowKey: `${buildCompetencyStudentKey(student)}|row:${index}`,
@@ -496,7 +499,7 @@ const StudentCompetencyTable: React.FC<{
     } finally {
       setLoading(false);
     }
-  }, [classSectionId, currentUser?.uid, fallbackStudents, loadCompetencyMatrices, mapFallbackStudent, mapImportedStudentToCompetencyStudent]);
+  }, [classSectionId, currentUser?.uid, stableFallbackStudents, loadCompetencyMatrices, mapImportedStudentToCompetencyStudent]);
 
   useEffect(() => { loadStudents(); }, [loadStudents]);
 

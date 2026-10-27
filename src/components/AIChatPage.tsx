@@ -11,6 +11,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'motion/react';
 import ChatMarkdown from './ChatMarkdown';
 import UserAvatar from './UserAvatar';
+import ConfirmModal from './ConfirmModal';
 
 export const QUICK_PROMPTS = [
   { label: 'Explain step-by-step', icon: BookOpen, prompt: 'Can you explain this math problem step-by-step?' },
@@ -68,6 +69,7 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
   const [currentMessage, setCurrentMessage] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: string; title: string } | null>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const shouldAutoScrollRef = useRef(true);
@@ -183,9 +185,9 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
     setActiveSessionId(newSessionId);
   };
 
-  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+  const handleDeleteSession = (session: { id: string; title: string }, e: React.MouseEvent) => {
     e.stopPropagation();
-    deleteSession(sessionId);
+    setPendingDelete({ id: session.id, title: session.title });
   };
 
   const handleCopyMessage = async (text: string, msgId: string) => {
@@ -289,7 +291,7 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
                   </div>
                 </button>
                 <button
-                  onClick={(e) => handleDeleteSession(session.id, e)}
+                  onClick={(e) => handleDeleteSession(session, e)}
                   aria-label={`Delete conversation: ${session.title}`}
                   className="absolute top-2.5 right-2.5 p-1 rounded-lg opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:bg-red-50 text-[#a1a1aa] hover:text-red-500 transition-all"
                 >
@@ -591,6 +593,21 @@ const AIChatPage = ({ tourView = null }: AIChatPageProps) => {
           </div>
         )}
       </div>
+
+      <ConfirmModal
+        isOpen={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (pendingDelete) {
+            deleteSession(pendingDelete.id);
+          }
+        }}
+        title="Delete conversation"
+        message={`Delete "${pendingDelete?.title ?? ''}"? You won't be able to open it again.`}
+        confirmText="Delete"
+        type="danger"
+        icon="delete"
+      />
     </div>
   );
 };

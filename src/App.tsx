@@ -1243,8 +1243,6 @@ const App = ({ authOverride }: AppProps = {}) => {
                 activeTab={activeTab}
                 setActiveTab={handleStudentNavigation}
                 userRole={userRole}
-                onOpenSettings={() => handleStudentNavigation('Settings')}
-                onLogout={() => setActiveModal('logout_confirm')}
                 sidebarCollapsed={isSidebarCollapsed}
                 setSidebarCollapsed={setIsSidebarCollapsed}
                 forceCollapsed={activeTab === 'Quiz Battle'}
@@ -1269,14 +1267,6 @@ const App = ({ authOverride }: AppProps = {}) => {
                   activeTab={activeTab}
                   setActiveTab={handleStudentNavigation}
                   userRole={userRole}
-                  onOpenSettings={() => {
-                    handleStudentNavigation('Settings');
-                    setIsMobileSidebarOpen(false);
-                  }}
-                  onLogout={() => {
-                    setActiveModal('logout_confirm');
-                    setIsMobileSidebarOpen(false);
-                  }}
                   sidebarCollapsed={false}
                 />
               </Suspense>

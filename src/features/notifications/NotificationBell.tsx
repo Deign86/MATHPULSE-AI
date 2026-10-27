@@ -7,7 +7,12 @@ import { Bell } from 'lucide-react';
 import { useNotifications } from './NotificationContext';
 import { NotificationPanel } from './NotificationPanel';
 
-export const NotificationBell: React.FC = () => {
+interface NotificationBellProps {
+  /** Opens the full notifications page; adds a "View all" link to the panel. */
+  onViewAll?: () => void;
+}
+
+export const NotificationBell: React.FC<NotificationBellProps> = ({ onViewAll }) => {
   const { unreadCount } = useNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,6 +51,7 @@ export const NotificationBell: React.FC = () => {
       {isOpen && (
         <NotificationPanel
           onClose={() => setIsOpen(false)}
+          onViewAll={onViewAll}
           panelRef={panelRef}
           triggerRef={containerRef}
         />
