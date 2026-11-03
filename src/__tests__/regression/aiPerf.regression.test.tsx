@@ -428,6 +428,21 @@ describe('refire guards', () => {
 
     expect(source).toMatch(/const strugglesKey = \(student\.struggles \|\| \[\]\)\.join\(/);
     expect(depsAfter('const effectiveStruggles = useMemo(')).toBe('strugglesKey, effectiveWeakestTopic');
-    expect(depsAfter('apiService.getLearningPath(')).toBe('student.id, effectiveStruggles');
+    expect(depsAfter('apiService.getLearningPath(')).toBe('learningPathKey');
+  });
+
+  // Issue #313: opening the Intervention Center must not start AI work the teacher did not ask for.
+  it('TeacherDashboard intervention reuses the cached learning path and generates lesson plans on demand', () => {
+    const source = readFileSync(resolve(process.cwd(), 'src/components/TeacherDashboard.tsx'), 'utf8');
+
+    expect(source).toMatch(/const learningPathKey = \[student\.id, \.\.\.effectiveStruggles\]\.join\(/);
+    expect(source).toMatch(/const fetchedPathKeyRef = useRef\(hasCachedLearningPath \? learningPathKey : null\);/);
+    expect(source).toMatch(/if \(fetchedPathKeyRef\.current === learningPathKey\) return;/);
+
+    // The old mount effect plus a student.id effect bumping a trigger generated the plan twice per open.
+    expect(source).not.toMatch(/setLessonTrigger/);
+    expect(source).toMatch(
+      /if \(interventionTab !== 'lesson' \|\| !rolloutFlags\.lessonEnabled \|\| lessonRequestedForRef\.current === student\.id\) return;/,
+    );
   });
 });

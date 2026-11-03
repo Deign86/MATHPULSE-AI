@@ -159,7 +159,6 @@ export interface DataImportViewProps {
   onBackToClasses?: () => void;
   onSelectClass?: (classSectionId: string | null) => void;
   onStudentsUpdated?: (students: StudentView[]) => void;
-  onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   onOpenInsightModal?: () => void;
   userPhoto?: string;
@@ -179,7 +178,6 @@ export default function DataImportView({
   onBackToClasses,
   onSelectClass,
   onStudentsUpdated,
-  onOpenNotifications,
   onOpenProfile,
   onOpenInsightModal,
   userPhoto,

@@ -35,6 +35,7 @@ import { useSubjectAvailability } from '../../hooks/useSubjectAvailability';
 import { toggleSubjectAvailability } from '../../services/platformConfigService';
 import { SHS_MATH_SUBJECTS } from '../../data/subjects';
 import { toast } from 'sonner';
+import ConfirmModal from '../ConfirmModal';
 
 interface SubjectRowData {
   id: string;
@@ -83,6 +84,7 @@ const AdminSubjects: React.FC = () => {
   const { userProfile } = useAuth();
   const { availability, loading, error } = useSubjectAvailability();
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [pendingToggle, setPendingToggle] = useState<{ subjectId: string; nextAvailable: boolean } | null>(null);
   const [savedAvailability, setSavedAvailability] = useState<Record<string, boolean>>({});
   useEffect(() => {
     setSavedAvailability((previous) => {
@@ -131,6 +133,7 @@ const AdminSubjects: React.FC = () => {
     },
     [userProfile?.uid],
   );
+  const pendingSubjectName = SUBJECT_ROWS.find((s) => s.id === pendingToggle?.subjectId)?.name ?? 'this subject';
 
   const filteredSubjects = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -374,7 +377,7 @@ const AdminSubjects: React.FC = () => {
                   <div className="flex items-center gap-2 shrink-0">
                     <Switch
                       checked={isAvailable}
-                      onCheckedChange={(checked: boolean) => handleToggle(subject.id, checked)}
+                      onCheckedChange={(checked: boolean) => setPendingToggle({ subjectId: subject.id, nextAvailable: checked })}
                       disabled={isSaving}
                       className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200"
                       aria-label={`Toggle ${subject.name} availability`}
@@ -506,7 +509,7 @@ const AdminSubjects: React.FC = () => {
                         <div className="flex items-center justify-center gap-3 min-h-[44px] min-w-[44px]">
                           <Switch
                             checked={isAvailable}
-                            onCheckedChange={(checked: boolean) => handleToggle(subject.id, checked)}
+                            onCheckedChange={(checked: boolean) => setPendingToggle({ subjectId: subject.id, nextAvailable: checked })}
                             disabled={isSaving}
                             className="data-[state=checked]:bg-emerald-500 data-[state=unchecked]:bg-slate-200"
                             aria-label={`Toggle ${subject.name} availability`}
@@ -522,6 +525,24 @@ const AdminSubjects: React.FC = () => {
           </Table>
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={pendingToggle !== null}
+        onClose={() => setPendingToggle(null)}
+        onConfirm={async () => {
+          if (pendingToggle) {
+            await handleToggle(pendingToggle.subjectId, pendingToggle.nextAvailable);
+          }
+        }}
+        title={pendingToggle?.nextAvailable ? 'Make subject available' : 'Lock subject'}
+        message={
+          pendingToggle?.nextAvailable
+            ? `Make ${pendingSubjectName} available to every student?`
+            : `Lock ${pendingSubjectName}? Every student loses access until it is unlocked.`
+        }
+        confirmText={pendingToggle?.nextAvailable ? 'Make available' : 'Lock'}
+        type={pendingToggle?.nextAvailable ? 'info' : 'warning'}
+      />
     </div>
   );
 };

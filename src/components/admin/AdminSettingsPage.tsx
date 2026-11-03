@@ -119,6 +119,13 @@ export const AdminSettingsPage: React.FC<AdminSettingsPageProps> = ({
     }
   }, [settingsData, syncFromSettings]);
 
+  // Leaving the page drops any unsaved preview
+  useEffect(() => () => {
+    if (savedSettingsRef.current) {
+      onApplySettingsPreview?.(savedSettingsRef.current);
+    }
+  }, [onApplySettingsPreview]);
+
   useEffect(() => {
     let isCurrent = true;
 

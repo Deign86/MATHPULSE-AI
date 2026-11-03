@@ -151,7 +151,6 @@ type View =
   | 'analytics'
   | 'intervention'
   | 'import'
-  | 'edit_records'
   | 'topic_mastery'
   | 'competency'
   | 'notifications'
@@ -2145,7 +2144,7 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
 
                   {/* Notification Bell (Portaled z-[250] with wiggle animation & unread badge) */}
                   <div data-tour="notifications" className="flex">
-                    <NotificationBell />
+                    <NotificationBell onViewAll={() => setActiveView('notifications')} />
                   </div>
 
                   {/* Profile Dropdown */}
@@ -2264,7 +2263,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     teacherOptions={teacherDirectory}
                     managerUpdating={managerUpdating}
                     onAssignManager={(manager) => handleAssignClassManager(effectiveAnalyticsClass, manager)}
-                    onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     classColor={effectiveClassColor}
                     insightDismissed={insightDismissed}
@@ -2355,7 +2353,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     onClassSectionChange={(sectionId) => {
                       setSelectedClass(availableClasses.find((classItem) => classSectionIdFor(classItem) === sectionId) || null);
                     }}
-                    onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     activeTab={topicMasteryTab}
                     onTabChange={setTopicMasteryTab}
@@ -2371,7 +2368,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       setSelectedClass(null);
                       setCompetencyPickerOpen(true);
                     }}
-                    onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     insightDismissed={insightDismissed}
                     onOpenInsightModal={() => setInsightModalOpen(true)}
@@ -2385,7 +2381,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       setSelectedClass(cls);
                       setCompetencyPickerOpen(false);
                     }}
-                    onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     insightDismissed={insightDismissed}
                     onOpenInsightModal={() => setInsightModalOpen(true)}
@@ -2411,7 +2406,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     onStudentsUpdated={(updated) => setStudents(updated)}
                     onBackToClasses={() => setActiveView('dashboard')}
                     onSelectClass={(sectionId) => setSelectedClass(sectionId ? managedClasses.find((classItem) => classSectionIdFor(classItem) === sectionId || classItem.id === sectionId) || null : null)}
-                    onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
@@ -2464,7 +2458,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                     atRiskStudents={students
                       .filter(s => s.riskLevel === 'high')
                       .map(s => ({ name: s.name, riskLevel: s.riskLevel, weakestTopic: s.weakestTopic }))}
-                    onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
@@ -2487,7 +2480,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                       // SAFETY: trusted internal value already conforms to the asserted type.
                       setActiveView((returnTo === 'intervention' ? 'intervention' : 'dashboard') as View);
                     }}
-                    onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
@@ -2496,7 +2488,6 @@ const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
                 )}
                 {activeView === 'question_bank' && (
                   <QuestionBankPanel
-                    onOpenNotifications={() => setActiveView('notifications')}
                     onOpenProfile={handleNavigateToProfile}
                     onOpenInsightModal={() => { setInsightModalOpen(true); setInsightDismissed(true); }}
                     userPhoto={userProfile?.photo}
@@ -3859,7 +3850,6 @@ const AnalyticsView: React.FC<{
   teacherOptions: TeacherDirectoryOption[];
   managerUpdating: boolean;
   onAssignManager: (manager: TeacherDirectoryOption) => void | Promise<void>;
-  onOpenNotifications: () => void;
   onOpenProfile?: () => void;
   classColor?: { hex: string; bg: string; border: string; borderLeft: string; text: string; groupHover: string };
   insightDismissed?: boolean;
@@ -3883,7 +3873,6 @@ const AnalyticsView: React.FC<{
   teacherOptions,
   managerUpdating,
   onAssignManager,
-  onOpenNotifications,
   onOpenProfile,
   classColor,
   insightDismissed,
@@ -4675,6 +4664,8 @@ const AnalyticsView: React.FC<{
   };
 
 // Intervention View
+const LEARNING_PATH_ERROR = 'Unable to generate learning path. Please try again later.';
+
 const InterventionView: React.FC<{
   student: StudentView;
   teacherId: string;
@@ -4723,7 +4714,8 @@ const InterventionView: React.FC<{
   const [isPathAssigned, setIsPathAssigned] = useState(false);
   const [selectedStep, setSelectedStep] = useState<import('../services/interventionService').LearningStep | null>(null);
   const [learningPath, setLearningPath] = useState<string>(initialCache?.learningPath || '');
-  const [pathLoading, setPathLoading] = useState(true);
+  const hasCachedLearningPath = Boolean(initialCache?.learningPath) && initialCache?.learningPath !== LEARNING_PATH_ERROR;
+  const [pathLoading, setPathLoading] = useState(!hasCachedLearningPath);
   const [gradeDraft, setGradeDraft] = useState(initialCache?.gradeDraft || 'Grade 11');
   const [sectionDraft, setSectionDraft] = useState(initialCache?.sectionDraft || student.section || 'Section A');
   const [savingSection, setSavingSection] = useState(false);
@@ -4739,7 +4731,6 @@ const InterventionView: React.FC<{
   const [savedLessonPlanId, setSavedLessonPlanId] = useState<string | null>(null);
   const [savingLessonDraft, setSavingLessonDraft] = useState(false);
   const [publishingLesson, setPublishingLesson] = useState(false);
-  const [lessonTrigger, setLessonTrigger] = useState(0);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportModalStep, setExportModalStep] = useState<'choose' | 'bank'>('choose');
   const [bankQuizzes, setBankQuizzes] = useState<GeneratedQuiz[]>([]);
@@ -4853,7 +4844,11 @@ const InterventionView: React.FC<{
     onCacheUpdate?.(student.id, { lessonPlan, learningPath, gradeDraft, sectionDraft });
   }, [lessonPlan, learningPath, gradeDraft, sectionDraft, student.id, onCacheUpdate]);
 
+  // Reopening a student reuses the cached path; it is refetched only when the student or struggles change.
+  const learningPathKey = [student.id, ...effectiveStruggles].join('\u0000');
+  const fetchedPathKeyRef = useRef(hasCachedLearningPath ? learningPathKey : null);
   useEffect(() => {
+    if (fetchedPathKeyRef.current === learningPathKey) return;
     let active = true;
     const fetchPath = async () => {
       setPathLoading(true);
@@ -4878,10 +4873,11 @@ const InterventionView: React.FC<{
         const enrichedLearningPath = curriculumContext
           ? `${response.learningPath}\n\n${curriculumContext}`
           : response.learningPath;
+        fetchedPathKeyRef.current = learningPathKey;
         setLearningPath(enrichedLearningPath);
       } catch {
         if (!active) return;
-        setLearningPath('Unable to generate learning path. Please try again later.');
+        setLearningPath(LEARNING_PATH_ERROR);
         setAnalysisCurriculumContext('');
       } finally {
         if (active) setPathLoading(false);
@@ -4891,7 +4887,7 @@ const InterventionView: React.FC<{
     return () => {
       active = false;
     };
-  }, [student.id, effectiveStruggles]);
+  }, [learningPathKey]);
 
   const generateTargetedLessonPlan = useCallback(async () => {
     setLessonLoading(true);
@@ -5094,13 +5090,14 @@ const InterventionView: React.FC<{
     }
   }, [lessonPlan, savedLessonPlanId, saveLessonDraft, student.className, student.classSectionId]);
 
+  // The lesson plan is an AI call: generate it the first time the teacher opens the lesson tab for a student
+  // (a cached plan counts), then only on Regenerate.
+  const lessonRequestedForRef = useRef<string | null>(initialCache?.lessonPlan ? student.id : null);
   useEffect(() => {
+    if (interventionTab !== 'lesson' || !rolloutFlags.lessonEnabled || lessonRequestedForRef.current === student.id) return;
+    lessonRequestedForRef.current = student.id;
     void generateTargetedLessonPlan();
-  }, [lessonTrigger]);
-
-  useEffect(() => {
-    setLessonTrigger(n => n + 1);
-  }, [student.id]);
+  }, [interventionTab, student.id, rolloutFlags.lessonEnabled, generateTargetedLessonPlan]);
 
   useEffect(() => {
     setLessonSourceFilter('all');
@@ -5558,7 +5555,9 @@ const InterventionView: React.FC<{
                   } finally {
                     setInterventionLoading(false);
                   }
-                  setLessonTrigger(n => n + 1);
+                  if (lessonRequestedForRef.current === student.id) {
+                    void generateTargetedLessonPlan();
+                  }
                 }} className="bg-[#f8fafc] hover:bg-white text-[#a855f7] border border-[#f3e8ff] text-[11px] font-semibold rounded-full px-4 py-1.5 transition-colors shadow-[0_1px_4px_rgba(0,0,0,0.02)] flex items-center gap-1.5 disabled:opacity-50">
                   <RefreshCw className={`w-3 h-3 ${interventionLoading ? 'animate-spin' : ''}`} /> {interventionLoading ? 'Analyzing...' : 'Regenerate'}
                 </button>
@@ -5664,7 +5663,10 @@ const InterventionView: React.FC<{
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[15px] font-semibold text-[#1e293b] text-balance">Targeted Lesson Generation</h3>
               <Button
-                onClick={() => setLessonTrigger(n => n + 1)}
+                onClick={() => {
+                  lessonRequestedForRef.current = student.id;
+                  void generateTargetedLessonPlan();
+                }}
                 disabled={lessonLoading}
                 className="bg-[#a855f7] hover:bg-[#9333ea] text-white h-8 text-[11px] rounded-full px-4"
               >

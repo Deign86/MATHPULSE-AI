@@ -4,6 +4,7 @@ import { db } from '../../lib/firebase';
 import { toast } from 'sonner';
 import { School, ChevronDown, UserCheck, Users, Search, CheckCircle2, FilterX, Loader2, Sparkles } from 'lucide-react';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '../ui/table';
+import { Skeleton } from '../ui/skeleton';
 import ConfirmModal from '../ConfirmModal';
 
 interface ClassRecord {
@@ -146,15 +147,6 @@ const AdminClassManagement: React.FC = () => {
     );
   }, [classes, searchQuery]);
 
-  if (loading) {
-    return (
-      <div data-tour-loading="" className="flex flex-col items-center justify-center py-24 space-y-3">
-        <div className="w-10 h-10 border-3 border-[#9956DE] border-t-transparent rounded-full animate-spin" />
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Loading class sections...</p>
-      </div>
-    );
-  }
-
   const withManagerCount = classes.filter(c => c.managerId).length;
   const unassignedCount = classes.filter(c => !c.managerId).length;
 
@@ -178,7 +170,7 @@ const AdminClassManagement: React.FC = () => {
           </div>
 
           <div className="relative z-10 min-w-0">
-            <p className="text-base sm:text-[30px] font-display font-black text-white leading-none sm:leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{classes.length}</p>
+            <p className="text-base sm:text-[30px] font-display font-black text-white leading-none sm:leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{loading ? '—' : classes.length}</p>
             <p className="text-[9.5px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">Total Sections</p>
             <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">Registered class sections</p>
           </div>
@@ -199,7 +191,7 @@ const AdminClassManagement: React.FC = () => {
             </span>
           </div>
           <div className="relative z-10 min-w-0">
-            <p className="text-base sm:text-[30px] font-display font-black text-white leading-none sm:leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{withManagerCount}</p>
+            <p className="text-base sm:text-[30px] font-display font-black text-white leading-none sm:leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{loading ? '—' : withManagerCount}</p>
             <p className="text-[9.5px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">With Teacher</p>
             <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">Assigned faculty advisers</p>
           </div>
@@ -216,11 +208,11 @@ const AdminClassManagement: React.FC = () => {
               <Users size={18} className="hidden sm:block text-white" />
             </div>
             <span className="text-[7.5px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-md text-white border border-white/25 shadow-2xs">
-              {unassignedCount > 0 ? 'Pending' : 'Optimal'}
+              {loading ? '—' : unassignedCount > 0 ? 'Pending' : 'Optimal'}
             </span>
           </div>
           <div className="relative z-10 min-w-0">
-            <p className="text-base sm:text-[30px] font-display font-black text-white leading-none sm:leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{unassignedCount}</p>
+            <p className="text-base sm:text-[30px] font-display font-black text-white leading-none sm:leading-tight tracking-tight truncate tabular-nums drop-shadow-xs">{loading ? '—' : unassignedCount}</p>
             <p className="text-[9.5px] sm:text-sm font-bold text-white truncate mt-0.5 sm:mt-1 drop-shadow-xs">No Teacher</p>
             <p className="text-[11px] text-white/90 truncate mt-0.5 font-medium hidden sm:block drop-shadow-xs">Sections requiring adviser</p>
           </div>
@@ -262,15 +254,22 @@ const AdminClassManagement: React.FC = () => {
                 </button>
               )}
             </div>
-            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 border border-purple-200/60 dark:border-purple-800/50 whitespace-nowrap">
-              <Sparkles size={12} className="text-[#9956DE]" />
-              {filteredClasses.length} {filteredClasses.length === 1 ? 'Section' : 'Sections'}
-            </span>
+            {!loading && (
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-950/50 border border-purple-200/60 dark:border-purple-800/50 whitespace-nowrap">
+                <Sparkles size={12} className="text-[#9956DE]" />
+                {filteredClasses.length} {filteredClasses.length === 1 ? 'Section' : 'Sections'}
+              </span>
+            )}
           </div>
         </div>
 
-        {/* Empty State */}
-        {filteredClasses.length === 0 ? (
+        {loading ? (
+          <div data-tour-loading="" role="status" aria-label="Loading class sections" className="p-3 sm:p-5 space-y-3">
+            {[0, 1, 2, 3].map((row) => (
+              <Skeleton key={row} className="h-14 w-full rounded-2xl bg-slate-100 dark:bg-slate-800" />
+            ))}
+          </div>
+        ) : filteredClasses.length === 0 ? (
           <div className="px-6 py-20 text-center space-y-4">
             <div className="w-16 h-16 rounded-2xl bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center mx-auto text-[#9956DE]">
               <School size={28} />

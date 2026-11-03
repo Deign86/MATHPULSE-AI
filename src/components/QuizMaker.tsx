@@ -50,7 +50,6 @@ interface QuizMakerProps {
   gradeLevel?: string;
   selectedClassId?: string;
   selectedClassName?: string;
-  onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   onOpenInsightModal?: () => void;
   userPhoto?: string;
@@ -199,7 +198,6 @@ const QuizMaker: React.FC<QuizMakerProps> = ({
   gradeLevel: initialGrade,
   selectedClassId,
   selectedClassName,
-  onOpenNotifications,
   onOpenProfile,
   onOpenInsightModal,
   userPhoto,

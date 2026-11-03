@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import * as firestore from 'firebase/firestore';
 import { toast } from 'sonner';
 import AdminClassManagement from './AdminClassManagement';
@@ -18,7 +18,17 @@ describe('admin class management regressions', () => {
     // SAFETY: role query clauses are opaque to this test.
     vi.spyOn(firestore, 'where').mockReturnValue({} as ReturnType<typeof firestore.where>);
     render(<AdminClassManagement />);
-    expect(await screen.findByText('Total Sections')).toBeTruthy();
+    expect(await screen.findByText('No class sections found')).toBeTruthy();
+  });
+
+  it('keeps the header and filter on screen while sections load', () => {
+    // SAFETY: Firestore collection references are opaque to the UI query boundary.
+    vi.spyOn(firestore, 'collection').mockReturnValue({} as ReturnType<typeof firestore.collection>);
+    vi.spyOn(firestore, 'getDocs').mockReturnValue(new Promise(() => {}));
+    render(<AdminClassManagement />);
+    expect(screen.getByRole('status', { name: 'Loading class sections' })).toBeTruthy();
+    expect(screen.getByText('Total Sections')).toBeTruthy();
+    expect(screen.getByPlaceholderText('Filter sections, teachers, or grades...')).toBeTruthy();
   });
 
   it('does not leave the loading indicator after a failed read', async () => {
@@ -27,7 +37,7 @@ describe('admin class management regressions', () => {
     vi.spyOn(firestore, 'collection').mockReturnValue({} as ReturnType<typeof firestore.collection>);
     vi.spyOn(firestore, 'getDocs').mockRejectedValue(new Error('offline'));
     render(<AdminClassManagement />);
-    expect(await screen.findByText('Total Sections')).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole('status', { name: 'Loading class sections' })).toBeNull());
     expect(toastError).toHaveBeenCalledWith('Failed to load class data');
   });
 });

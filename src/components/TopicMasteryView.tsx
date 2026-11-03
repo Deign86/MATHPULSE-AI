@@ -102,7 +102,6 @@ export interface TopicMasteryViewProps {
   classSectionId?: string;
   classOptions?: Array<{ sectionId: string; name: string }>;
   onClassSectionChange?: (sectionId: string) => void;
-  onOpenNotifications?: () => void;
   onOpenProfile?: () => void;
   activeTab?: 'mastery' | 'availability';
   onTabChange?: (tab: 'mastery' | 'availability') => void;
@@ -113,7 +112,6 @@ const TopicMasteryView: React.FC<TopicMasteryViewProps> = ({
   classSectionId,
   classOptions = [],
   onClassSectionChange,
-  onOpenNotifications,
   onOpenProfile,
   activeTab,
   onTabChange,

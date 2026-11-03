@@ -22,7 +22,6 @@ const renderSidebar = () => {
     <Sidebar
       activeTab="Dashboard"
       setActiveTab={vi.fn()}
-      onOpenSettings={vi.fn()}
     />,
   );
 };

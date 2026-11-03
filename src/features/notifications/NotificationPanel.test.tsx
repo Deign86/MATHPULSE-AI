@@ -190,4 +190,20 @@ describe('NotificationPanel', () => {
     expect(screen.getByTestId('item-notif-20')).toBeInTheDocument();
     expect(screen.getByTestId('item-notif-24')).toBeInTheDocument();
   });
+
+  it('opens the full notifications page from the View all link and closes the panel', () => {
+    const onClose = vi.fn();
+    const onViewAll = vi.fn();
+
+    render(<NotificationPanel onClose={onClose} onViewAll={onViewAll} />);
+    fireEvent.click(screen.getByRole('button', { name: 'View all notifications' }));
+
+    expect(onViewAll).toHaveBeenCalledOnce();
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('hides the View all link without a full notifications page', () => {
+    render(<NotificationPanel onClose={() => {}} />);
+    expect(screen.queryByRole('button', { name: 'View all notifications' })).not.toBeInTheDocument();
+  });
 });

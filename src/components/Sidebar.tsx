@@ -11,8 +11,6 @@ interface SidebarProps {
   activeTab: string | AdminTab;
   setActiveTab: (tab: string) => void;
   userRole?: 'student' | 'teacher' | 'admin';
-  onOpenSettings?: () => void;
-  onLogout?: () => void;
   sidebarCollapsed?: boolean;
   setSidebarCollapsed?: (collapsed: boolean) => void;
   mode?: 'desktop' | 'mobile';
@@ -35,8 +33,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeTab, 
   setActiveTab, 
   userRole = 'student', 
-  onOpenSettings, 
-  onLogout,
   sidebarCollapsed = false,
   setSidebarCollapsed,
   mode = 'desktop',

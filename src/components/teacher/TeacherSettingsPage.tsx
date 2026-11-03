@@ -112,6 +112,13 @@ export const TeacherSettingsPage: React.FC<TeacherSettingsPageProps> = ({
     }
   }, [settingsData, syncFromSettings]);
 
+  // Leaving the page drops any unsaved preview
+  useEffect(() => () => {
+    if (savedSettingsRef.current) {
+      onApplySettingsPreview?.(savedSettingsRef.current);
+    }
+  }, [onApplySettingsPreview]);
+
   const handleDarkModeChange = (isDark: boolean) => {
     setDarkMode(isDark);
     setIsDirty(true);
