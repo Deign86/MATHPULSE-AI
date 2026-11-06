@@ -132,9 +132,9 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-1.5 md:gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-1.5 md:gap-2">
               {/* Lessons & Quizzes Pills - Bottom Left */}
-              <div className="flex flex-wrap md:flex-nowrap items-center gap-1 md:gap-1.5">
+              <div className="flex flex-wrap items-center gap-1 md:gap-1.5">
                 <div className="flex items-center gap-1 px-1.5 md:px-2 py-0.5 md:py-1 bg-white/25 rounded-md md:rounded-lg text-white font-bold text-[9px] md:text-[11px] backdrop-blur-md shadow-[0_2px_4px_rgba(0,0,0,0.08),inset_0_1px_0_rgba(255,255,255,0.4)] border border-white/30">
                   <BookOpen size={10} className="md:w-3 md:h-3 opacity-90" /> {pluralize(module.totalLessons || module.lessons?.length || 0, 'lesson')}
                 </div>
@@ -150,7 +150,7 @@ const ModuleFolderCard: React.FC<ModuleFolderCardProps> = ({ module, index, onCl
                     event.stopPropagation();
                     onPreviewSources();
                   }}
-                  className="flex shrink-0 items-center gap-0.5 md:gap-1 rounded-md md:rounded-lg bg-black/20 hover:bg-black/40 px-1.5 md:px-2 py-1 font-bold uppercase tracking-wider text-white transition-all shadow-sm border border-white/10 leading-none text-[7px] md:text-[8px]"
+                  className="relative flex shrink-0 items-center gap-0.5 md:gap-1 rounded-md md:rounded-lg bg-black/20 hover:bg-black/40 px-1.5 md:px-2 py-1 font-bold uppercase tracking-wider text-white transition-all shadow-sm border border-white/10 leading-none text-[7px] md:text-[8px] pointer-coarse:after:absolute pointer-coarse:after:inset-x-0 pointer-coarse:after:-inset-y-3.5"
                 >
                   <Link2 size={8} className="md:w-[10px] md:h-[10px]" />
                   SOURCE

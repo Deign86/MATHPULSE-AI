@@ -128,7 +128,7 @@ export const StudentIDCard: React.FC<StudentIDCardProps> = ({
 
       {/* ── 3D Card Container with Iridescent Gradient Border ── */}
       <div
-        className="w-full max-w-[360px] sm:max-w-[390px] aspect-[1.58/1] cursor-pointer group"
+        className="w-full max-w-[360px] sm:max-w-[390px] aspect-[1.3/1] min-[360px]:aspect-[1.58/1] cursor-pointer group"
         style={{ perspective: 1200 }}
         onClick={() => setIsFlipped(!isFlipped)}
         role="button"

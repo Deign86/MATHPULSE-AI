@@ -83,12 +83,12 @@ const StudentProfileModal: React.FC<StudentProfileModalProps> = ({ student, onCl
             <button
               onClick={onClose}
               aria-label="Close profile modal"
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-black/20 hover:bg-black/30 text-white rounded-xl transition-colors z-20 cursor-pointer shadow-xs"
+              className="absolute top-3 right-3 sm:top-4 sm:right-4 p-2 bg-black/20 hover:bg-black/30 text-white rounded-xl transition-colors z-20 cursor-pointer shadow-xs pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5"
             >
               <X size={18} />
             </button>
 
-            <div className="relative z-10">
+            <div className="relative z-10 xs:pr-10 sm:pr-12">
               <div className="flex flex-col xs:flex-row items-center xs:items-start text-center xs:text-left gap-4 sm:gap-5">
                 {/* Avatar with clean image renderer (fixes raw URL string bug) */}
                 <div className="relative shrink-0">

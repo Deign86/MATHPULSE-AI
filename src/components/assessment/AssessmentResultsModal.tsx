@@ -200,13 +200,13 @@ const HeroBannerSummaryView: React.FC<{ summary: HeroBannerModalSummary }> = ({ 
       <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-700 rounded-2xl sm:rounded-3xl p-4 sm:p-6 text-white shadow-lg border border-white/20">
         <div className="absolute top-0 right-0 w-72 h-72 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
         <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+          <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 w-full sm:w-auto">
             <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex flex-col items-center justify-center font-black text-xl sm:text-2xl text-white shadow-inner shrink-0">
               <span className="leading-none">{Math.round(summary.latestScorePercent)}%</span>
             </div>
             <div className="min-w-0">
               <p className="text-purple-200 text-[11px] sm:text-xs font-bold uppercase tracking-wider">Latest Score</p>
-              <h3 className="text-lg sm:text-xl font-black text-white leading-snug truncate drop-shadow-xs">
+              <h3 className="text-lg sm:text-xl font-black text-white leading-snug line-clamp-2 drop-shadow-xs">
                 {summary.headline}
               </h3>
             </div>

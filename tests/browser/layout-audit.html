@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Layout audit</title>
+</head>
+<!-- Dev-only layout audit host (never bundled). See docs/responsive-layout-guide.md. -->
+<body style="margin:0;background:#ddd">
+  <script type="module">
+    await import('./layout-audit.js');
+    await import('./layout-audit-guides.js');
+    document.title = 'Layout audit ready';
+  </script>
+</body>
+</html>

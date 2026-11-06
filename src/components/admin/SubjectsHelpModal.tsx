@@ -131,7 +131,7 @@ const SubjectsHelpModal: React.FC<SubjectsHelpModalProps> = ({ isOpen, onClose }
 
           <button
             onClick={onClose}
-            className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex items-center justify-center bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all border border-slate-200/80 dark:border-slate-700 shadow-xs group cursor-pointer shrink-0 ml-2"
+            className="relative w-9 h-9 sm:w-10 sm:h-10 shrink-0 pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5 rounded-xl sm:rounded-2xl flex items-center justify-center bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all border border-slate-200/80 dark:border-slate-700 shadow-xs group cursor-pointer shrink-0 ml-2"
             aria-label="Close modal"
           >
             <X size={17} className="group-hover:rotate-90 transition-transform duration-300" />

@@ -77,9 +77,9 @@ export const AdminMobileBottomNav: React.FC<AdminMobileBottomNavProps> = ({
       ref={navRef}
       data-tour-sticky=""
       aria-label="Admin mobile and tablet navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
+      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 before:absolute before:inset-0 before:-z-10 before:pointer-events-none before:backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom))]"
     >
-      <div className="relative">
+      <div className="relative max-w-lg mx-auto">
         {/* Invisible Click-Outside Backdrop */}
         {openMenu !== null && (
           <button

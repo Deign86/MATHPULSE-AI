@@ -413,7 +413,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
         </motion.div>
 
         {/* Question Content - Centered, elevated card layout */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 relative flex flex-col justify-center items-center">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 relative flex flex-col justify-center-safe items-center">
           {step === 'testing' && (
             <AnimatePresence mode="wait">
               <motion.div
@@ -496,7 +496,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
         </div>
 
         {/* Footer - Frosted Glass Bottom Action Bar */}
-        <div className="p-3.5 sm:p-4 md:p-5 bg-white/80 dark:bg-slate-900/85 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800 shrink-0 relative z-20">
+        <div className="p-3.5 sm:p-4 md:p-5 pb-[max(0.875rem,env(safe-area-inset-bottom))] sm:pb-[max(1rem,env(safe-area-inset-bottom))] md:pb-[max(1.25rem,env(safe-area-inset-bottom))] bg-white/80 dark:bg-slate-900/85 backdrop-blur-xl border-t border-slate-200/80 dark:border-slate-800 shrink-0 relative z-20">
           <div className="max-w-2xl mx-auto flex items-center justify-between gap-3">
             <div className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 truncate min-w-0 mr-2">
               {selectedAnswer ? (
@@ -555,7 +555,7 @@ const AssessmentPage: React.FC<AssessmentPageProps> = ({
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="absolute inset-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl flex items-center justify-center z-50 rounded-none sm:rounded-3xl p-4 sm:p-8 overflow-y-auto"
+            className="absolute inset-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl flex items-center-safe justify-center z-50 rounded-none sm:rounded-3xl p-4 sm:p-8 overflow-y-auto"
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}

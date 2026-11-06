@@ -1,7 +1,7 @@
 /** @vitest-environment jsdom */
 import React from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import * as authNs from '../contexts/AuthContext';
 import type { StudentProfile } from '../types/models';
@@ -32,12 +32,17 @@ vi.spyOn(notificationsNs, 'notify').mockImplementation(() => Promise.resolve());
 vi.spyOn(ModuleFolderCardNs, 'default').mockImplementation(() => React.createElement('div', null, 'ModuleCard'));
 vi.spyOn(ModulesMascotNs, 'default').mockImplementation(() => React.createElement('div', null, 'ModulesMascot'));
 vi.spyOn(PracticeCenterNs, 'default').mockImplementation(() => React.createElement('div', null, 'Practice Center Stub'));
-vi.spyOn(DailyCheckInModalNs, 'default').mockImplementation(({ isOpen }) => (isOpen ? React.createElement('div', null, 'Daily check-in open') : null));
-vi.spyOn(dailyRewardNs, 'useDailyReward').mockReturnValue({
-  weekRewards: [], todayReward: null, canClaim: true, isClaiming: false, claimedDays: [], currentStreak: 0,
+vi.spyOn(DailyCheckInModalNs, 'default').mockImplementation(({ isOpen, onClose }) => (isOpen
+  ? React.createElement(React.Fragment, null,
+    React.createElement('div', null, 'Daily check-in open'),
+    React.createElement('button', { type: 'button', onClick: onClose }, 'Close check-in'))
+  : null));
+const unclaimedToday: ReturnType<typeof dailyRewardNs.useDailyReward> = {
+  loaded: true, weekRewards: [], todayReward: null, canClaim: true, isClaiming: false, claimedDays: [], currentStreak: 0,
   longestStreak: 0, totalClaimed: 0, hintTokens: 0, streakShields: 0, activeMultiplier: null, timeUntilReset: '',
   showModal: false, lastClaimResult: null, error: null, claim: async () => null, dismissModal: () => {}, refresh: async () => {},
-});
+};
+const dailyReward = vi.spyOn(dailyRewardNs, 'useDailyReward').mockReturnValue(unclaimedToday);
 
 import ModulesPage from './ModulesPage';
 
@@ -65,5 +70,43 @@ describe('ModulesPage during the student guide', () => {
     rerender(page(false, null));
     await waitFor(() => expect(screen.queryByText('Practice Center Stub')).not.toBeInTheDocument(), { timeout: 5000 });
     expect(container.querySelector('[data-tour="module-grid"]')).toBeInTheDocument();
+  });
+});
+
+describe('ModulesPage daily check-in', () => {
+  it('reopens the check-in from Claim Daily Reward after it was closed', async () => {
+    render(page(false, null));
+    expect(await screen.findByText('Daily check-in open')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Claim Daily Reward' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Close check-in' }));
+    expect(screen.queryByText('Daily check-in open')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Claim Daily Reward' }));
+    expect(screen.getByText('Daily check-in open')).toBeInTheDocument();
+  });
+
+  it('offers Check Daily Rewards once today\'s reward is claimed, and it opens the check-in', async () => {
+    dailyReward.mockReturnValue({ ...unclaimedToday, canClaim: false });
+    render(page(false, null));
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(screen.queryByText('Daily check-in open')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Claim Daily Reward' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Check Daily Rewards' }));
+    expect(screen.getByText('Daily check-in open')).toBeInTheDocument();
+    dailyReward.mockReturnValue(unclaimedToday);
+  });
+
+  it('shows no daily rewards button until the reward state has loaded', async () => {
+    dailyReward.mockReturnValue({ ...unclaimedToday, canClaim: false, loaded: false });
+    render(page(false, null));
+    await new Promise(resolve => setTimeout(resolve, 700));
+    expect(screen.queryByRole('button', { name: 'Check Daily Rewards' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Claim Daily Reward' })).not.toBeInTheDocument();
+    dailyReward.mockReturnValue(unclaimedToday);
+  });
+
+  it('hides the dev-only daily rewards reset unless VITE_SHOW_DEV_RESET is set', async () => {
+    render(page(false, null));
+    expect(await screen.findByText('Daily check-in open')).toBeInTheDocument();
+    expect(screen.queryByTitle('Reset Daily Rewards (Dev Only)')).not.toBeInTheDocument();
   });
 });
