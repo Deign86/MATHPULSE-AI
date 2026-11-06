@@ -595,13 +595,13 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="relative min-h-dvh w-full overflow-x-hidden bg-[#3a236a] text-slate-900 flex flex-col sm:justify-center sm:py-8 lg:flex-row lg:items-center lg:p-10 lg:[@media(max-height:799px)]:py-4 selection:bg-purple-500 selection:text-white">
+    <div className="relative min-h-dvh w-full overflow-x-hidden bg-[#3a236a] text-slate-900 flex flex-col sm:justify-center sm:py-8 short:py-3 lg:flex-row lg:items-center lg:p-10 lg:[@media(max-height:799px)]:py-4 selection:bg-purple-500 selection:text-white">
       {/* ─── Desktop: Full-Bleed Mascot Video Background with Cursor Tracking ─── */}
       {isDesktop && <InteractiveRobotBackground />}
 
-      {/* ─── Mobile/Tablet: mascot peeks over the top edge of the sheet ─── */}
+      {/* ─── Mobile/Tablet: mascot peeks over the top edge of the sheet; hidden on short (landscape phone) screens so the form is on the first screen ─── */}
       <div
-        className="lg:hidden relative flex-1 sm:flex-none flex flex-col items-center justify-end pt-[max(0.75rem,env(safe-area-inset-top))] -mb-20 sm:-mb-24"
+        className="lg:hidden short:hidden relative flex-1 sm:flex-none flex flex-col items-center justify-end pt-[max(0.75rem,env(safe-area-inset-top))] -mb-20 sm:-mb-24"
       >
         {/* Decorative backdrop: graph-paper grid, glow, orbit ring, floating math symbols, sparkles */}
         <div aria-hidden="true" className="absolute inset-0 -bottom-24 overflow-hidden pointer-events-none">

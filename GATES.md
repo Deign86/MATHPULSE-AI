@@ -1,70 +1,46 @@
-# Gates: red main backend CI and PR #325 conflicts
+# Gates: sign-in form on the first screen of landscape phones
 
-Scope: (1) main's "Backend checks" and "Validate backend" jobs fail on two `test_model_profiles.py` tests because `test_quiz_cap.py` and `test_quiz_battle.py` put a MagicMock `firebase_admin` into `sys.modules` at collection time, and pytest 9.2's monkeypatch undo now deletes `client` from that mock. Stop the leak. (2) PR #325 (`claude/responsiveness-optimization-4b76c0`) conflicts with main in 8 files; merge it into this branch keeping main's logic and the PR's layout/touch changes. No GitHub issues are open. `PY` is a Python 3.12 venv with `backend/requirements-dev.txt`; `tests/test_quiz_battle.py::TestPdfIngestion::test_ingest_pdf_force_reingest` is deselected locally because it downloads a Hugging Face model the sandbox proxy blocks (it passes in CI).
+Scope: on phones in landscape (heights 360–430px) the sign-in page shows only the hero headline and mascot; the form starts below the fold (baseline on main `322ec51`: Sign In at y=719–761 in a 360–390px viewport, sign-up's first field at y=422–460). On short screens (`short:`, max-height 30rem) hide the mobile mascot block and trim the page padding so the card starts at the top. Portrait phones, tablets and desktop must not change. Measured on a local production build (`VITE_API_URL=/api npm run build`, `vite preview` on 127.0.0.1:4173) with `$SP/measure-login.cjs`, where `SP` is the session scratchpad; the baseline is `$SP/landscape-before.txt`.
 
-- [x] G1: Full backend suite passes on pytest 9.2
-  CHECK: cd backend && PYTHONPATH=. $PY -m pytest --version 2>&1 && PYTHONPATH=. $PY -m pytest tests/ -q -p no:cacheprovider --deselect tests/test_quiz_battle.py::TestPdfIngestion::test_ingest_pdf_force_reingest 2>&1 | tail -1
-  EXPECT: /pytest 9\.2\.\d[\s\S]*\d+ passed, 1 deselected in/
-  EVIDENCE: pytest 9.2.0 | 1164 passed, 1 deselected in 77.56s (0:01:17)
+- [x] G1: At 844x390, 740x360 and 667x375 the email field, password field and Sign In button are fully on the first screen, with no horizontal overflow
+  CHECK: node $SP/measure-login.cjs http://127.0.0.1:4173 > $SP/landscape-after.txt && grep -c "^land.*signInFirstScreen=true .*overflowX=0 " $SP/landscape-after.txt
+  EXPECT: 3
+  EVIDENCE: 3
 
-- [x] G2: The two quiz modules still pass on their own, without the removed stubs
-  CHECK: cd backend && PYTHONPATH=. $PY -m pytest tests/test_quiz_cap.py tests/test_quiz_battle.py -q -p no:cacheprovider --deselect tests/test_quiz_battle.py::TestPdfIngestion::test_ingest_pdf_force_reingest 2>&1 | tail -1
-  EXPECT: /^\d+ passed, 1 deselected in/
-  EVIDENCE: 12 passed, 1 deselected in 9.21s
+- [x] G2: At the same three sizes, the sign-up form's first field is on the first screen
+  CHECK: node -e "const lines=require('fs').readFileSync(process.env.SP+'/landscape-after.txt','utf8').split('\n').filter(l=>l.startsWith('land'));console.log(lines.filter(l=>{const [w,h]=l.split(' ')[1].split('x').map(Number);const [t,b]=l.match(/signUpFirstField=(-?\d+)-(-?\d+)/).slice(1).map(Number);return t>=0&&b<=h;}).length)"
+  EXPECT: 3
+  EVIDENCE: 3
 
-- [x] G3: No backend test replaces firebase_admin in sys.modules
-  CHECK: git grep -nE 'sys\.modules\["(firebase_admin|google\.cloud)' -- backend/tests || echo NO_SYS_MODULES_STUBS
-  EXPECT: NO_SYS_MODULES_STUBS
-  EVIDENCE: NO_SYS_MODULES_STUBS
+- [x] G3: Portrait phones (320x568, 390x844), tablet (768x1024) and laptop (1280x800) measure exactly as on main
+  CHECK: grep -E "^(xs|phone|tab|lap) " $SP/landscape-before.txt > $SP/unchanged-before.txt && grep -E "^(xs|phone|tab|lap) " $SP/landscape-after.txt > $SP/unchanged-after.txt && diff $SP/unchanged-before.txt $SP/unchanged-after.txt && echo UNCHANGED
+  EXPECT: UNCHANGED
+  EVIDENCE: UNCHANGED
 
-- [x] G4: PR #325's head is merged into this branch
-  CHECK: { git merge-base --is-ancestor b3341032bba348797bd780f746ae25ce4c083f44 HEAD || test "$(git rev-parse -q --verify MERGE_HEAD)" = b3341032bba348797bd780f746ae25ce4c083f44; } && echo PR325_MERGED
-  EXPECT: PR325_MERGED
-  EVIDENCE: PR325_MERGED
-
-- [x] G5: No conflict markers remain
-  CHECK: git grep -nE '^(<<<<<<<|>>>>>>>)( |$)' -- . ':!*.svg' || echo NO_MARKERS
-  EXPECT: NO_MARKERS
-  EVIDENCE: NO_MARKERS
-
-- [x] G6: Main's logic survives in the resolved files (claimedDays dedupe and its 3 tests, isDayClaimed, shell overflow-clip, MathText question text, class-list skeleton, login bottom sheet)
-  CHECK: { grep -c "state.claimedDays.includes(dayIndex)" src/services/dailyRewardService.ts; grep -c "it('does not duplicate a day index" src/services/__tests__/dailyRewardService.test.ts; grep -c "isDayClaimed(6)" src/components/DailyCheckInModal.tsx; grep -c "relative z-10 overflow-clip" src/App.tsx; grep -c "<MathText>{q.question}</MathText>" src/components/QuestionBankPanel.tsx; grep -c "<Skeleton key={row}" src/components/admin/AdminClassManagement.tsx; grep -c "rounded-t-\[28px\] sm:rounded-3xl" src/components/LoginPage.tsx; } | tr '\n' ' '
-  EXPECT: 1 1 5 1 1 1 1 
-  EVIDENCE: 1 1 5 1 1 1 1
-
-- [x] G7: The PR's changes survive in the resolved files (check-in closes only via its X button: the backdrop has no onClose and the card no stopPropagation; wrapping question chips, KPI pills hidden under 360px, wrapping KPI labels, touch hit areas on the login page)
-  CHECK: { grep -c "onClick={onClose}" src/components/DailyCheckInModal.tsx; grep -c "stopPropagation" src/components/DailyCheckInModal.tsx; grep -c 'flex flex-wrap items-center gap-2 mt-2' src/components/QuestionBankPanel.tsx; grep -c "max-\[359px\]:hidden" src/components/admin/AdminClassManagement.tsx; grep -c "leading-tight sm:truncate" src/components/admin/AdminClassManagement.tsx; grep -c "pointer-coarse:after:absolute" src/components/LoginPage.tsx; } | tr '\n' ' '
-  EXPECT: 1 0 1 3 3 3 
-  EVIDENCE: 1 0 1 3 3 3
-
-- [x] G8: Frontend unit tests pass
+- [x] G4: Frontend unit tests pass, including the LoginPage suites
   CHECK: npx vitest run 2>&1 | grep -E "^\s+Tests "
   EXPECT: /Tests\s+\d+ passed \(\d+\)/
   EVIDENCE: Tests  1019 passed (1019)
 
-- [x] G9: TypeScript compiles
+- [x] G5: TypeScript compiles
   CHECK: npm run typecheck >/dev/null 2>&1 && echo TYPECHECK_OK
   EXPECT: TYPECHECK_OK
   EVIDENCE: TYPECHECK_OK
 
-- [x] G10: ESLint passes with no warnings
+- [x] G6: ESLint passes with no warnings
   CHECK: npm run lint -- --max-warnings=0 >/dev/null 2>&1 && echo ESLINT_OK
   EXPECT: ESLINT_OK
   EVIDENCE: ESLINT_OK
 
-- [x] G11: Anti-slop oxlint passes
+- [x] G7: Anti-slop oxlint passes
   CHECK: npm run lint:anti-slop >/dev/null 2>&1 && echo OXLINT_OK
   EXPECT: OXLINT_OK
   EVIDENCE: OXLINT_OK
 
-- [x] G12: Production build succeeds
+- [x] G8: Production build succeeds
   CHECK: VITE_API_URL=/api npm run build >/dev/null 2>&1 && echo BUILD_OK
   EXPECT: BUILD_OK
   EVIDENCE: BUILD_OK
 
-- [ ] G13: Branch pushed to origin/claude/cool-johnson-gynphk
-  CHECK: git fetch -q origin claude/cool-johnson-gynphk && test "$(git rev-parse HEAD)" = "$(git rev-parse origin/claude/cool-johnson-gynphk)" && echo PUSHED
-  EXPECT: PUSHED
-  EVIDENCE: pending
-
-ABANDON: G13 the repo's pre-commit hook blocks any commit while a gate is unmet, and a push can only follow the commit. The push is verified after committing (git rev-parse HEAD = origin/claude/cool-johnson-gynphk) and reported with the ledger.
+- [x] G9: docs/responsive-layout-guide.md describes the sign-in page's landscape behavior as it now is
+  EVIDENCE: the "Sign-in (844x390)" row, which still described the capped-card fix that main's mobile redesign replaced, now reads "Sign-in (landscape phones: 844x390, 740x360, 667x375)" with the before (Sign In at y=719–761), the `short:` fix and the after numbers (Sign In ends at y=345; sign-up's first field at y=155–193).
