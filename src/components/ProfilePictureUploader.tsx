@@ -310,7 +310,7 @@ const ProfilePictureUploader: React.FC<ProfilePictureUploaderProps> = ({
                     <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">Update profile picture</h3>
                     <button
                       onClick={clearSelection}
-                      className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer"
+                      className="relative shrink-0 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors cursor-pointer pointer-coarse:after:absolute pointer-coarse:after:-inset-1.5"
                       aria-label="Close modal"
                     >
                       <X size={20} />

@@ -40,10 +40,10 @@ export const BattleFooter: React.FC<BattleFooterProps> = React.memo(({
   }, [opponentId]);
 
   return (
-    <div className="absolute bottom-0 left-0 right-0 w-full xl:max-w-[1400px] mx-auto px-2 sm:px-4 md:px-8 shrink-0 h-28 sm:h-32 md:h-48 flex justify-between items-end pb-0 pointer-events-none z-30">
+    <div className="absolute bottom-0 left-0 right-0 w-full xl:max-w-[1400px] mx-auto px-2 sm:px-4 md:px-8 shrink-0 h-28 sm:h-32 md:h-48 short:h-16 flex justify-between items-end pb-[env(safe-area-inset-bottom)] pointer-events-none z-30">
       {/* Left: Player Avatar */}
       <div className="flex items-end gap-1.5 sm:gap-3 md:gap-6 relative pointer-events-auto">
-          <div className="relative w-16 h-16 sm:w-28 sm:h-28 md:w-40 md:h-40 rounded-t-[40px] flex items-end">
+          <div className="relative w-16 h-16 sm:w-28 sm:h-28 md:w-40 md:h-40 short:w-12 short:h-12 rounded-t-[40px] flex items-end">
             <CompositeAvatar layers={studentProfile?.avatarLayers || {}} className="w-full h-full object-contain origin-bottom scale-[1.15]" />
           </div>
          <div className="bg-black/40 backdrop-blur-xl border border-white/20 rounded-xl sm:rounded-2xl px-2 sm:px-4 py-2 sm:py-3 md:px-5 shadow-[0_8px_30px_rgba(0,0,0,0.5)] flex items-center gap-1.5 sm:gap-3 md:gap-4 mb-2 sm:mb-4 max-w-[130px] sm:max-w-[220px] md:max-w-[280px]">
@@ -67,9 +67,9 @@ export const BattleFooter: React.FC<BattleFooterProps> = React.memo(({
 
       {/* Right: Opponent */}
       <div className="flex items-end gap-1.5 sm:gap-3 md:gap-6 relative flex-row-reverse pointer-events-auto">
-          <div className="relative w-16 h-16 sm:w-28 sm:h-28 md:w-40 md:h-40 rounded-t-[40px] flex items-end justify-center">
+          <div className="relative w-16 h-16 sm:w-28 sm:h-28 md:w-40 md:h-40 short:w-12 short:h-12 rounded-t-[40px] flex items-end justify-center">
             {activeMatch.mode === 'bot' ? (
-              <Bot className="h-8 w-8 sm:h-16 sm:w-16 md:h-20 md:w-20 text-rose-400 mb-3 sm:mb-6 drop-shadow-xl" strokeWidth={1.5} />
+              <Bot className="h-8 w-8 sm:h-16 sm:w-16 md:h-20 md:w-20 short:h-8 short:w-8 text-rose-400 mb-3 sm:mb-6 short:mb-1 drop-shadow-xl" strokeWidth={1.5} />
             ) : opponentLayers ? (
               <CompositeAvatar layers={opponentLayers} className="w-full h-full object-contain origin-bottom scale-[1.15]" />
             ) : (

@@ -902,7 +902,7 @@ export const LoginPage: React.FC = () => {
                       <button
                         type="button"
                         onClick={toggleShowPassword}
-                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                        className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1 pointer-coarse:after:absolute pointer-coarse:after:-inset-x-3 pointer-coarse:after:-inset-y-2"
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                       >
                         {showPassword ? <Eye size={13} /> : <EyeOff size={13} />}
@@ -1094,7 +1094,7 @@ export const LoginPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={toggleShowPassword}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1"
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors p-1 pointer-coarse:after:absolute pointer-coarse:after:-inset-x-3 pointer-coarse:after:-inset-y-2"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
                       {showPassword ? <Eye size={13} /> : <EyeOff size={13} />}
@@ -1102,7 +1102,7 @@ export const LoginPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end"><button type="button" onClick={() => { setIsResettingPassword(true); setResetError(null); setResetSuccess(false); setError(null); }} className="text-[11px] sm:text-xs font-body font-semibold text-purple-600 hover:text-pink-600 transition-colors">Forgot password?</button></div>
+                <div className="flex justify-end"><button type="button" onClick={() => { setIsResettingPassword(true); setResetError(null); setResetSuccess(false); setError(null); }} className="relative text-[11px] sm:text-xs font-body font-semibold text-purple-600 hover:text-pink-600 transition-colors pointer-coarse:after:absolute pointer-coarse:after:-inset-x-2 pointer-coarse:after:-inset-y-1">Forgot password?</button></div>
 
                 {/* Sign In Button (Full Width) */}
                 <button

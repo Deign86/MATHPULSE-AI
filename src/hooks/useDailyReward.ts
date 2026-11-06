@@ -20,6 +20,8 @@ import {
 } from '../services/dailyRewardService';
 
 export interface UseDailyRewardResult {
+  /** True once the student's reward state has loaded (until then `canClaim` is false). */
+  loaded: boolean;
   weekRewards: RewardDefinition[];
   todayReward: RewardDefinition | null;
   canClaim: boolean;
@@ -142,6 +144,7 @@ export function useDailyReward(userId: string | null): UseDailyRewardResult {
 
   // ── Return ────────────────────────────────────────────────────────────────
   return {
+    loaded: state !== null,
     weekRewards,
     todayReward,
     canClaim,

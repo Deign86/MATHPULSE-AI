@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>MathPulse AI (layout audit frame)</title>
+    <script>
+      // Dev-only audit frame (never bundled). The Browser pane can be hidden (no frames at all) or
+      // visible but throttled to ~1 fps, which freezes motion animations (page fades, AnimatePresence
+      // exits) mid-measurement. Drive requestAnimationFrame from a ~60 Hz message loop instead.
+      (function () {
+        var nativeCancel = window.cancelAnimationFrame.bind(window);
+        var SHIM_BASE = 1e9;
+        var nextId = SHIM_BASE;
+        var queue = [];
+        var cancelled = new Set();
+        var pending = false;
+        var last = 0;
+        var channel = new MessageChannel();
+        channel.port1.onmessage = function () {
+          var now = performance.now();
+          if (now - last < 15) { channel.port2.postMessage(0); return; }
+          last = now;
+          pending = false;
+          var run = queue;
+          queue = [];
+          for (var i = 0; i < run.length; i++) {
+            if (cancelled.delete(run[i][0])) continue;
+            try { run[i][1](now); } catch (error) { setTimeout(function () { throw error; }); }
+          }
+        };
+        window.requestAnimationFrame = function (callback) {
+          var id = nextId++;
+          queue.push([id, callback]);
+          if (!pending) { pending = true; channel.port2.postMessage(0); }
+          return id;
+        };
+        window.cancelAnimationFrame = function (id) {
+          if (id >= SHIM_BASE) cancelled.add(id); else nativeCancel(id);
+        };
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <div id="modal-root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
