@@ -2,16 +2,7 @@ import os
 import sys
 from unittest.mock import MagicMock
 
-# Mock Firebase admin before importing app
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-
-# Mock firebase_admin to bypass initialization
-mock_firebase_admin = MagicMock()
-mock_firebase_admin.initialize_app = MagicMock()
-mock_firebase_admin.get_app = MagicMock()
-sys.modules["firebase_admin"] = mock_firebase_admin
-sys.modules["firebase_admin.credentials"] = MagicMock()
-sys.modules["firebase_admin.firestore"] = MagicMock()
 
 os.environ["HF_TOKEN"] = "test-token-for-testing"
 os.environ["ANTHROPIC_API_KEY"] = "test-key-for-testing"
